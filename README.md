@@ -1,0 +1,3 @@
+# Broadrange AI
+
+This project is a smart agentic AI study planner...
