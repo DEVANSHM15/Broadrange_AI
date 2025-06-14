@@ -4,7 +4,7 @@
 import AppLayout from "@/components/AppLayout";
 import Link from "next/link";
 import { useAuth } from "@/contexts/auth-context";
-import { Zap, Brain, Settings as SettingsIcon, PlusCircle, ListChecks, Edit, HelpCircle, Lightbulb, CheckCircle2, Loader2, AlertCircle, BarChart3, BookOpen, CalendarDaysIcon, Target, MessageCircle, Repeat, Sparkles, Hourglass, Flame, Gauge, Star, BookCopy } from "lucide-react";
+import { Zap, Brain, Settings as SettingsIcon, PlusCircle, ListChecks, Edit, HelpCircle, Lightbulb, CheckCircle2, Loader2, AlertCircle, BarChart3, BookOpen, CalendarDaysIcon, Target, MessageCircle, Repeat, Sparkles, Hourglass, Flame, Gauge, Star, BookCopy, Trophy, Award, ShieldCheck } from "lucide-react";
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { PomodoroTimerModal } from "@/components/pomodoro-timer";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -14,7 +14,6 @@ import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { generatePlanReflection, type GeneratePlanReflectionInput, type GeneratePlanReflectionOutput } from "@/ai/flows/generate-plan-reflection";
 import { Badge } from "@/components/ui/badge";
-import * as anime from 'animejs';
 
 
 const sampleAgentData: AgentDisplayData[] = [
@@ -22,17 +21,7 @@ const sampleAgentData: AgentDisplayData[] = [
   { name: "ReflectionAI", avatar: "🔍", role: "Progress Analysis", confidence: 87, agentKey: "reflection" },
   { name: "AdaptiveAI", avatar: "⚙️", role: "Dynamic Adjustment", confidence: 94, agentKey: "adaptive" },
 ];
-anime.default({
-  targets: "#box",
-  translateX: [0, 300],
-  opacity: [0, 1],
-  duration: 1500,
-  delay: 200,
-  loop: true,
-  direction: "alternate",
-  easing: "easeInOutSine",
-  complete: () => console.log("Done!"),
-})
+
 
 const getPlannerStorageKey = (userEmail: string | undefined | null) =>
   userEmail ? `studyMindAiPlannerData_v2_${userEmail}` : `studyMindAiPlannerData_v2_guest`;
@@ -73,6 +62,24 @@ function parseTasksFromString(scheduleString: string, existingTasks?: ScheduleTa
     return existingTasks || [];
   }
 }
+
+interface Achievement {
+  id: string;
+  title: string;
+  description: string;
+  icon: React.ElementType;
+  achieved: boolean; // For future dynamic updates
+  color?: string; // Optional color for the icon or card accents
+}
+
+const sampleAchievements: Achievement[] = [
+  { id: "first_plan", title: "Planner Pioneer", description: "Successfully created your first study plan.", icon: PlusCircle, achieved: true, color: "text-green-500" },
+  { id: "task_initiate", title: "Task Starter", description: "Completed your first task in a study plan.", icon: CheckCircle2, achieved: false, color: "text-blue-500" },
+  { id: "streak_beginner", title: "Study Dabbler", description: "Maintained a 3-day study streak.", icon: Flame, achieved: false, color: "text-orange-500" },
+  { id: "quiz_taker", title: "Quiz Challenger", description: "Attempted your first AI-generated quiz.", icon: Brain, achieved: false, color: "text-purple-500" },
+  { id: "reflection_reader", title: "Insight Seeker", description: "Viewed your first plan reflection.", icon: Lightbulb, achieved: false, color: "text-yellow-500"},
+  { id: "plan_completer", title: "Finisher", description: "Successfully completed a full study plan.", icon: Trophy, achieved: false, color: "text-amber-600" },
+];
 
 
 export default function DashboardPage() {
@@ -218,6 +225,22 @@ export default function DashboardPage() {
   // Debug log for when the component renders to see currentStudyPlan
   console.log("[Dashboard Render] Current Plan Duration from state:", currentStudyPlan?.planDetails?.studyDurationDays, "Total Study Hours KPI:", totalStudyHours);
 
+  // Update placeholder achievements based on current data (simple example)
+  const dynamicAchievements = useMemo(() => {
+      return sampleAchievements.map(ach => {
+        if (ach.id === 'first_plan' && currentStudyPlan) {
+          return { ...ach, achieved: true };
+        }
+        if (ach.id === 'task_initiate' && completedTasksCount > 0) {
+           return { ...ach, achieved: true };
+        }
+        if (ach.id === 'plan_completer' && isPlanCompleted) {
+           return { ...ach, achieved: true };
+        }
+        return ach;
+      });
+  }, [currentStudyPlan, completedTasksCount, isPlanCompleted]);
+
   return (
     <AppLayout>
       <div className="container mx-auto py-6 px-4 md:px-6 space-y-10">
@@ -342,6 +365,30 @@ export default function DashboardPage() {
                 <p className="text-xs text-muted-foreground">{averageQuizScore !== "N/A" ? "From quizzes" : "No quizzes taken"}</p>
               </CardContent>
             </Card>
+          </div>
+        </section>
+
+        <section>
+          <h2 className="text-2xl font-semibold mb-6">Your Achievements</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {dynamicAchievements.map((ach) => (
+              <Card key={ach.id} className={`shadow-md transition-all hover:shadow-lg ${ach.achieved ? 'border-green-500/50 bg-green-500/5' : 'border-border'}`}>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center gap-3">
+                    <ach.icon className={`h-7 w-7 ${ach.achieved ? ach.color || 'text-green-500' : 'text-muted-foreground/70'}`} />
+                    {ach.title}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className={`text-sm ${ach.achieved ? 'text-foreground' : 'text-muted-foreground'}`}>{ach.description}</p>
+                </CardContent>
+                {ach.achieved && (
+                  <CardFooter className="pt-2 pb-3">
+                      <Badge variant="default" className="bg-green-600 hover:bg-green-700 text-white text-xs">Achieved!</Badge>
+                  </CardFooter>
+                )}
+              </Card>
+            ))}
           </div>
         </section>
 
@@ -482,3 +529,4 @@ export default function DashboardPage() {
 
 
     
+
