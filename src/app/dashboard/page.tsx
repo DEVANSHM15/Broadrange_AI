@@ -14,6 +14,7 @@ import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { generatePlanReflection, type GeneratePlanReflectionInput, type GeneratePlanReflectionOutput } from "@/ai/flows/generate-plan-reflection";
 import { Badge } from "@/components/ui/badge";
+import * as anime from 'animejs';
 
 
 const sampleAgentData: AgentDisplayData[] = [
@@ -21,7 +22,17 @@ const sampleAgentData: AgentDisplayData[] = [
   { name: "ReflectionAI", avatar: "🔍", role: "Progress Analysis", confidence: 87, agentKey: "reflection" },
   { name: "AdaptiveAI", avatar: "⚙️", role: "Dynamic Adjustment", confidence: 94, agentKey: "adaptive" },
 ];
-
+anime.default({
+  targets: "#box",
+  translateX: [0, 300],
+  opacity: [0, 1],
+  duration: 1500,
+  delay: 200,
+  loop: true,
+  direction: "alternate",
+  easing: "easeInOutSine",
+  complete: () => console.log("Done!"),
+})
 
 const getPlannerStorageKey = (userEmail: string | undefined | null) =>
   userEmail ? `studyMindAiPlannerData_v2_${userEmail}` : `studyMindAiPlannerData_v2_guest`;

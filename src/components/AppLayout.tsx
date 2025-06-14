@@ -12,7 +12,7 @@ interface AppLayoutProps {
   children: ReactNode;
 }
 
-const PUBLIC_PATHS = ['/', '/login', '/register', '/register/step2', '/register/step3', '/forgot-password']; // Added /forgot-password
+const PUBLIC_PATHS = ['/', '/login', '/register', '/register/step2', '/register/step3', '/forgot-password'];
 
 export default function AppLayout({ children }: AppLayoutProps) {
   const { currentUser, isLoading } = useAuth();
@@ -35,11 +35,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
     );
   }
   
-  // If it's a public path, or if user is authenticated for protected paths, render content
   const isPublicPath = PUBLIC_PATHS.includes(pathname);
   const showAppHeader = !isPublicPath && currentUser;
 
-  // If it's a protected path and user is not loaded yet (but not loading anymore), it means redirect is about to happen
   if (!isPublicPath && !currentUser && !isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
@@ -49,12 +47,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
   }
   
   return (
-    <>
+    // Ensure this div is a flex column and can grow, and its children can properly expand.
+    // min-h-0 is added to help flex-grow work correctly in some nested flexbox scenarios.
+    <div className="flex flex-col flex-grow min-h-0"> 
       {showAppHeader && <AppHeader />}
-      {/* Removed flex-grow from main, as RootLayout's div now handles it */}
-      <main className={`${showAppHeader ? 'pt-4 md:pt-6' : ''}`}> 
+      {/* The main content area should grow to fill available space within this flex column. */}
+      <main className={`flex-grow ${showAppHeader ? 'pt-4 md:pt-6' : ''}`}> 
         {children}
       </main>
-    </>
+    </div>
   );
 }
