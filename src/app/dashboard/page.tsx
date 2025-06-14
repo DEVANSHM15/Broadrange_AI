@@ -73,7 +73,7 @@ interface Achievement {
 }
 
 const sampleAchievements: Achievement[] = [
-  { id: "first_plan", title: "Planner Pioneer", description: "Successfully created your first study plan.", icon: PlusCircle, achieved: true, color: "text-green-500" },
+  { id: "first_plan", title: "Planner Pioneer", description: "Successfully created your first study plan.", icon: PlusCircle, achieved: false, color: "text-green-500" },
   { id: "task_initiate", title: "Task Starter", description: "Completed your first task in a study plan.", icon: CheckCircle2, achieved: false, color: "text-blue-500" },
   { id: "streak_beginner", title: "Study Dabbler", description: "Maintained a 3-day study streak.", icon: Flame, achieved: false, color: "text-orange-500" },
   { id: "quiz_taker", title: "Quiz Challenger", description: "Attempted your first AI-generated quiz.", icon: Brain, achieved: false, color: "text-purple-500" },
@@ -81,6 +81,22 @@ const sampleAchievements: Achievement[] = [
   { id: "plan_completer", title: "Finisher", description: "Successfully completed a full study plan.", icon: Trophy, achieved: false, color: "text-amber-600" },
 ];
 
+
+const studyTips = [
+  "Break down large tasks into smaller, manageable chunks.",
+  "Use the Pomodoro Technique to maintain focus.",
+  "Teach what you learn to someone else to solidify understanding.",
+  "Test yourself regularly, don't just re-read notes.",
+  "Take short breaks every hour to stay refreshed.",
+  "Stay hydrated and get enough sleep for optimal brain function.",
+  "Find a dedicated study space free from distractions.",
+  "Reward yourself after completing a challenging task or study session.",
+  "Review material regularly, not just before an exam (spaced repetition).",
+  "Set specific, measurable, achievable, relevant, and time-bound (SMART) goals.",
+  "Don't be afraid to ask for help if you're stuck on a topic.",
+  "Visualize your success and stay positive!",
+  "Active recall (retrieving information from memory) is more effective than passive review."
+];
 
 export default function DashboardPage() {
   const { currentUser } = useAuth();
@@ -90,6 +106,7 @@ export default function DashboardPage() {
   const [planReflection, setPlanReflection] = useState<GeneratePlanReflectionOutput | null>(null);
   const [isGeneratingReflection, setIsGeneratingReflection] = useState(false);
   const plannerStorageKey = getPlannerStorageKey(currentUser?.email);
+  const [currentTip, setCurrentTip] = useState("");
 
 
   const reloadDataFromStorage = useCallback(() => {
@@ -173,13 +190,30 @@ export default function DashboardPage() {
 
 
   useEffect(() => {
-    const interval = setInterval(() => {
+    const agentConfidenceInterval = setInterval(() => {
       setAgents(prevAgents => prevAgents.map(agent => ({
         ...agent,
         confidence: Math.min(99, Math.max(80, agent.confidence + Math.floor(Math.random() * 3) - 1))
       })));
     }, 3000);
-    return () => clearInterval(interval);
+    
+    // Set initial tip
+    setCurrentTip(studyTips[Math.floor(Math.random() * studyTips.length)]);
+    // Set interval to change tip
+    const tipInterval = setInterval(() => {
+      setCurrentTip(prevTip => {
+        let newTip = prevTip;
+        while (newTip === prevTip) { // Ensure new tip is different from current
+          newTip = studyTips[Math.floor(Math.random() * studyTips.length)];
+        }
+        return newTip;
+      });
+    }, 30000); // 30 seconds
+
+    return () => {
+      clearInterval(agentConfidenceInterval);
+      clearInterval(tipInterval);
+    };
   }, []);
 
   const completedTasksCount = parsedTasksForPlan.filter(task => task.completed).length;
@@ -207,20 +241,6 @@ export default function DashboardPage() {
     return Math.round(totalScore / attemptedQuizzes.length);
   }, [parsedTasksForPlan]);
 
-  const studyTips = [
-    "Break down large tasks into smaller, manageable chunks.",
-    "Use the Pomodoro Technique to maintain focus.",
-    "Teach what you learn to someone else to solidify understanding.",
-    "Test yourself regularly, don't just re-read notes.",
-    "Take short breaks every hour to stay refreshed.",
-    "Stay hydrated and get enough sleep for optimal brain function.",
-    "Find a dedicated study space free from distractions."
-  ];
-  const [currentTip, setCurrentTip] = useState("");
-
-  useEffect(() => {
-    setCurrentTip(studyTips[Math.floor(Math.random() * studyTips.length)]);
-  }, []);
 
   // Debug log for when the component renders to see currentStudyPlan
   console.log("[Dashboard Render] Current Plan Duration from state:", currentStudyPlan?.planDetails?.studyDurationDays, "Total Study Hours KPI:", totalStudyHours);
@@ -238,6 +258,7 @@ export default function DashboardPage() {
            return { ...ach, achieved: true };
         }
         // Add more dynamic achievement checks here later
+        // For 'streak_beginner', we'd need actual streak tracking logic
         return ach;
       });
   }, [currentStudyPlan, completedTasksCount, isPlanCompleted]);
@@ -533,3 +554,6 @@ export default function DashboardPage() {
 
 
 
+
+
+    
