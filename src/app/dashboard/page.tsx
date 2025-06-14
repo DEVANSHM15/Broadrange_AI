@@ -68,8 +68,8 @@ interface Achievement {
   title: string;
   description: string;
   icon: React.ElementType;
-  achieved: boolean; 
-  color?: string; 
+  achieved: boolean;
+  color?: string;
 }
 
 const sampleAchievements: Achievement[] = [
@@ -530,5 +530,6 @@ export default function DashboardPage() {
 
 
     
+
 
 
