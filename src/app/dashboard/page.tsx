@@ -68,8 +68,8 @@ interface Achievement {
   title: string;
   description: string;
   icon: React.ElementType;
-  achieved: boolean; // For future dynamic updates
-  color?: string; // Optional color for the icon or card accents
+  achieved: boolean; 
+  color?: string; 
 }
 
 const sampleAchievements: Achievement[] = [
@@ -237,6 +237,7 @@ export default function DashboardPage() {
         if (ach.id === 'plan_completer' && isPlanCompleted) {
            return { ...ach, achieved: true };
         }
+        // Add more dynamic achievement checks here later
         return ach;
       });
   }, [currentStudyPlan, completedTasksCount, isPlanCompleted]);
@@ -375,7 +376,7 @@ export default function DashboardPage() {
               <Card key={ach.id} className={`shadow-md transition-all hover:shadow-lg ${ach.achieved ? 'border-green-500/50 bg-green-500/5' : 'border-border'}`}>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg flex items-center gap-3">
-                    <ach.icon className={`h-7 w-7 ${ach.achieved ? ach.color || 'text-green-500' : 'text-muted-foreground/70'}`} />
+                    <ach.icon className={`h-7 w-7 ${ach.achieved ? (ach.color || 'text-green-500') : 'text-muted-foreground/70'}`} />
                     {ach.title}
                   </CardTitle>
                 </CardHeader>
@@ -529,4 +530,5 @@ export default function DashboardPage() {
 
 
     
+
 
