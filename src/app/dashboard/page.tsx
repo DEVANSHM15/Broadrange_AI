@@ -23,36 +23,19 @@ const sampleAgentData: AgentDisplayData[] = [
   { name: "AdaptiveAI", avatar: "⚙️", role: "Dynamic Adjustment", confidence: 94, agentKey: "adaptive" },
 ];
 
-
-const getPlannerStorageKey = (userEmail: string | undefined | null) =>
-  userEmail ? `studyMindAiPlannerData_v2_array_${userEmail}` : `studyMindAiPlannerData_v2_array_guest`;
-
-
-function parseTasksFromString(scheduleString: string, planId: string, existingTasks?: ScheduleTask[]): ScheduleTask[] {
-  try {
-    const parsed = JSON.parse(scheduleString) as ParsedRawScheduleItem[];
-    if (Array.isArray(parsed) && parsed.every(item => typeof item.date === 'string' && typeof item.task === 'string')) {
-      return parsed.map((item, index) => {
-        const existingTask = existingTasks?.find(et => et.id.startsWith(`task-${planId}-${index}`)); // Match by planId and index
-        return {
-          ...item,
-          date: item.date,
-          id: existingTask?.id || `task-${planId}-${index}-${new Date(item.date).getTime()}-${Math.random().toString(36).substring(2,9)}`,
-          completed: existingTask?.completed || false,
-          youtubeSearchQuery: item.youtubeSearchQuery,
-          referenceSearchQuery: item.referenceSearchQuery,
-          subTasks: existingTask?.subTasks || [],
-          quizScore: existingTask?.quizScore,
-          quizAttempted: existingTask?.quizAttempted || false,
-        };
-      });
-    }
-    return existingTasks || [];
-  } catch (error) {
-    console.warn("DashboardPage: Failed to parse schedule string:", error);
-    return existingTasks || [];
-  }
+// Helper function to ensure tasks have necessary fields, especially after fetching from API
+function ensureTaskStructure(tasks: ScheduleTask[] | undefined, planId: string): ScheduleTask[] {
+  if (!tasks) return [];
+  return tasks.map((task, index) => ({
+    ...task,
+    id: task.id || `task-${planId}-${index}-${new Date(task.date).getTime()}-${Math.random().toString(36).substring(2,9)}`, // Ensure ID
+    completed: task.completed || false,
+    subTasks: task.subTasks || [],
+    quizScore: task.quizScore,
+    quizAttempted: task.quizAttempted || false,
+  }));
 }
+
 
 const studyTips = [
   "Break down large tasks into smaller, manageable chunks.",
@@ -81,78 +64,79 @@ export default function DashboardPage() {
   const [parsedTasksForActivePlan, setParsedTasksForActivePlan] = useState<ScheduleTask[]>([]);
   const [planReflection, setPlanReflection] = useState<GeneratePlanReflectionOutput | null>(null);
   const [isGeneratingReflection, setIsGeneratingReflection] = useState(false);
-  const plannerStorageKey = getPlannerStorageKey(currentUser?.email);
+  const [isLoadingPlanData, setIsLoadingPlanData] = useState(true);
   const [currentTip, setCurrentTip] = useState("");
 
 
-  const reloadDataFromStorage = useCallback(() => {
-    if (!currentUser?.email) {
-        setActiveStudyPlan(null);
-        setParsedTasksForActivePlan([]);
-        setPlanReflection(null);
-        return;
+  const reloadDataFromApi = useCallback(async () => {
+    if (!currentUser?.id) {
+      setActiveStudyPlan(null);
+      setParsedTasksForActivePlan([]);
+      setPlanReflection(null);
+      setIsLoadingPlanData(false);
+      return;
     }
-    const savedPlansJson = localStorage.getItem(plannerStorageKey);
-    let currentActivePlan: ScheduleData | null = null;
 
-    if (savedPlansJson) {
-        try {
-            const allPlans: ScheduleData[] = JSON.parse(savedPlansJson);
-            if (Array.isArray(allPlans) && allPlans.length > 0) {
-                const activePlans = allPlans.filter(p => p.status === 'active').sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-                if (activePlans.length > 0) {
-                    currentActivePlan = activePlans[0];
-                } else {
-                    const mostRecentCompleted = allPlans.filter(p => p.status === 'completed').sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-                    if (mostRecentCompleted.length > 0) currentActivePlan = mostRecentCompleted[0];
-                }
-                if (!currentActivePlan) { // Fallback to most recently updated if no active/completed
-                    currentActivePlan = allPlans.sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
-                }
-            }
-            
-            if (currentActivePlan) {
-                let tasksToUse = currentActivePlan.tasks || [];
-                if ((!tasksToUse || tasksToUse.length === 0) && currentActivePlan.scheduleString) {
-                     tasksToUse = parseTasksFromString(currentActivePlan.scheduleString, currentActivePlan.id, currentActivePlan.tasks);
-                } else {
-                     tasksToUse = tasksToUse.map(task => ({...task, subTasks: task.subTasks || [], quizScore: task.quizScore, quizAttempted: task.quizAttempted || false}));
-                }
-                currentActivePlan.tasks = tasksToUse; // Ensure plan object has updated tasks
-                setActiveStudyPlan(currentActivePlan);
-                setParsedTasksForActivePlan(tasksToUse);
-            } else {
-                setActiveStudyPlan(null);
-                setParsedTasksForActivePlan([]);
-            }
-            
-        } catch (error) {
-            console.error("Dashboard: Failed to parse or process plans:", error);
-            setActiveStudyPlan(null);
-            setParsedTasksForActivePlan([]);
+    setIsLoadingPlanData(true);
+    try {
+      const response = await fetch(`/api/plans?userId=${currentUser.id}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch plans: ${response.statusText}`);
+      }
+      const allPlans: ScheduleData[] = await response.json();
+      let currentPlanToDisplay: ScheduleData | null = null;
+
+      if (allPlans && allPlans.length > 0) {
+        // Prioritize active plan, then most recent completed, then most recent overall
+        const activePlans = allPlans.filter(p => p.status === 'active').sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+        if (activePlans.length > 0) {
+          currentPlanToDisplay = activePlans[0];
+        } else {
+          const completedPlans = allPlans.filter(p => p.status === 'completed').sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+          if (completedPlans.length > 0) {
+            currentPlanToDisplay = completedPlans[0];
+          } else {
+            // Fallback to the most recently updated plan of any status
+            currentPlanToDisplay = allPlans.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
+          }
         }
-    } else {
+      }
+      
+      if (currentPlanToDisplay) {
+        const tasks = ensureTaskStructure(currentPlanToDisplay.tasks, currentPlanToDisplay.id);
+        setActiveStudyPlan({...currentPlanToDisplay, tasks });
+        setParsedTasksForActivePlan(tasks);
+      } else {
         setActiveStudyPlan(null);
         setParsedTasksForActivePlan([]);
+      }
+      setPlanReflection(null); // Reset reflection, will be fetched if conditions are met
+
+    } catch (error) {
+      console.error("Dashboard: Failed to fetch plans from API:", error);
+      setActiveStudyPlan(null);
+      setParsedTasksForActivePlan([]);
+    } finally {
+      setIsLoadingPlanData(false);
     }
-    setPlanReflection(null); // Reset reflection as plan context might have changed
-  }, [currentUser, plannerStorageKey]);
+  }, [currentUser]);
 
 
   useEffect(() => {
-    reloadDataFromStorage(); 
+    reloadDataFromApi(); 
 
     const handleStudyPlanUpdate = () => {
-      console.log('studyPlanUpdated event received by dashboard, reloading data.');
-      reloadDataFromStorage();
+      console.log('studyPlanUpdated event received by dashboard, reloading data from API.');
+      reloadDataFromApi();
     };
     window.addEventListener('studyPlanUpdated', handleStudyPlanUpdate);
     return () => window.removeEventListener('studyPlanUpdated', handleStudyPlanUpdate);
-  }, [reloadDataFromStorage]);
+  }, [reloadDataFromApi]);
 
   useEffect(() => {
     const fetchPlanReflection = async () => {
         if (activeStudyPlan && activeStudyPlan.status === 'completed' && parsedTasksForActivePlan.length > 0 && activeStudyPlan.planDetails) {
+            if (isGeneratingReflection) return; // Prevent multiple simultaneous calls
             setIsGeneratingReflection(true);
             try {
                 const input: GeneratePlanReflectionInput = {
@@ -173,7 +157,8 @@ export default function DashboardPage() {
         }
     };
     fetchPlanReflection();
-  }, [activeStudyPlan, parsedTasksForActivePlan]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeStudyPlan, parsedTasksForActivePlan]); // Removed isGeneratingReflection
 
 
   useEffect(() => {
@@ -222,6 +207,16 @@ export default function DashboardPage() {
     const totalScore = attemptedQuizzes.reduce((sum, task) => sum + (task.quizScore || 0), 0);
     return Math.round(totalScore / attemptedQuizzes.length);
   }, [parsedTasksForActivePlan]);
+
+  if (isLoadingPlanData) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center min-h-[calc(100vh-100px)]">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
@@ -291,7 +286,7 @@ export default function DashboardPage() {
           </section>
         )}
 
-        {!activeStudyPlan && (
+        {!activeStudyPlan && !isLoadingPlanData && (
           <Alert>
             <HelpCircle className="h-4 w-4" />
             <AlertTitle>No Study Plan Found</AlertTitle>
@@ -478,4 +473,6 @@ export default function DashboardPage() {
     </AppLayout>
   );
 }
+    
+
     
