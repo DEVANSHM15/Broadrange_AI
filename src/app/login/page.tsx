@@ -52,18 +52,22 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginFormData) => {
     setIsSubmittingForm(true);
     try {
-      const success = await login(data.email, data.password);
-      if (success) {
+      const result = await login(data.email, data.password); // login returns AuthResponse
+      
+      if (result.success) {
         toast({
           title: "Login Successful",
           description: "Welcome back!",
         });
         // Navigation is handled by the useEffect hook watching currentUser.
+        // Explicitly set submitting to false here to update button state
+        // in case navigation takes a moment or if useEffect has a delay.
+        setIsSubmittingForm(false);
       } else {
         toast({
           variant: "destructive",
           title: "Login Failed",
-          description: "Invalid email or password. Please try again.",
+          description: result.message || "Invalid email or password. Please try again.",
         });
         setIsSubmittingForm(false);
       }
