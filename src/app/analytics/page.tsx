@@ -166,7 +166,7 @@ function AnalyticsPageContent() {
     } finally {
       setIsGeneratingReflection(false);
     }
-  }, [toast]); // Removed isGeneratingReflection from dependencies
+  }, [toast]); 
 
   useEffect(() => {
     if (currentStudyPlanForAnalytics && currentStudyPlanForAnalytics.status === 'completed') {
@@ -208,9 +208,10 @@ function AnalyticsPageContent() {
   };
 
   const subjectFocusData = useMemo(() => {
-    if (!currentStudyPlanForAnalytics?.planDetails || !currentStudyPlanForAnalytics.tasks) return [];
+    if (!currentStudyPlanForAnalytics?.planDetails || !currentStudyPlanForAnalytics.tasks || !currentStudyPlanForAnalytics.planDetails.subjects) return [];
+    
     const { subjects } = currentStudyPlanForAnalytics.planDetails;
-    const subjectArray = subjects.split(',').map(s => s.trim().toLowerCase().replace(/\s*\(\d+\)\s*$/, '')).filter(s => s.length > 0); // Remove priority indication for display
+    const subjectArray = subjects.split(',').map(s => s.trim().toLowerCase().replace(/\s*\(\d+\)\s*$/, '')).filter(s => s.length > 0);
     if (subjectArray.length === 0) return [];
 
     const completedTasks = currentStudyPlanForAnalytics.tasks.filter(t => t.completed);
@@ -229,16 +230,19 @@ function AnalyticsPageContent() {
       }
     });
     
-    const totalCompletedWithSubject = Object.values(subjectCounts).reduce((sum, count) => sum + count, 0);
-    if (totalCompletedWithSubject === 0) return subjectArray.map((name, index) => ({ name: name.charAt(0).toUpperCase() + name.slice(1), value: 0, fill: chartColors[index % chartColors.length] }));
-
-    return Object.entries(subjectCounts)
-      .map(([name, count], index) => ({
+    const subjectCountsArray = Object.entries(subjectCounts).map(([name, count], index) => ({
         name: name.charAt(0).toUpperCase() + name.slice(1),
         value: count,
         fill: chartColors[index % chartColors.length],
-      }))
-      .filter(item => item.value > 0);
+    }));
+
+    const anySubjectHasData = subjectCountsArray.some(s => s.value > 0);
+
+    if (!anySubjectHasData) {
+        return []; // Return empty array to trigger "No data" message
+    }
+
+    return subjectCountsArray.filter(item => item.value > 0); // Only return subjects that actually have data for the chart
   }, [currentStudyPlanForAnalytics]);
 
 
