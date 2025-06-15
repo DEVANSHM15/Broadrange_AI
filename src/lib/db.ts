@@ -30,6 +30,8 @@ export async function getDb(): Promise<Database> {
 
   // Run migrations/initial setup
   await db.exec(`
+    PRAGMA foreign_keys = ON; -- Enable foreign key constraints
+
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
@@ -49,13 +51,13 @@ export async function getDb(): Promise<Database> {
       userId INTEGER NOT NULL,
       createdAt TEXT NOT NULL,
       updatedAt TEXT NOT NULL,
-      scheduleString TEXT NOT NULL,
+      scheduleString TEXT, -- Can be NULL if tasks are always parsed and stored separately
       subjects TEXT NOT NULL,
       dailyStudyHours REAL NOT NULL,
       studyDurationDays INTEGER NOT NULL,
       subjectDetails TEXT,
       startDate TEXT,
-      status TEXT NOT NULL DEFAULT 'active',
+      status TEXT NOT NULL DEFAULT 'active', -- 'active', 'completed', 'archived'
       completionDate TEXT,
       FOREIGN KEY (userId) REFERENCES users (id) ON DELETE CASCADE
     );
@@ -82,9 +84,7 @@ export async function getDb(): Promise<Database> {
     );
   `);
   
-  // Example: Add more tables or modify existing ones here in future migrations
-  // await db.exec(`ALTER TABLE users ADD COLUMN another_field TEXT;`);
-
   dbInstance = db;
   return db;
 }
+
