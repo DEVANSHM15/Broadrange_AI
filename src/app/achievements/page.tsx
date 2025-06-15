@@ -13,6 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import type { ScheduleData, ScheduleTask, ParsedRawScheduleItem, PlanInput } from "@/types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { parseISO, isValid } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
 
 interface Achievement {
   id: string;
@@ -32,107 +33,87 @@ const sampleAchievements: Achievement[] = [
   { id: "plan_completer", title: "Finisher", description: "Successfully completed a full study plan.", icon: Trophy, achieved: false, color: "text-amber-600" },
 ];
 
-const getPlannerStorageKey = (userEmail: string | undefined | null) =>
-  userEmail ? `studyMindAiPlannerData_v2_array_${userEmail}` : `studyMindAiPlannerData_v2_array_guest`;
-
-function parseTasksFromString(scheduleString: string, planId: string, existingTasks?: ScheduleTask[]): ScheduleTask[] {
-  try {
-    const parsed = JSON.parse(scheduleString) as ParsedRawScheduleItem[];
-    if (Array.isArray(parsed) && parsed.every(item => typeof item.date === 'string' && typeof item.task === 'string')) {
-      return parsed.map((item, index) => {
-        const existingTask = existingTasks?.find(et => et.id.startsWith(`task-${planId}-${index}`));
-        return {
-          ...item,
-          date: item.date,
-          id: existingTask?.id || `task-${planId}-${index}-${new Date(item.date).getTime()}-${Math.random().toString(36).substring(2,9)}`,
-          completed: existingTask?.completed || false,
-          youtubeSearchQuery: item.youtubeSearchQuery,
-          referenceSearchQuery: item.referenceSearchQuery,
-          subTasks: existingTask?.subTasks || [],
-          quizScore: existingTask?.quizScore,
-          quizAttempted: existingTask?.quizAttempted || false,
-        };
-      });
-    }
-    return existingTasks || [];
-  } catch (error) {
-    console.warn("AchievementsPage: Failed to parse schedule string:", error);
-    return existingTasks || [];
-  }
+// Helper function to ensure tasks have necessary fields, especially after fetching from API
+function ensureTaskStructure(tasks: ScheduleTask[] | undefined, planId: string): ScheduleTask[] {
+  if (!tasks) return [];
+  return tasks.map((task, index) => ({
+    ...task,
+    id: task.id || `task-${planId}-${index}-${new Date(task.date).getTime()}-${Math.random().toString(36).substring(2,9)}`,
+    completed: task.completed || false,
+    subTasks: task.subTasks || [],
+    quizScore: task.quizScore,
+    quizAttempted: task.quizAttempted || false,
+  }));
 }
 
 
 export default function AchievementsPage() {
   const { currentUser } = useAuth();
-  const [activeStudyPlan, setActiveStudyPlan] = useState<ScheduleData | null>(null);
+  const { toast } = useToast();
+  const [activeStudyPlan, setActiveStudyPlan] = useState<ScheduleData | null>(null); // For the overview card
   const [parsedTasksForActivePlan, setParsedTasksForActivePlan] = useState<ScheduleTask[]>([]);
   const [allStudyPlans, setAllStudyPlans] = useState<ScheduleData[]>([]);
   const [isLoadingPlans, setIsLoadingPlans] = useState(true);
-  const plannerStorageKey = getPlannerStorageKey(currentUser?.email);
 
-  const reloadDataFromStorage = useCallback(() => {
-    setIsLoadingPlans(true);
-    if (!currentUser?.email) {
+  const reloadDataFromApi = useCallback(async () => {
+    if (!currentUser?.id) {
         setActiveStudyPlan(null);
         setParsedTasksForActivePlan([]);
         setAllStudyPlans([]);
         setIsLoadingPlans(false);
         return;
     }
-    const savedPlansJson = localStorage.getItem(plannerStorageKey);
-    let currentActivePlan: ScheduleData | null = null;
-    let loadedPlans: ScheduleData[] = [];
-
-    if (savedPlansJson) {
-        try {
-            loadedPlans = JSON.parse(savedPlansJson);
-            if (Array.isArray(loadedPlans) && loadedPlans.length > 0) {
-                // Determine active plan logic (e.g., last active or most recent)
-                const activePlans = loadedPlans.filter(p => p.status === 'active').sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-                if (activePlans.length > 0) {
-                    currentActivePlan = activePlans[0];
-                } else {
-                    const mostRecentCompleted = loadedPlans.filter(p => p.status === 'completed').sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-                    if (mostRecentCompleted.length > 0) currentActivePlan = mostRecentCompleted[0];
-                }
-                 if (!currentActivePlan) { // Fallback to most recently updated if no active/completed
-                    currentActivePlan = loadedPlans.sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
-                }
-            }
-            
-            if (currentActivePlan) {
-                let tasksToUse = currentActivePlan.tasks || [];
-                if ((!tasksToUse || tasksToUse.length === 0) && currentActivePlan.scheduleString) {
-                     tasksToUse = parseTasksFromString(currentActivePlan.scheduleString, currentActivePlan.id, currentActivePlan.tasks);
-                } else {
-                     tasksToUse = tasksToUse.map(task => ({...task, subTasks: task.subTasks || [], quizScore: task.quizScore, quizAttempted: task.quizAttempted || false}));
-                }
-                currentActivePlan.tasks = tasksToUse;
-            }
-        } catch (error) {
-            console.error("AchievementsPage: Failed to parse saved plans:", error);
-            currentActivePlan = null;
-            loadedPlans = [];
+    setIsLoadingPlans(true);
+    try {
+        const response = await fetch(`/api/plans?userId=${currentUser.id}`);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch plans: ${response.statusText}`);
         }
+        const loadedPlans: ScheduleData[] = await response.json();
+        const processedPlans = loadedPlans.map(p => ({
+            ...p,
+            tasks: ensureTaskStructure(p.tasks, p.id)
+        }));
+        setAllStudyPlans(processedPlans);
+
+        let currentPlanForOverview: ScheduleData | null = null;
+        if (processedPlans.length > 0) {
+            // Determine active plan logic (e.g., last active or most recent completed)
+            const activePlans = processedPlans.filter(p => p.status === 'active').sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+            if (activePlans.length > 0) {
+                currentPlanForOverview = activePlans[0];
+            } else {
+                const mostRecentCompleted = processedPlans.filter(p => p.status === 'completed').sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+                if (mostRecentCompleted.length > 0) currentPlanForOverview = mostRecentCompleted[0];
+            }
+             if (!currentPlanForOverview) { // Fallback to most recently updated if no active/completed
+                currentPlanForOverview = processedPlans.sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
+            }
+        }
+        setActiveStudyPlan(currentPlanForOverview);
+        setParsedTasksForActivePlan(currentPlanForOverview?.tasks || []);
+
+    } catch (error) {
+        console.error("AchievementsPage: Failed to fetch plans:", error);
+        toast({ title: "Error Loading Plans", description: (error as Error).message, variant: "destructive" });
+        setActiveStudyPlan(null);
+        setAllStudyPlans([]);
+    } finally {
+        setIsLoadingPlans(false);
     }
-    setActiveStudyPlan(currentActivePlan);
-    setParsedTasksForActivePlan(currentActivePlan?.tasks || []);
-    setAllStudyPlans(loadedPlans);
-    setIsLoadingPlans(false);
-  }, [currentUser, plannerStorageKey]);
+  }, [currentUser, toast]);
 
   useEffect(() => {
-    reloadDataFromStorage();
-    const handleStudyPlanUpdate = () => reloadDataFromStorage();
+    reloadDataFromApi();
+    const handleStudyPlanUpdate = () => reloadDataFromApi();
     window.addEventListener('studyPlanUpdated', handleStudyPlanUpdate);
     return () => window.removeEventListener('studyPlanUpdated', handleStudyPlanUpdate);
-  }, [reloadDataFromStorage]);
+  }, [reloadDataFromApi]);
 
   const completedTasksCount = useMemo(() => parsedTasksForActivePlan.filter(task => task.completed).length, [parsedTasksForActivePlan]);
   const totalTasksCount = useMemo(() => parsedTasksForActivePlan.length, [parsedTasksForActivePlan]);
   const progressPercentage = useMemo(() => totalTasksCount > 0 ? Math.round((completedTasksCount / totalTasksCount) * 100) : 0, [completedTasksCount, totalTasksCount]);
   
-  // For "Finisher" and "Insight Seeker", we check if *any* plan is completed.
   const hasCompletedAnyPlan = useMemo(() => allStudyPlans.some(plan => plan.status === 'completed'), [allStudyPlans]);
 
   const dynamicAchievements = useMemo(() => {
@@ -140,24 +121,22 @@ export default function AchievementsPage() {
         let achieved = false;
         switch (ach.id) {
           case 'first_plan':
-            achieved = allStudyPlans.length > 0; // Achieved if any plan exists
+            achieved = allStudyPlans.length > 0;
             break;
           case 'task_initiate':
-            // Achieved if any task in any plan is completed
             achieved = allStudyPlans.some(plan => (plan.tasks || []).some(task => task.completed));
             break;
           case 'streak_beginner':
-            achieved = false; // Static for now
+            achieved = false; // Static for now, needs dedicated streak logic
             break;
           case 'quiz_taker':
-            // Achieved if any task in any plan has been attempted
             achieved = allStudyPlans.some(plan => (plan.tasks || []).some(task => task.quizAttempted === true));
             break;
           case 'reflection_reader':
-            achieved = hasCompletedAnyPlan; // Tied to completing any plan
+            achieved = hasCompletedAnyPlan; // Tied to completing any plan which triggers reflection generation
             break;
           case 'plan_completer':
-            achieved = hasCompletedAnyPlan; // Tied to completing any plan
+            achieved = hasCompletedAnyPlan;
             break;
           default:
             achieved = ach.achieved; 
@@ -166,7 +145,7 @@ export default function AchievementsPage() {
       });
   }, [allStudyPlans, hasCompletedAnyPlan]);
 
-  if (isLoadingPlans && !activeStudyPlan) { 
+  if (isLoadingPlans && !activeStudyPlan && allStudyPlans.length === 0) { 
     return (
       <AppLayout>
         <div className="flex items-center justify-center min-h-[calc(100vh-100px)]">
@@ -218,7 +197,7 @@ export default function AchievementsPage() {
         
         <div className="mt-12">
             <h2 className="text-2xl font-semibold mb-4">Plan Overview</h2>
-            {isLoadingPlans ? (
+            {isLoadingPlans && !activeStudyPlan ? ( // Show loader if loading and no plan is yet displayed
                  <div className="flex items-center justify-center p-8 border rounded-lg bg-muted/30">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                  </div>
@@ -271,7 +250,7 @@ export default function AchievementsPage() {
                         </Button>
                     </CardFooter>
                 </Card>
-            ) : (
+            ) : ( // This is for when not loading AND no active plan (e.g., no plans exist at all)
                 <Alert>
                     <HelpCircle className="h-4 w-4" />
                     <AlertTitle>No Plan History Found</AlertTitle>

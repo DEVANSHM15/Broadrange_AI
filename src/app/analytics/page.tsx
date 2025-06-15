@@ -17,36 +17,20 @@ import { differenceInWeeks, parseISO, format, startOfWeek, addWeeks, isValid } f
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { HelpCircle, Loader2, Lightbulb, AlertCircle as AlertCircleIcon } from "lucide-react";
 import { generatePlanReflection, type GeneratePlanReflectionInput, type GeneratePlanReflectionOutput } from "@/ai/flows/generate-plan-reflection";
+import { useToast } from "@/hooks/use-toast";
 
 
-const getPlannerStorageKey = (userEmail: string | undefined | null) =>
-  userEmail ? `studyMindAiPlannerData_v2_array_${userEmail}` : `studyMindAiPlannerData_v2_array_guest`;
-
-// Helper function to parse schedule string into tasks
-function parseTasksFromString(scheduleString: string, planId: string, existingTasks?: ScheduleTask[]): ScheduleTask[] {
-  try {
-    const parsed = JSON.parse(scheduleString) as ParsedRawScheduleItem[];
-    if (Array.isArray(parsed) && parsed.every(item => typeof item.date === 'string' && typeof item.task === 'string')) {
-      return parsed.map((item, index) => {
-        const existingTask = existingTasks?.find(et => et.id.startsWith(`task-${planId}-${index}`));
-        return {
-          ...item,
-          date: item.date,
-          id: existingTask?.id || `task-${planId}-${index}-${new Date(item.date).getTime()}-${Math.random().toString(36).substring(2,9)}`,
-          completed: existingTask?.completed || false,
-          youtubeSearchQuery: item.youtubeSearchQuery,
-          referenceSearchQuery: item.referenceSearchQuery,
-          subTasks: existingTask?.subTasks || [],
-          quizScore: existingTask?.quizScore,
-          quizAttempted: existingTask?.quizAttempted || false,
-        };
-      });
-    }
-    return existingTasks || [];
-  } catch (error) {
-    console.warn("AnalyticsPage: Failed to parse schedule string:", error);
-    return existingTasks || [];
-  }
+// Helper function to ensure tasks have necessary fields, especially after fetching from API
+function ensureTaskStructure(tasks: ScheduleTask[] | undefined, planId: string): ScheduleTask[] {
+  if (!tasks) return [];
+  return tasks.map((task, index) => ({
+    ...task,
+    id: task.id || `task-${planId}-${index}-${new Date(task.date).getTime()}-${Math.random().toString(36).substring(2,9)}`,
+    completed: task.completed || false,
+    subTasks: task.subTasks || [],
+    quizScore: task.quizScore,
+    quizAttempted: task.quizAttempted || false,
+  }));
 }
 
 const staticExampleRecommendations: InsightDisplayData[] = [
@@ -65,65 +49,56 @@ const chartColors = [
 
 export default function AnalyticsPage() {
   const { currentUser } = useAuth();
+  const { toast } = useToast();
   const [currentStudyPlanForAnalytics, setCurrentStudyPlanForAnalytics] = useState<ScheduleData | null>(null);
   const [isLoadingPlan, setIsLoadingPlan] = useState(true);
   const [planReflection, setPlanReflection] = useState<GeneratePlanReflectionOutput | null>(null);
   const [isGeneratingReflection, setIsGeneratingReflection] = useState(false);
-  const plannerStorageKey = getPlannerStorageKey(currentUser?.email);
 
-
-  const reloadDataForAnalytics = useCallback(() => {
+  const reloadDataForAnalytics = useCallback(async () => {
+    if (!currentUser?.id) {
+      setCurrentStudyPlanForAnalytics(null);
+      setIsLoadingPlan(false);
+      return;
+    }
     setIsLoadingPlan(true);
-     if (!currentUser?.email) {
-        setCurrentStudyPlanForAnalytics(null);
-        setIsLoadingPlan(false);
-        return;
-    }
-    const savedPlansJson = localStorage.getItem(plannerStorageKey);
-    let planToAnalyze: ScheduleData | null = null;
-
-    if (savedPlansJson) {
-      try {
-        const allPlans: ScheduleData[] = JSON.parse(savedPlansJson);
-        if (Array.isArray(allPlans) && allPlans.length > 0) {
-          // Prioritize the most recent 'completed' plan for analytics
-          const completedPlans = allPlans.filter(p => p.status === 'completed').sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-          if (completedPlans.length > 0) {
-            planToAnalyze = completedPlans[0];
-          } else {
-            // If no completed, take the most recent 'active' plan
-            const activePlans = allPlans.filter(p => p.status === 'active').sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-            if (activePlans.length > 0) planToAnalyze = activePlans[0];
-          }
-           if (!planToAnalyze) { // Fallback to most recently updated if no active/completed
-              planToAnalyze = allPlans.sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
-          }
-        }
-        
-        if (planToAnalyze) {
-            let tasksToUse = planToAnalyze.tasks || [];
-            if ((!tasksToUse || tasksToUse.length === 0) && planToAnalyze.scheduleString) {
-                tasksToUse = parseTasksFromString(planToAnalyze.scheduleString, planToAnalyze.id, planToAnalyze.tasks);
-            } else {
-                tasksToUse = tasksToUse.map(task => ({...task, subTasks: task.subTasks || [], quizScore: task.quizScore, quizAttempted: task.quizAttempted || false}));
-            }
-            planToAnalyze.tasks = tasksToUse;
-        }
-      } catch (error) {
-        console.error("Analytics: Failed to parse or process plans:", error);
-        planToAnalyze = null;
+    try {
+      const response = await fetch(`/api/plans?userId=${currentUser.id}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch plans: ${response.statusText}`);
       }
-    }
-    setCurrentStudyPlanForAnalytics(planToAnalyze);
-    setIsLoadingPlan(false);
+      const allPlans: ScheduleData[] = await response.json();
+      let planToAnalyze: ScheduleData | null = null;
 
-    if (planToAnalyze && planToAnalyze.status === 'completed' && planToAnalyze.planDetails && planToAnalyze.tasks.length > 0 && !isGeneratingReflection) {
-      fetchPlanReflection(planToAnalyze, planToAnalyze.tasks);
-    } else if (planToAnalyze?.status !== 'completed') {
-      setPlanReflection(null);
+      if (allPlans && allPlans.length > 0) {
+        // Prioritize the most recent 'completed' plan for analytics
+        const completedPlans = allPlans.filter(p => p.status === 'completed').sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+        if (completedPlans.length > 0) {
+          planToAnalyze = completedPlans[0];
+        } else {
+          // If no completed, take the most recent 'active' plan
+          const activePlans = allPlans.filter(p => p.status === 'active').sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+          if (activePlans.length > 0) planToAnalyze = activePlans[0];
+        }
+        if (!planToAnalyze) { // Fallback to most recently updated if no active/completed
+            planToAnalyze = allPlans.sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
+        }
+      }
+      
+      if (planToAnalyze) {
+          planToAnalyze.tasks = ensureTaskStructure(planToAnalyze.tasks, planToAnalyze.id);
+      }
+      setCurrentStudyPlanForAnalytics(planToAnalyze);
+
+    } catch (error) {
+      console.error("Analytics: Failed to fetch or process plans:", error);
+      toast({ title: "Error Loading Data", description: (error as Error).message, variant: "destructive" });
+      setCurrentStudyPlanForAnalytics(null);
+    } finally {
+      setIsLoadingPlan(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser, plannerStorageKey, isGeneratingReflection]);
+  }, [currentUser, toast]);
 
 
   useEffect(() => {
@@ -133,14 +108,14 @@ export default function AnalyticsPage() {
     return () => window.removeEventListener('studyPlanUpdated', handleStudyPlanUpdate);
   }, [reloadDataForAnalytics]);
 
-
-  const fetchPlanReflection = async (plan: ScheduleData, tasks: ScheduleTask[]) => {
-    if (!plan.planDetails) return;
+  const fetchPlanReflection = useCallback(async (plan: ScheduleData) => {
+    if (!plan.planDetails || !plan.tasks || plan.tasks.length === 0 || isGeneratingReflection) return;
     setIsGeneratingReflection(true);
+    setPlanReflection(null);
     try {
       const input: GeneratePlanReflectionInput = {
         planDetails: plan.planDetails,
-        tasks: tasks,
+        tasks: plan.tasks, // Already ensured by reloadDataForAnalytics
         completionDate: plan.completionDate,
       };
       const reflection = await generatePlanReflection(input);
@@ -148,10 +123,20 @@ export default function AnalyticsPage() {
     } catch (error) {
       console.error("Failed to generate plan reflection for analytics:", error);
       setPlanReflection(null);
+      // Optionally toast an error, but maybe too noisy if it fails often
     } finally {
       setIsGeneratingReflection(false);
     }
-  };
+  }, [isGeneratingReflection]);
+
+  useEffect(() => {
+    if (currentStudyPlanForAnalytics && currentStudyPlanForAnalytics.status === 'completed') {
+      fetchPlanReflection(currentStudyPlanForAnalytics);
+    } else {
+      setPlanReflection(null); // Clear reflection if plan is not completed
+    }
+  }, [currentStudyPlanForAnalytics, fetchPlanReflection]);
+
 
   const performanceData = useMemo(() => {
     if (!currentStudyPlanForAnalytics || !currentStudyPlanForAnalytics.tasks || currentStudyPlanForAnalytics.tasks.length === 0) return [];
