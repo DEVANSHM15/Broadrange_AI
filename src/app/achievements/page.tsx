@@ -151,20 +151,26 @@ export default function AchievementsPage() {
         const response = await fetch(`/api/plans?userId=${currentUser.id}`);
         if (!response.ok) {
             let errorMessage = `Failed to fetch plans. Status: ${response.status}`;
+            let errorDetailMessage = "";
             try {
               const errorData = await response.json();
               if (errorData.error) {
-                errorMessage = errorData.error;
+                errorMessage = String(errorData.error);
+                if (errorData.details) {
+                  errorDetailMessage = String(errorData.details);
+                }
               } else if (response.statusText) {
                 errorMessage = `Failed to fetch plans: ${response.statusText} (Status: ${response.status})`;
               }
             } catch (e) {
-              // Parsing JSON failed, use status text if available or generic error
               if (response.statusText) {
                  errorMessage = `Failed to fetch plans: ${response.statusText} (Status: ${response.status})`;
               }
             }
-            throw new Error(errorMessage);
+            const finalMessage = errorDetailMessage 
+                ? `${errorMessage} (Details: ${errorDetailMessage})` 
+                : errorMessage;
+            throw new Error(finalMessage);
         }
         const loadedPlans: ScheduleData[] = await response.json();
         const processedPlans = loadedPlans.map(p => ({
