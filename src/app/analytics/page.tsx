@@ -14,9 +14,9 @@ import type { InsightDisplayData, ScheduleData, ScheduleTask, PlanInput, ParsedR
 import { useAuth } from "@/contexts/auth-context";
 import { useState, useEffect, useMemo, useCallback, Suspense } from "react";
 import { useSearchParams } from 'next/navigation';
-import { differenceInWeeks, parseISO, format, startOfWeek, endOfWeek, addWeeks, isValid, getDay, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, getDate, addMonths, subMonths } from "date-fns";
+import { differenceInWeeks, parseISO, format, startOfWeek, endOfWeek, addWeeks, isValid, getDay, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, getDate, addMonths, subMonths, getDaysInMonth } from "date-fns";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { HelpCircle, Loader2, Lightbulb, AlertCircle as AlertCircleIcon, Target, MessageSquareText, Repeat, SparklesIcon, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+import { HelpCircle, Loader2, Lightbulb, AlertCircle as AlertCircleIcon, Target, MessageSquareText, Repeat, SparklesIcon, CalendarDays, ChevronLeft, ChevronRight, BarChartHorizontalBig, TrendingUp, Activity } from "lucide-react";
 import { generatePlanReflection, type GeneratePlanReflectionInput, type GeneratePlanReflectionOutput } from "@/ai/flows/generate-plan-reflection";
 import { useToast } from "@/hooks/use-toast";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -72,6 +72,7 @@ function AnalyticsPageContent() {
       setIsLoadingPlan(false);
       return;
     }
+    setIsLoadingPlan(false); // Set to false initially, then true if fetching
     setIsLoadingPlan(true);
     let planToAnalyze: ScheduleData | null = null;
 
@@ -161,9 +162,8 @@ function AnalyticsPageContent() {
 
  const fetchPlanReflection = useCallback(async (plan: ScheduleData) => {
     if (!plan.planDetails || !plan.tasks || plan.tasks.length === 0) return;
-    if (isGeneratingReflection) return; // Prevent re-entry
+    if (isGeneratingReflection) return; 
     
-    // Ensure tasks are structured correctly for the AI flow, especially boolean fields
     const tasksForReflection = ensureTaskStructure(plan.tasks, plan.id);
 
     setIsGeneratingReflection(true);
@@ -199,7 +199,7 @@ function AnalyticsPageContent() {
     } finally {
       setIsGeneratingReflection(false);
     }
-  }, [toast]); // Removed isGeneratingReflection from here
+  }, [toast]); 
 
   useEffect(() => {
     if (currentStudyPlanForAnalytics && currentStudyPlanForAnalytics.status === 'completed') {
@@ -301,7 +301,7 @@ function AnalyticsPageContent() {
 
   const monthlyActivityData = useMemo(() => {
     if (!currentStudyPlanForAnalytics || !currentStudyPlanForAnalytics.tasks || !isValid(heatmapDisplayMonth)) {
-      return { monthName: format(heatmapDisplayMonth, "MMMM yyyy"), days: [] };
+      return { monthName: format(heatmapDisplayMonth, "MMMM yyyy"), days: [], totalTasksInMonth: 0, daysStudiedInMonth: 0, totalDaysInDisplayedMonth: 0, busiestDayInMonth: { name: "N/A", count: 0 } };
     }
   
     const targetDate = heatmapDisplayMonth;
@@ -310,18 +310,45 @@ function AnalyticsPageContent() {
     const displayStartDate = startOfWeek(monthStart);
     const displayEndDate = endOfWeek(monthEnd);
   
+    let totalTasksInMonth = 0;
+    let daysStudiedInMonth = 0;
+    const tasksPerDayOfWeekInMonth: { [day: number]: number } = { 0:0, 1:0, 2:0, 3:0, 4:0, 5:0, 6:0 };
+    const totalDaysInDisplayedMonth = getDaysInMonth(targetDate);
+
     const days = eachDayOfInterval({ start: displayStartDate, end: displayEndDate }).map(day => {
-      const tasksCompleted = currentStudyPlanForAnalytics.tasks.filter(
+      const tasksOnThisDay = currentStudyPlanForAnalytics.tasks.filter(
         task => task.completed && task.date && isValid(parseISO(task.date)) && isSameDay(parseISO(task.date), day)
-      ).length;
+      );
+      const tasksCompletedCount = tasksOnThisDay.length;
+      const isCurrent = isSameMonth(day, monthStart);
+
+      if (isCurrent) {
+        totalTasksInMonth += tasksCompletedCount;
+        if (tasksCompletedCount > 0) {
+          daysStudiedInMonth++;
+          const dayOfWeekIndex = getDay(day);
+          tasksPerDayOfWeekInMonth[dayOfWeekIndex] = (tasksPerDayOfWeekInMonth[dayOfWeekIndex] || 0) + tasksCompletedCount;
+        }
+      }
       return {
         date: day,
-        tasksCompleted,
-        isCurrentMonth: isSameMonth(day, monthStart),
+        tasksCompleted: tasksCompletedCount,
+        isCurrentMonth: isCurrent,
       };
     });
+
+    let busiestDayNum = 0;
+    let maxTasksOnDay = 0;
+    const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    for (let i = 0; i < 7; i++) {
+        if (tasksPerDayOfWeekInMonth[i] > maxTasksOnDay) {
+            maxTasksOnDay = tasksPerDayOfWeekInMonth[i];
+            busiestDayNum = i;
+        }
+    }
+    const busiestDayInMonth = { name: dayNames[busiestDayNum], count: maxTasksOnDay };
   
-    return { monthName: format(monthStart, "MMMM yyyy"), days };
+    return { monthName: format(monthStart, "MMMM yyyy"), days, totalTasksInMonth, daysStudiedInMonth, totalDaysInDisplayedMonth, busiestDayInMonth };
   }, [currentStudyPlanForAnalytics, heatmapDisplayMonth]);
 
   const getHeatmapColor = (count: number): string => {
@@ -470,7 +497,7 @@ function AnalyticsPageContent() {
                <CardHeader>
                 <div className="flex items-center justify-between mb-2">
                   <CardTitle className="flex items-center gap-2 text-xl">
-                    <CalendarDays className="text-primary h-5 w-5"/> Monthly Activity Heatmap
+                    <CalendarDays className="text-primary h-5 w-5"/> Monthly Activity
                   </CardTitle>
                   <div className="flex items-center gap-1">
                     <Button variant="outline" size="icon" className="h-7 w-7" onClick={handlePrevMonthHeatmap} aria-label="Previous month">
@@ -485,38 +512,63 @@ function AnalyticsPageContent() {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="p-2">
-                <div className="max-w-sm mx-auto"> {/* Constrain width here */}
-                  {monthlyActivityData.days.length > 0 ? (
-                    <TooltipProvider>
-                      <div className="grid grid-cols-7 gap-0.5 text-center text-xs">
-                        {daysOfWeekShort.map(day => (
-                          <div key={day} className="font-medium text-muted-foreground pb-1 text-[10px]">{day}</div>
-                        ))}
-                        {monthlyActivityData.days.map(({ date, tasksCompleted, isCurrentMonth }) => (
-                          <Tooltip key={date.toISOString()} delayDuration={100}>
-                            <TooltipTrigger asChild>
-                              <div
-                                className={`w-full aspect-square rounded-sm flex items-center justify-center border border-transparent transition-colors text-[10px]
-                                            ${isCurrentMonth ? getHeatmapColor(tasksCompleted) : 'bg-background/30 text-muted-foreground/30 cursor-default'}
-                                            ${isCurrentMonth && tasksCompleted > 0 ? 'text-primary-foreground dark:text-background font-semibold' : (isCurrentMonth ? 'text-muted-foreground' : '')}
-                                          `}
-                              >
-                                {getDate(date)}
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>{format(date, "PPP")}: {tasksCompleted} task{tasksCompleted !== 1 ? 's' : ''} completed</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        ))}
+              <CardContent className="p-4 flex flex-col md:flex-row gap-6 items-start">
+                <div className="md:w-1/2 lg:w-2/5 flex-shrink-0 mx-auto md:mx-0">
+                  <div className="max-w-xs mx-auto">
+                    {monthlyActivityData.days.length > 0 ? (
+                      <TooltipProvider>
+                        <div className="grid grid-cols-7 gap-0.5 text-center text-xs">
+                          {daysOfWeekShort.map(day => (
+                            <div key={day} className="font-medium text-muted-foreground pb-1 text-[10px]">{day}</div>
+                          ))}
+                          {monthlyActivityData.days.map(({ date, tasksCompleted, isCurrentMonth }) => (
+                            <Tooltip key={date.toISOString()} delayDuration={100}>
+                              <TooltipTrigger asChild>
+                                <div
+                                  className={`w-full aspect-square rounded-sm flex items-center justify-center border border-transparent transition-colors text-[10px]
+                                              ${isCurrentMonth ? getHeatmapColor(tasksCompleted) : 'bg-background/30 text-muted-foreground/30 cursor-default'}
+                                              ${isCurrentMonth && tasksCompleted > 0 ? 'text-primary-foreground dark:text-background font-semibold' : (isCurrentMonth ? 'text-muted-foreground' : '')}
+                                            `}
+                                >
+                                  {getDate(date)}
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>{format(date, "PPP")}: {tasksCompleted} task{tasksCompleted !== 1 ? 's' : ''} completed</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          ))}
+                        </div>
+                      </TooltipProvider>
+                    ) : (
+                      <div className="flex items-center justify-center min-h-[100px]">
+                         <p className="text-center text-muted-foreground">No activity data for this month in the current plan.</p>
                       </div>
-                    </TooltipProvider>
-                  ) : (
-                    <div className="flex items-center justify-center min-h-[100px]">
-                       <p className="text-center text-muted-foreground">No activity data for this month in the current plan.</p>
-                    </div>
-                  )}
+                    )}
+                  </div>
+                </div>
+                <div className="md:w-1/2 lg:w-3/5 space-y-3 pt-2 md:pt-0">
+                    <h4 className="text-lg font-semibold text-primary mb-2">
+                        Insights for {monthlyActivityData.monthName}
+                    </h4>
+                    {monthlyActivityData.days.length > 0 ? (
+                        <ul className="space-y-2 text-sm">
+                            <li className="flex items-center gap-2">
+                                <TrendingUp className="h-5 w-5 text-muted-foreground" />
+                                <span>Total Tasks Completed: <strong className="text-foreground">{monthlyActivityData.totalTasksInMonth}</strong></span>
+                            </li>
+                            <li className="flex items-center gap-2">
+                                <Activity className="h-5 w-5 text-muted-foreground" />
+                                <span>Active Study Days: <strong className="text-foreground">{monthlyActivityData.daysStudiedInMonth}</strong> / {monthlyActivityData.totalDaysInDisplayedMonth}</span>
+                            </li>
+                            <li className="flex items-center gap-2">
+                                <BarChartHorizontalBig className="h-5 w-5 text-muted-foreground" />
+                                <span>Busiest Day: <strong className="text-foreground">{monthlyActivityData.busiestDayInMonth.name}</strong> ({monthlyActivityData.busiestDayInMonth.count} tasks)</span>
+                            </li>
+                        </ul>
+                    ) : (
+                        <p className="text-sm text-muted-foreground">No activity stats to display for this month.</p>
+                    )}
                 </div>
               </CardContent>
             </Card>
@@ -619,3 +671,4 @@ export default function AnalyticsPage() {
 }
 
     
+
