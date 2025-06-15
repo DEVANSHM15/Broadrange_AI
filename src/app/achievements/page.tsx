@@ -3,7 +3,7 @@
 
 import AppLayout from "@/components/AppLayout";
 import { useAuth } from "@/contexts/auth-context";
-import { PlusCircle, CheckCircle2, Flame, Brain, Lightbulb, Trophy, Award, HelpCircle, Loader2, ListChecks, Edit, BookOpen, ArchiveIcon, ClockIcon } from "lucide-react";
+import { PlusCircle, CheckCircle2, Flame, Brain, Lightbulb, Trophy, Award, HelpCircle, Loader2, ListChecks, Edit, BookOpen, ArchiveIcon, ClockIcon, BarChart3 } from "lucide-react";
 import { useEffect, useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -89,7 +89,7 @@ const PlanDisplayCard: React.FC<PlanDisplayCardProps> = ({ plan, cardType }) => 
           {plan.planDetails.subjects || "N/A"}
           {plan.status === 'completed' && plan.completionDate && isValid(parseISO(plan.completionDate)) 
             ? ` - Completed on ${new Date(plan.completionDate).toLocaleDateString()}`
-            : ` - Last updated ${formatDistanceToNowStrict(parseISO(plan.updatedAt), { addSuffix: true })}`}
+            : (plan.updatedAt && isValid(parseISO(plan.updatedAt)) ? ` - Last updated ${formatDistanceToNowStrict(parseISO(plan.updatedAt), { addSuffix: true })}` : ' - Date N/A')}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -113,13 +113,21 @@ const PlanDisplayCard: React.FC<PlanDisplayCardProps> = ({ plan, cardType }) => 
           </div>
         )}
       </CardContent>
-      <CardFooter>
-        <Button asChild className="w-full" variant="outline">
-          <Link href="/planner">
+      <CardFooter className="flex flex-col sm:flex-row gap-2">
+        <Button asChild className="w-full sm:flex-grow" variant="outline">
+          {/* Link to planner, potentially with planId in future to load specific plan */}
+          <Link href={`/planner?planId=${plan.id}`}> 
             <Edit className="mr-2 h-4 w-4"/>
             {plan.status === 'completed' || plan.status === 'archived' ? "Review Plan Details" : "View or Edit Plan"}
           </Link>
         </Button>
+        {cardType === 'completed' && (
+          <Button asChild className="w-full sm:flex-grow" variant="default">
+            <Link href={`/analytics?planId=${plan.id}`}>
+              <BarChart3 className="mr-2 h-4 w-4" /> Analyze Plan
+            </Link>
+          </Button>
+        )}
       </CardFooter>
     </Card>
   );
@@ -148,7 +156,7 @@ export default function AchievementsPage() {
         const processedPlans = loadedPlans.map(p => ({
             ...p,
             tasks: ensureTaskStructure(p.tasks, p.id)
-        })).sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()); // Sort by most recently updated
+        })).sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()); 
         setAllStudyPlans(processedPlans);
 
     } catch (error) {
@@ -180,7 +188,7 @@ export default function AchievementsPage() {
             achieved = allStudyPlans.some(plan => (plan.tasks || []).some(task => task.completed));
             break;
           case 'streak_beginner':
-            achieved = false; // Static for now, needs dedicated streak logic
+            achieved = false; 
             break;
           case 'quiz_taker':
             achieved = allStudyPlans.some(plan => (plan.tasks || []).some(task => task.quizAttempted === true));
@@ -309,3 +317,5 @@ export default function AchievementsPage() {
   );
 }
 
+
+    

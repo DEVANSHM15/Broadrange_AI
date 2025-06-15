@@ -12,7 +12,8 @@ import {
 import { BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import type { InsightDisplayData, ScheduleData, ScheduleTask, PlanInput, ParsedRawScheduleItem } from "@/types";
 import { useAuth } from "@/contexts/auth-context";
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, Suspense } from "react";
+import { useSearchParams } from 'next/navigation';
 import { differenceInWeeks, parseISO, format, startOfWeek, addWeeks, isValid } from "date-fns";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { HelpCircle, Loader2, Lightbulb, AlertCircle as AlertCircleIcon } from "lucide-react";
@@ -47,9 +48,12 @@ const chartColors = [
   "hsl(var(--chart-5))",
 ];
 
-export default function AnalyticsPage() {
+function AnalyticsPageContent() {
   const { currentUser } = useAuth();
   const { toast } = useToast();
+  const searchParams = useSearchParams();
+  const planIdFromQuery = searchParams.get('planId');
+
   const [currentStudyPlanForAnalytics, setCurrentStudyPlanForAnalytics] = useState<ScheduleData | null>(null);
   const [isLoadingPlan, setIsLoadingPlan] = useState(true);
   const [planReflection, setPlanReflection] = useState<GeneratePlanReflectionOutput | null>(null);
@@ -62,26 +66,41 @@ export default function AnalyticsPage() {
       return;
     }
     setIsLoadingPlan(true);
-    try {
-      const response = await fetch(`/api/plans?userId=${currentUser.id}`);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch plans: ${response.statusText}`);
-      }
-      const allPlans: ScheduleData[] = await response.json();
-      let planToAnalyze: ScheduleData | null = null;
+    let planToAnalyze: ScheduleData | null = null;
 
-      if (allPlans && allPlans.length > 0) {
-        // Prioritize the most recent 'completed' plan for analytics
-        const completedPlans = allPlans.filter(p => p.status === 'completed').sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-        if (completedPlans.length > 0) {
-          planToAnalyze = completedPlans[0];
+    try {
+      if (planIdFromQuery) {
+        const response = await fetch(`/api/plans/${planIdFromQuery}?userId=${currentUser.id}`);
+        if (!response.ok) {
+          if (response.status === 404) {
+            toast({ title: "Plan Not Found", description: `Could not find plan with ID: ${planIdFromQuery}`, variant: "destructive" });
+            // Fallback to default behavior or show specific error
+          } else {
+            throw new Error(`Failed to fetch specific plan: ${response.statusText}`);
+          }
         } else {
-          // If no completed, take the most recent 'active' plan
-          const activePlans = allPlans.filter(p => p.status === 'active').sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-          if (activePlans.length > 0) planToAnalyze = activePlans[0];
+          planToAnalyze = await response.json();
         }
-        if (!planToAnalyze) { // Fallback to most recently updated if no active/completed
-            planToAnalyze = allPlans.sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
+      }
+      
+      if (!planToAnalyze) { // If specific plan not found or no query ID, fetch all and pick default
+        const response = await fetch(`/api/plans?userId=${currentUser.id}`);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch plans: ${response.statusText}`);
+        }
+        const allPlans: ScheduleData[] = await response.json();
+
+        if (allPlans && allPlans.length > 0) {
+          const completedPlans = allPlans.filter(p => p.status === 'completed').sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+          if (completedPlans.length > 0) {
+            planToAnalyze = completedPlans[0];
+          } else {
+            const activePlans = allPlans.filter(p => p.status === 'active').sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+            if (activePlans.length > 0) planToAnalyze = activePlans[0];
+          }
+          if (!planToAnalyze) {
+              planToAnalyze = allPlans.sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
+          }
         }
       }
       
@@ -97,16 +116,15 @@ export default function AnalyticsPage() {
     } finally {
       setIsLoadingPlan(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser, toast]);
+  }, [currentUser, toast, planIdFromQuery]);
 
 
   useEffect(() => {
     reloadDataForAnalytics();
-    const handleStudyPlanUpdate = () => reloadDataForAnalytics();
+    const handleStudyPlanUpdate = () => reloadDataForAnalytics(); // This might need to be smarter if a specific plan is being viewed
     window.addEventListener('studyPlanUpdated', handleStudyPlanUpdate);
     return () => window.removeEventListener('studyPlanUpdated', handleStudyPlanUpdate);
-  }, [reloadDataForAnalytics]);
+  }, [reloadDataForAnalytics, planIdFromQuery]); // Added planIdFromQuery
 
   const fetchPlanReflection = useCallback(async (plan: ScheduleData) => {
     if (!plan.planDetails || !plan.tasks || plan.tasks.length === 0 || isGeneratingReflection) return;
@@ -115,7 +133,7 @@ export default function AnalyticsPage() {
     try {
       const input: GeneratePlanReflectionInput = {
         planDetails: plan.planDetails,
-        tasks: plan.tasks, // Already ensured by reloadDataForAnalytics
+        tasks: plan.tasks, 
         completionDate: plan.completionDate,
       };
       const reflection = await generatePlanReflection(input);
@@ -123,7 +141,6 @@ export default function AnalyticsPage() {
     } catch (error) {
       console.error("Failed to generate plan reflection for analytics:", error);
       setPlanReflection(null);
-      // Optionally toast an error, but maybe too noisy if it fails often
     } finally {
       setIsGeneratingReflection(false);
     }
@@ -133,7 +150,7 @@ export default function AnalyticsPage() {
     if (currentStudyPlanForAnalytics && currentStudyPlanForAnalytics.status === 'completed') {
       fetchPlanReflection(currentStudyPlanForAnalytics);
     } else {
-      setPlanReflection(null); // Clear reflection if plan is not completed
+      setPlanReflection(null); 
     }
   }, [currentStudyPlanForAnalytics, fetchPlanReflection]);
 
@@ -247,9 +264,12 @@ export default function AnalyticsPage() {
           <div className="container mx-auto text-center">
              <Alert className="max-w-md mx-auto">
                 <HelpCircle className="h-4 w-4" />
-                <AlertTitle>No Study Plan Found</AlertTitle>
+                <AlertTitle>{planIdFromQuery ? "Specific Plan Not Found" : "No Study Plan Found"}</AlertTitle>
                 <AlertDescription>
-                  Complete a study plan to see your analytics and reflections here. Create a new one on the AI Planner page.
+                  {planIdFromQuery 
+                    ? `Could not load analytics for the specified plan. It might have been deleted or there was an issue fetching it.`
+                    : "Complete a study plan to see your analytics and reflections here. Create a new one on the AI Planner page."
+                  }
                 </AlertDescription>
               </Alert>
           </div>
@@ -257,6 +277,10 @@ export default function AnalyticsPage() {
       </AppLayout>
     );
   }
+  
+  const planUpdatedAt = currentStudyPlanForAnalytics.updatedAt && isValid(parseISO(currentStudyPlanForAnalytics.updatedAt)) 
+                        ? format(parseISO(currentStudyPlanForAnalytics.updatedAt), 'PPp') 
+                        : 'N/A';
 
   return (
     <AppLayout>
@@ -265,7 +289,10 @@ export default function AnalyticsPage() {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
             <h1 className="text-3xl font-bold tracking-tight">Study Analytics</h1>
             <p className="text-sm text-muted-foreground mt-1 md:mt-0">
-                Displaying analytics for: <span className="font-semibold text-primary">{currentStudyPlanForAnalytics.planDetails.subjects}</span> (Updated: {format(parseISO(currentStudyPlanForAnalytics.updatedAt), 'PPp')})
+                Displaying analytics for: <span className="font-semibold text-primary">{currentStudyPlanForAnalytics.planDetails.subjects}</span> 
+                {currentStudyPlanForAnalytics.status === 'completed' && currentStudyPlanForAnalytics.completionDate && isValid(parseISO(currentStudyPlanForAnalytics.completionDate))
+                    ? ` (Completed: ${format(parseISO(currentStudyPlanForAnalytics.completionDate), 'PP')})`
+                    : ` (Updated: ${planUpdatedAt})`}
             </p>
           </div>
 
@@ -401,3 +428,20 @@ export default function AnalyticsPage() {
     </AppLayout>
   );
 }
+
+
+export default function AnalyticsPage() {
+  return (
+    <Suspense fallback={
+      <AppLayout>
+        <div className="flex items-center justify-center min-h-[calc(100vh-100px)]">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </div>
+      </AppLayout>
+    }>
+      <AnalyticsPageContent />
+    </Suspense>
+  );
+}
+
+    
