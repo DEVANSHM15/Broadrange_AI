@@ -673,14 +673,14 @@ export default function PlannerPage() {
                                                 <FileText className="mr-1 h-3 w-3" /> Notes
                                               </Button>
                                             </PopoverTrigger>
-                                            <PopoverContent className="w-80 z-50">
+                                            <PopoverContent className="w-64 z-50">
                                               <div className="grid gap-4">
                                                 <div className="space-y-2">
                                                   <h4 className="font-medium leading-none">Notes for task:</h4>
                                                   <p className="text-sm text-muted-foreground truncate" title={task.task}>{task.task.substring(0,50)}{task.task.length > 50 ? '...' : ''}</p>
                                                 </div>
                                                 <div className="grid gap-2">
-                                                  <Textarea id={`notes-${task.id}`} value={currentNoteText} onChange={(e) => setCurrentNoteText(e.target.value)} placeholder="Type your short notes here..." rows={4} />
+                                                  <Textarea id={`notes-${task.id}`} value={currentNoteText} onChange={(e) => setCurrentNoteText(e.target.value)} placeholder="Type your short notes here..." rows={3} />
                                                 </div>
                                                 <Button onClick={handleSaveNote} disabled={isAnalyzing}>Save Notes</Button>
                                               </div>
@@ -771,3 +771,4 @@ export default function PlannerPage() {
 const ScrollArea = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className, children, ...props }, ref) => (
   <div ref={ref} className={cn("relative overflow-y-auto", className)} {...props}>{children}</div>));
 ScrollArea.displayName = "ScrollArea";
+
