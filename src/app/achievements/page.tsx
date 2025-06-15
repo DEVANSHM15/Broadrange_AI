@@ -3,11 +3,14 @@
 
 import AppLayout from "@/components/AppLayout";
 import { useAuth } from "@/contexts/auth-context";
-import { PlusCircle, CheckCircle2, Flame, Brain, Lightbulb, Trophy, Award, HelpCircle, Loader2 } from "lucide-react";
+import { PlusCircle, CheckCircle2, Flame, Brain, Lightbulb, Trophy, Award, HelpCircle, Loader2, ListChecks, Edit } from "lucide-react";
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import Link from "next/link";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { ScheduleData, ScheduleTask, ParsedRawScheduleItem } from "@/types";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import type { ScheduleData, ScheduleTask, ParsedRawScheduleItem, PlanInput } from "@/types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 // This type and sample data are moved from dashboard
@@ -116,12 +119,15 @@ export default function AchievementsPage() {
     return () => window.removeEventListener('studyPlanUpdated', handleStudyPlanUpdate);
   }, [reloadDataFromStorage]);
 
-  const completedTasksCount = parsedTasksForPlan.filter(task => task.completed).length;
-  const isPlanCompleted = currentStudyPlan?.status === 'completed';
+  const completedTasksCount = useMemo(() => parsedTasksForPlan.filter(task => task.completed).length, [parsedTasksForPlan]);
+  const totalTasksCount = useMemo(() => parsedTasksForPlan.length, [parsedTasksForPlan]);
+  const progressPercentage = useMemo(() => totalTasksCount > 0 ? Math.round((completedTasksCount / totalTasksCount) * 100) : 0, [completedTasksCount, totalTasksCount]);
+  const isPlanCompleted = useMemo(() => currentStudyPlan?.status === 'completed', [currentStudyPlan]);
+
 
   const dynamicAchievements = useMemo(() => {
       return sampleAchievements.map(ach => {
-        let achieved = ach.achieved; // Default to current state
+        let achieved = ach.achieved; 
         if (ach.id === 'first_plan' && currentStudyPlan) {
           achieved = true;
         }
@@ -131,20 +137,17 @@ export default function AchievementsPage() {
         if (ach.id === 'plan_completer' && isPlanCompleted) {
            achieved = true;
         }
-        // More complex achievements like streaks or quiz performance would need dedicated tracking logic
         if (ach.id === 'quiz_taker' && parsedTasksForPlan.some(t => t.quizAttempted)) {
             achieved = true;
         }
-        if (ach.id === 'reflection_reader' && currentStudyPlan?.status === 'completed' /* && reflection has been viewed - needs more state */) {
-            // This is a placeholder, actual reflection viewing status would need tracking
-            // For now, let's link it to completing a plan as a proxy
+        if (ach.id === 'reflection_reader' && currentStudyPlan?.status === 'completed') {
             achieved = currentStudyPlan?.status === 'completed';
         }
         return { ...ach, achieved };
       });
   }, [currentStudyPlan, completedTasksCount, isPlanCompleted, parsedTasksForPlan]);
 
-  if (isLoadingPlan) {
+  if (isLoadingPlan && !currentStudyPlan) { // Show loader only if plan is truly loading for the first time
     return (
       <AppLayout>
         <div className="flex items-center justify-center min-h-[calc(100vh-100px)]">
@@ -163,12 +166,12 @@ export default function AchievementsPage() {
           </h1>
         </div>
 
-        {!currentStudyPlan && (
+        {!currentStudyPlan && !isLoadingPlan && (
           <Alert className="mb-8">
             <HelpCircle className="h-4 w-4" />
             <AlertTitle>No Study Plan Data Found</AlertTitle>
             <AlertDescription>
-              Some achievements are based on your study plan progress. Create or load a plan to see them update!
+              Achievements are based on your study plan progress. Create or load a plan to see them update!
             </AlertDescription>
           </Alert>
         )}
@@ -194,16 +197,77 @@ export default function AchievementsPage() {
           ))}
         </div>
         
-        {/* Placeholder for future Plan History section */}
         <div className="mt-12">
             <h2 className="text-2xl font-semibold mb-4">Plan History</h2>
-            <Alert>
-                <HelpCircle className="h-4 w-4" />
-                <AlertTitle>Coming Soon!</AlertTitle>
-                <AlertDescription>
-                    This section will show your past and current study plans.
-                </AlertDescription>
-            </Alert>
+            {isLoadingPlan ? (
+                 <div className="flex items-center justify-center p-8 border rounded-lg bg-muted/30">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                 </div>
+            ) : currentStudyPlan && currentStudyPlan.planDetails ? (
+                <Card className={`border shadow-lg ${isPlanCompleted ? 'border-green-500/50' : 'border-primary/50'}`}>
+                    <CardHeader>
+                        <CardTitle className="text-xl flex items-center justify-between">
+                        <span className="flex items-center gap-2">
+                            {isPlanCompleted ? <CheckCircle2 className="text-green-500 h-6 w-6" /> : <ListChecks className="text-primary h-6 w-6" />}
+                            {isPlanCompleted ? "Last Completed Plan" : "Current Active Plan"}
+                        </span>
+                        </CardTitle>
+                        <CardDescription>
+                            {isPlanCompleted ?
+                                `Completed on ${currentStudyPlan.completionDate ? new Date(currentStudyPlan.completionDate).toLocaleDateString() : 'N/A'}.`
+                                : "Your ongoing study journey."}
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div>
+                        <h4 className="text-sm font-medium text-muted-foreground">Subjects</h4>
+                        <p className="font-semibold">{currentStudyPlan.planDetails.subjects || "N/A"}</p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <h4 className="text-sm font-medium text-muted-foreground">Original Duration</h4>
+                            <p className="font-semibold">{currentStudyPlan.planDetails.studyDurationDays} days</p>
+                        </div>
+                        <div>
+                            <h4 className="text-sm font-medium text-muted-foreground">Daily Study</h4>
+                            <p className="font-semibold">{currentStudyPlan.planDetails.dailyStudyHours} hours</p>
+                        </div>
+                        </div>
+                        {totalTasksCount > 0 && (
+                        <div>
+                            <div className="flex justify-between items-center mb-1">
+                            <h4 className="text-sm font-medium text-muted-foreground">Progress</h4>
+                            <span className="text-xs text-muted-foreground">{completedTasksCount} / {totalTasksCount} tasks</span>
+                            </div>
+                            <Progress value={progressPercentage} className="h-2" indicatorClassName={isPlanCompleted ? "bg-green-500" : "bg-primary"} />
+                        </div>
+                        )}
+                    </CardContent>
+                    <CardFooter>
+                        <Button asChild className="w-full" variant="outline">
+                            <Link href="/planner">
+                                <Edit className="mr-2 h-4 w-4"/>
+                                {isPlanCompleted ? "Review Plan Details" : "View or Edit Plan"}
+                            </Link>
+                        </Button>
+                    </CardFooter>
+                </Card>
+            ) : (
+                <Alert>
+                    <HelpCircle className="h-4 w-4" />
+                    <AlertTitle>No Plan History Found</AlertTitle>
+                    <AlertDescription>
+                        Once you create and complete study plans, they will appear here.
+                        <Button asChild variant="link" className="p-0 h-auto ml-1">
+                            <Link href="/planner">Create a new plan</Link>
+                        </Button>
+                    </AlertDescription>
+                </Alert>
+            )}
+             {/* Placeholder for future: Listing multiple past plans */}
+             <p className="text-xs text-muted-foreground text-center mt-4">
+                Note: This section currently shows your most recent plan. Full history with multiple plans coming soon.
+             </p>
         </div>
       </div>
     </AppLayout>
