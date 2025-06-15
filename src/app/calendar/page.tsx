@@ -5,7 +5,7 @@ import AppLayout from "@/components/AppLayout";
 import { Button } from '@/components/ui/button';
 import { Loader2, ListTree, Search, HelpCircle, FileQuestion } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
-import type { ScheduleData, ScheduleTask, ParsedRawScheduleItem } from "@/types";
+import type { ScheduleData, ScheduleTask, ParsedRawScheduleItem, PlanInput } from "@/types";
 import { useAuth } from '@/contexts/auth-context';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar as ShadCalendar } from "@/components/ui/calendar";
@@ -17,15 +17,27 @@ import { TaskBreakdownModal } from '@/components/task-breakdown-modal';
 import { LogScorePopover } from '@/components/log-score-popover';
 import { QuizModal } from '@/components/quiz-modal';
 
-const getPlannerStorageKey = (userEmail: string | undefined | null) =>
-  userEmail ? `studyMindAiPlannerData_v2_array_${userEmail}` : `studyMindAiPlannerData_v2_array_guest`;
+// Helper function to ensure tasks have necessary fields, especially after fetching from API or parsing
+function ensureTaskStructure(tasks: ScheduleTask[] | undefined, planId: string): ScheduleTask[] {
+  if (!tasks) return [];
+  return tasks.map((task, index) => ({
+    ...task,
+    id: task.id || `task-${planId}-${index}-${new Date(task.date).getTime()}-${Math.random().toString(36).substring(2,9)}`, // Ensure ID
+    completed: task.completed || false,
+    subTasks: task.subTasks || [],
+    quizScore: task.quizScore,
+    quizAttempted: task.quizAttempted || false,
+  }));
+}
 
+// This function is kept for robustness, e.g., if a plan from an older version without parsed tasks is encountered,
+// or if a re-plan operation returns only a scheduleString.
 function parseTasksFromString(scheduleString: string, planId: string, existingTasks?: ScheduleTask[]): ScheduleTask[] {
   try {
     const parsed = JSON.parse(scheduleString) as ParsedRawScheduleItem[];
     if (Array.isArray(parsed) && parsed.every(item => typeof item.date === 'string' && typeof item.task === 'string')) {
       return parsed.map((item, index) => {
-         const existingTask = existingTasks?.find(et => et.id.startsWith(`task-${planId}-${index}`));
+         const existingTask = existingTasks?.find(et => et.id && et.id.startsWith(`task-${planId}-${index}`));
         return {
           ...item,
           date: item.date,
@@ -52,7 +64,7 @@ export default function CalendarPage() {
   const { toast } = useToast();
   const [activeStudyPlan, setActiveStudyPlan] = useState<ScheduleData | null>(null);
   const [isLoadingPlan, setIsLoadingPlan] = useState(true);
-  const plannerStorageKey = getPlannerStorageKey(currentUser?.email);
+  const [isSavingPlan, setIsSavingPlan] = useState(false);
 
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [currentDisplayMonth, setCurrentDisplayMonth] = useState(new Date());
@@ -61,95 +73,107 @@ export default function CalendarPage() {
   const [isQuizModalOpen, setIsQuizModalOpen] = useState(false);
   const [selectedTaskForQuiz, setSelectedTaskForQuiz] = useState<ScheduleTask | null>(null);
 
-  const reloadData = useCallback(() => {
+  const fetchAndSetPlans = useCallback(async () => {
+    if (!currentUser?.id) {
+      setActiveStudyPlan(null);
+      setIsLoadingPlan(false);
+      return;
+    }
     setIsLoadingPlan(true);
-    if (!currentUser?.email) {
-        setActiveStudyPlan(null);
-        setIsLoadingPlan(false);
-        return;
-    }
-    const savedPlansJson = localStorage.getItem(plannerStorageKey);
-    let currentActivePlan: ScheduleData | null = null;
-
-    if (savedPlansJson) {
-      try {
-        const allPlans: ScheduleData[] = JSON.parse(savedPlansJson);
-        if (Array.isArray(allPlans) && allPlans.length > 0) {
-            const activePlans = allPlans.filter(p => p.status === 'active').sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-            if (activePlans.length > 0) {
-                currentActivePlan = activePlans[0];
-            } else { // If no active, pick most recent non-active for viewing
-                currentActivePlan = allPlans.sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
-            }
-        }
-        
-        if (currentActivePlan) {
-            let tasksToUse = currentActivePlan.tasks || [];
-            if ((!tasksToUse || tasksToUse.length === 0) && currentActivePlan.scheduleString) {
-                 tasksToUse = parseTasksFromString(currentActivePlan.scheduleString, currentActivePlan.id, currentActivePlan.tasks);
-            } else {
-                 tasksToUse = tasksToUse.map(task => ({...task, subTasks: task.subTasks || [], quizScore: task.quizScore, quizAttempted: task.quizAttempted || false}));
-            }
-            currentActivePlan.tasks = tasksToUse;
-        }
-      } catch (error) {
-        console.error("CalendarPage: Failed to parse saved plans:", error);
-        currentActivePlan = null;
+    try {
+      const response = await fetch(`/api/plans?userId=${currentUser.id}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch plans: ${response.statusText}`);
       }
-    }
-    setActiveStudyPlan(currentActivePlan);
-    if (currentActivePlan?.planDetails?.startDate) {
-        const sDate = parseISO(currentActivePlan.planDetails.startDate);
-        if (isValid(sDate)) {
-            setSelectedDate(sDate);
-            setCurrentDisplayMonth(sDate);
+      const allPlans: ScheduleData[] = await response.json();
+      let planToDisplay: ScheduleData | null = null;
+
+      if (allPlans && allPlans.length > 0) {
+        const activePlans = allPlans.filter(p => p.status === 'active').sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+        if (activePlans.length > 0) {
+          planToDisplay = activePlans[0];
+        } else { 
+          planToDisplay = allPlans.sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
         }
-    } else {
+      }
+      
+      if (planToDisplay) {
+        // Ensure tasks from API have proper structure
+        let tasksToUse = ensureTaskStructure(planToDisplay.tasks, planToDisplay.id);
+        // If API tasks are empty but scheduleString exists, parse it (fallback)
+        if ((!tasksToUse || tasksToUse.length === 0) && planToDisplay.scheduleString) {
+             tasksToUse = parseTasksFromString(planToDisplay.scheduleString, planToDisplay.id, planToDisplay.tasks);
+        }
+        planToDisplay.tasks = tasksToUse;
+        
+        setActiveStudyPlan(planToDisplay);
+        const startDate = planToDisplay.planDetails.startDate ? parseISO(planToDisplay.planDetails.startDate) : new Date();
+        if (isValid(startDate)) {
+            setSelectedDate(startDate);
+            setCurrentDisplayMonth(startDate);
+        }
+      } else {
+        setActiveStudyPlan(null);
         setSelectedDate(new Date());
         setCurrentDisplayMonth(new Date());
+      }
+    } catch (error) {
+      console.error("CalendarPage: Failed to fetch plans:", error);
+      toast({ title: "Error Loading Plan", description: (error as Error).message, variant: "destructive" });
+      setActiveStudyPlan(null);
+    } finally {
+      setIsLoadingPlan(false);
     }
-    setIsLoadingPlan(false);
-  }, [currentUser, plannerStorageKey]);
-
+  }, [currentUser, toast]);
 
   useEffect(() => {
-    reloadData();
-    const handleStudyPlanUpdate = () => reloadData();
+    fetchAndSetPlans();
+    const handleStudyPlanUpdate = () => fetchAndSetPlans();
     window.addEventListener('studyPlanUpdated', handleStudyPlanUpdate);
     return () => window.removeEventListener('studyPlanUpdated', handleStudyPlanUpdate);
-  }, [reloadData]);
+  }, [fetchAndSetPlans]);
 
-  const getTasksForDate = (date: Date): ScheduleTask[] => {
-    if (!activeStudyPlan || !activeStudyPlan.tasks) return [];
-    const dateString = format(date, 'yyyy-MM-dd');
-    return activeStudyPlan.tasks.filter(task => {
-        try {
-            return format(parseISO(task.date), 'yyyy-MM-dd') === dateString;
-        } catch (e) {
-            console.warn(`Error parsing task.date "${task.date}" for task ID ${task.id}`, e);
-            return false;
-        }
-    });
-  };
+  const savePlanChanges = useCallback(async (planToSave: ScheduleData) => {
+    if (!currentUser?.id) {
+      toast({ title: "Error", description: "User not authenticated.", variant: "destructive" });
+      return false;
+    }
+    setIsSavingPlan(true);
+    try {
+      const response = await fetch(`/api/plans/${planToSave.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: currentUser.id, planData: planToSave }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Failed to save plan: ${response.statusText}`);
+      }
+      const updatedPlanFromServer: ScheduleData = await response.json();
+      const processedUpdatedPlan = {
+        ...updatedPlanFromServer,
+        tasks: ensureTaskStructure(updatedPlanFromServer.tasks, updatedPlanFromServer.id)
+      };
+      setActiveStudyPlan(processedUpdatedPlan); // Update active plan with server response
+      // Update allUserPlans array if needed (not directly managed here, but could be if full list was kept)
+      window.dispatchEvent(new CustomEvent('studyPlanUpdated')); // Notify other components if needed
+      setIsSavingPlan(false);
+      return true;
+    } catch (error) {
+      console.error("Failed to save plan changes (Calendar):", error);
+      toast({ title: "Error Saving Plan", description: (error as Error).message, variant: "destructive" });
+      setIsSavingPlan(false);
+      fetchAndSetPlans(); // Re-fetch to get consistent state from server on error
+      return false;
+    }
+  }, [currentUser?.id, toast, fetchAndSetPlans]);
 
   const handleProgressUpdate = (updatedTasks: ScheduleTask[]) => {
     if (activeStudyPlan) {
       const now = new Date().toISOString();
       const updatedActivePlan = { ...activeStudyPlan, tasks: updatedTasks, updatedAt: now };
-      setActiveStudyPlan(updatedActivePlan);
-      
-      const allPlansJson = localStorage.getItem(plannerStorageKey);
-      if (allPlansJson) {
-        try {
-          let allPlans: ScheduleData[] = JSON.parse(allPlansJson);
-          const planIndex = allPlans.findIndex(p => p.id === activeStudyPlan.id);
-          if (planIndex !== -1) {
-            allPlans[planIndex] = updatedActivePlan;
-            localStorage.setItem(plannerStorageKey, JSON.stringify(allPlans));
-            window.dispatchEvent(new CustomEvent('studyPlanUpdated'));
-          }
-        } catch (e) { console.error("Error updating progress in localStorage (Calendar)", e); }
-      }
+      setActiveStudyPlan(updatedActivePlan); // Optimistic UI update
+      savePlanChanges(updatedActivePlan); // Save to backend
     }
   };
 
@@ -175,8 +199,7 @@ export default function CalendarPage() {
     const updatedTasks = activeStudyPlan.tasks.map((task) =>
       task.id === taskId ? { ...task, completed: !task.completed } : task
     );
-
-    handleProgressUpdate(updatedTasks);
+    handleProgressUpdate(updatedTasks); // This will call savePlanChanges
 
     const changedTask = updatedTasks.find(t => t.id === taskId);
     toast({
@@ -196,7 +219,7 @@ export default function CalendarPage() {
     const updatedGlobalTasks = activeStudyPlan.tasks.map(t =>
       t.id === updatedTaskFromModal.id ? updatedTaskFromModal : t
     );
-    handleProgressUpdate(updatedGlobalTasks);
+    handleProgressUpdate(updatedGlobalTasks); // This will call savePlanChanges
     setIsBreakdownModalOpen(false);
     setSelectedTaskForBreakdown(null);
     toast({ title: "Sub-tasks updated", description: `Changes saved for task "${updatedTaskFromModal.task.substring(0,30)}...".`});
@@ -206,8 +229,21 @@ export default function CalendarPage() {
     setSelectedTaskForQuiz(task);
     setIsQuizModalOpen(true);
   };
+  
+  const getTasksForDate = (date: Date): ScheduleTask[] => {
+    if (!activeStudyPlan || !activeStudyPlan.tasks) return [];
+    const dateString = format(date, 'yyyy-MM-dd');
+    return activeStudyPlan.tasks.filter(task => {
+        try {
+            return format(parseISO(task.date), 'yyyy-MM-dd') === dateString;
+        } catch (e) {
+            console.warn(`Error parsing task.date "${task.date}" for task ID ${task.id}`, e);
+            return false;
+        }
+    });
+  };
 
-  if (isLoadingPlan) {
+  if (isLoadingPlan && !activeStudyPlan) {
     return (
       <AppLayout>
         <div className="flex items-center justify-center min-h-[calc(100vh-100px)]">
@@ -239,15 +275,16 @@ export default function CalendarPage() {
   let planEndDate: Date | null = null;
 
   if (activeStudyPlan.tasks.length > 0) {
-      const firstTaskDate = parseISO(activeStudyPlan.tasks[0].date);
-      const lastTaskDate = parseISO(activeStudyPlan.tasks[activeStudyPlan.tasks.length - 1].date);
+      const sortedTasks = [...activeStudyPlan.tasks].sort((a,b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
+      const firstTaskDate = parseISO(sortedTasks[0].date);
+      const lastTaskDate = parseISO(sortedTasks[sortedTasks.length - 1].date);
       if (isValid(firstTaskDate)) planStartDate = firstTaskDate;
       if (isValid(lastTaskDate)) planEndDate = lastTaskDate;
   }
   if (!planStartDate && activeStudyPlan.planDetails.startDate && isValid(parseISO(activeStudyPlan.planDetails.startDate))) {
       planStartDate = parseISO(activeStudyPlan.planDetails.startDate);
   }
-  if (!planStartDate) planStartDate = new Date(); // Fallback if no tasks and no start date
+  if (!planStartDate) planStartDate = new Date(); 
   if (!planEndDate) planEndDate = addDays(planStartDate, activeStudyPlan.planDetails.studyDurationDays || 30);
 
 
@@ -258,7 +295,10 @@ export default function CalendarPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-2xl flex justify-between items-center">
-                Study Calendar {activeStudyPlan.status === 'completed' ? "(Completed)" : activeStudyPlan.status === 'archived' ? "(Archived)" : ""}
+                <span className="flex items-center gap-2">
+                  Study Calendar {activeStudyPlan.status === 'completed' ? "(Completed)" : activeStudyPlan.status === 'archived' ? "(Archived)" : ""}
+                  {(isLoadingPlan || isSavingPlan) && <Loader2 className="h-5 w-5 animate-spin text-primary" />}
+                </span>
                 <div className="flex items-center gap-2">
                   <Button variant="outline" size="sm" onClick={() => setCurrentDisplayMonth(prev => subMonths(prev, 1))}>← Prev Month</Button>
                   <span className="text-lg font-medium w-36 text-center">
@@ -280,7 +320,7 @@ export default function CalendarPage() {
                   month={currentDisplayMonth}
                   onMonthChange={setCurrentDisplayMonth}
                   className="rounded-md border shadow-sm"
-                  disabled={date => (planStartDate && date < startOfWeek(planStartDate)) || (planEndDate && date > endOfWeek(planEndDate))}
+                  disabled={date => (planStartDate && date < startOfWeek(planStartDate, {weekStartsOn: 1})) || (planEndDate && date > endOfWeek(planEndDate, {weekStartsOn: 1})) || isSavingPlan}
                   components={{
                     DayContent: ({ date, activeModifiers }) => {
                       const tasksOnDay = getTasksForDate(date);
@@ -314,7 +354,7 @@ export default function CalendarPage() {
                               checked={task.completed}
                               onCheckedChange={() => handleCalendarTaskToggle(task.id)}
                               aria-labelledby={`task-cal-label-${task.id}`}
-                              disabled={activeStudyPlan?.status === 'completed' || activeStudyPlan?.status === 'archived'}
+                              disabled={activeStudyPlan?.status === 'completed' || activeStudyPlan?.status === 'archived' || isSavingPlan}
                               className="mt-1"
                             />
                             <div className="flex-1">
@@ -338,17 +378,17 @@ export default function CalendarPage() {
                                   )}
                                   {(activeStudyPlan?.status !== 'completed' && activeStudyPlan?.status !== 'archived') && (
                                     <>
-                                    <Button variant="ghost" size="sm" onClick={() => handleOpenBreakdownModal(task)} className="h-auto p-0 text-xs text-primary/70 hover:text-primary" title="Break down this task">
-                                        <ListTree className="mr-1 h-3 w-3"/> Sub-tasks ({task.subTasks?.length || 0})
+                                    <Button variant="ghost" size="sm" onClick={() => handleOpenBreakdownModal(task)} className="h-auto p-0 text-xs text-primary/70 hover:text-primary" title="Break down this task" disabled={isSavingPlan}>
+                                        <ListTree className="mr-1 h-3 w-3"/> Sub-tasks ({(task.subTasks || []).length})
                                     </Button>
-                                     <Button variant="ghost" size="sm" onClick={() => handleOpenQuizModal(task)} className="h-auto p-0 text-xs text-purple-500 hover:text-purple-600" title="Take AI quiz for this task">
+                                     <Button variant="ghost" size="sm" onClick={() => handleOpenQuizModal(task)} className="h-auto p-0 text-xs text-purple-500 hover:text-purple-600" title="Take AI quiz for this task" disabled={isSavingPlan}>
                                         <FileQuestion className="mr-1 h-3 w-3"/> Take AI Quiz
                                     </Button>
                                      <LogScorePopover
                                         task={task}
                                         onSave={handleSaveQuizScore}
                                         onTakeQuiz={handleOpenQuizModal}
-                                        disabled={activeStudyPlan?.status === 'completed' || activeStudyPlan?.status === 'archived'}
+                                        disabled={activeStudyPlan?.status === 'completed' || activeStudyPlan?.status === 'archived' || isSavingPlan}
                                       />
                                     </>
                                   )}
@@ -389,3 +429,5 @@ export default function CalendarPage() {
     </AppLayout>
   );
 }
+
+      
