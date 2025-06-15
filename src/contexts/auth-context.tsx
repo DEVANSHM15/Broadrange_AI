@@ -3,27 +3,33 @@
 
 import type { ReactNode } from 'react';
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import type { UserCredentials, StoredUser, AISettings, PlanInput } from '@/types';
+import type { UserCredentials, StoredUser, AISettings } from '@/types'; // PlanInput removed as it's not directly used here
 import { useRouter } from 'next/navigation';
 
-const LOCAL_STORAGE_USERS_KEY = "studyMindAiUsers_v2"; // Updated app name
-const LOCAL_STORAGE_CURRENT_USER_KEY = "studyMindAiCurrentUserEmail_v2";
+// Key for storing the current logged-in user's full object (excluding password)
+const LOCAL_STORAGE_FULL_USER_KEY = "studyMindAiFullCurrentUser_v2"; 
+// Key for just the email as a quick check, might be redundant if full user is always stored/cleared.
+const LOCAL_STORAGE_CURRENT_USER_EMAIL_KEY = "studyMindAiCurrentUserEmail_v2";
 
-// Updated RegisterData to include security question/answer
-export interface RegisterData extends Required<UserCredentials> {
+
+// RegisterData now directly reflects what the API expects (no password_unsafe)
+export interface RegisterData {
+  name: string;
+  email: string;
+  password_unsafe: string; // Keep _unsafe here as frontend collects plain password
   studyLevel?: string;
   preferredStudyTime?: string;
   aiSettings?: AISettings;
   securityQuestion?: string;
-  securityAnswer?: string;
+  securityAnswer?: string; // Keep _unsafe here as frontend collects plain answer
 }
 
 interface AuthContextType {
-  currentUser: StoredUser | null; // Store more complete user data
+  currentUser: StoredUser | null;
   login: (email: string, password_unsafe: string) => Promise<boolean>;
   register: (data: RegisterData) => Promise<boolean>;
   logout: () => void;
-  updateUser: (updatedData: Partial<StoredUser>) => Promise<boolean>;
+  updateUser: (updatedData: Partial<Omit<StoredUser, 'id' | 'email' | 'password_unsafe'>>) => Promise<boolean>;
   isLoading: boolean;
 }
 
@@ -34,161 +40,187 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
-  const getStoredUsers = useCallback((): StoredUser[] => {
-    if (typeof window !== 'undefined') {
-      const usersJson = localStorage.getItem(LOCAL_STORAGE_USERS_KEY);
-      if (!usersJson) {
-        return [];
-      }
-      try {
-        const parsedUsers = JSON.parse(usersJson);
-        return Array.isArray(parsedUsers) ? parsedUsers : [];
-      } catch (error) {
-        console.error("Error parsing stored users from localStorage:", error);
-        return [];
-      }
-    }
-    return [];
-  }, []);
-
-  const saveStoredUsers = useCallback((users: StoredUser[]) => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(LOCAL_STORAGE_USERS_KEY, JSON.stringify(users));
-    }
-  }, []);
-
   useEffect(() => {
     let isMounted = true;
-    setIsLoading(true); // Start loading
+    setIsLoading(true);
 
-    const loadUser = () => {
+    const loadUserFromStorage = () => {
       if (typeof window !== 'undefined') {
         try {
-          const storedUserEmail = localStorage.getItem(LOCAL_STORAGE_CURRENT_USER_KEY);
-          if (storedUserEmail) {
-            const users = getStoredUsers();
-            const user = users.find(u => u.email === storedUserEmail);
+          const storedUserJson = localStorage.getItem(LOCAL_STORAGE_FULL_USER_KEY);
+          if (storedUserJson) {
+            const user = JSON.parse(storedUserJson) as StoredUser;
+            // Optional: could verify with a /api/auth/me endpoint here if we had one
             if (isMounted) {
-              setCurrentUser(user || null);
+              setCurrentUser(user);
             }
           } else {
-            if (isMounted) {
-              setCurrentUser(null);
-            }
+            if (isMounted) setCurrentUser(null);
           }
         } catch (e) {
           console.error("Error reading current user from localStorage:", e);
           if (typeof window !== 'undefined') {
-            localStorage.removeItem(LOCAL_STORAGE_CURRENT_USER_KEY);
+            localStorage.removeItem(LOCAL_STORAGE_FULL_USER_KEY);
+            localStorage.removeItem(LOCAL_STORAGE_CURRENT_USER_EMAIL_KEY);
           }
-          if (isMounted) {
-            setCurrentUser(null);
-          }
+          if (isMounted) setCurrentUser(null);
         } finally {
-          if (isMounted) {
-            setIsLoading(false);
-          }
+          if (isMounted) setIsLoading(false);
         }
       } else {
-        // For SSR or environments without window
-        if (isMounted) {
+         if (isMounted) {
             setCurrentUser(null);
             setIsLoading(false);
         }
       }
     };
-
-    loadUser();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [getStoredUsers]);
-
+    loadUserFromStorage();
+    return () => { isMounted = false; };
+  }, []);
 
   const login = useCallback(async (email: string, password_unsafe: string): Promise<boolean> => {
+    setIsLoading(true);
     try {
-        const users = getStoredUsers();
-        const user = users.find(
-          (u) => u.email === email && u.password_unsafe === password_unsafe
-        );
-        if (user) {
-          setCurrentUser(user);
-          if (typeof window !== 'undefined') {
-            localStorage.setItem(LOCAL_STORAGE_CURRENT_USER_KEY, user.email);
-          }
-          return true;
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password_unsafe }),
+      });
+
+      if (response.ok) {
+        const userData: StoredUser = await response.json();
+        setCurrentUser(userData);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(LOCAL_STORAGE_FULL_USER_KEY, JSON.stringify(userData));
+          localStorage.setItem(LOCAL_STORAGE_CURRENT_USER_EMAIL_KEY, userData.email);
         }
+        setIsLoading(false);
+        return true;
+      } else {
+        // const errorData = await response.json(); // For more specific error messages
+        setCurrentUser(null);
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem(LOCAL_STORAGE_FULL_USER_KEY);
+          localStorage.removeItem(LOCAL_STORAGE_CURRENT_USER_EMAIL_KEY);
+        }
+        setIsLoading(false);
         return false;
+      }
     } catch (error) {
-        console.error("Error during login process in AuthContext:", error);
-        return false; // Ensure it returns false on any internal error
+      console.error("Login API error:", error);
+      setCurrentUser(null);
+       if (typeof window !== 'undefined') {
+          localStorage.removeItem(LOCAL_STORAGE_FULL_USER_KEY);
+          localStorage.removeItem(LOCAL_STORAGE_CURRENT_USER_EMAIL_KEY);
+        }
+      setIsLoading(false);
+      return false;
     }
-  }, [getStoredUsers, setCurrentUser]);
+  }, [setCurrentUser, setIsLoading]);
 
   const register = useCallback(async (data: RegisterData): Promise<boolean> => {
-    const users = getStoredUsers();
-    if (users.some((u) => u.email === data.email)) {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data), // API expects password_unsafe and securityAnswer
+      });
+
+      if (response.status === 201) {
+        const newUser: StoredUser = await response.json();
+        // The API should return the user object without password_hash or securityAnswer_hash for security.
+        // We construct the StoredUser object for client-side from what API returns + what we already have (like password_unsafe for storage, though this is less ideal long-term)
+        const clientSideUser: StoredUser = {
+          ...newUser, // This comes from the API (id, name, email, studyLevel, etc.)
+          password_unsafe: data.password_unsafe, // Keep plain password for mock localStorage if needed, or remove if API session is king
+          securityAnswer: data.securityAnswer, // Same for security answer
+        };
+
+        setCurrentUser(clientSideUser);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(LOCAL_STORAGE_FULL_USER_KEY, JSON.stringify(clientSideUser));
+          localStorage.setItem(LOCAL_STORAGE_CURRENT_USER_EMAIL_KEY, clientSideUser.email);
+        }
+        setIsLoading(false);
+        return true;
+      } else {
+        // const errorData = await response.json();
+        setIsLoading(false);
+        return false;
+      }
+    } catch (error) {
+      console.error("Register API error:", error);
+      setIsLoading(false);
       return false;
     }
-    const newUser: StoredUser = {
-      id: data.email, // Using email as ID for simplicity in this mock setup
-      email: data.email,
-      name: data.name,
-      password_unsafe: data.password as string, // Ensure password is provided
-      studyLevel: data.studyLevel,
-      preferredStudyTime: data.preferredStudyTime,
-      aiSettings: data.aiSettings,
-      securityQuestion: data.securityQuestion, // Save security question
-      securityAnswer: data.securityAnswer,     // Save security answer
-    };
-    users.push(newUser);
-    saveStoredUsers(users);
-    setCurrentUser(newUser);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(LOCAL_STORAGE_CURRENT_USER_KEY, newUser.email);
-    }
+  }, [setCurrentUser, setIsLoading]);
 
-    // Simulate sending a welcome email
-    console.log(`%c[AuthContext Simulation] Welcome email would be sent to: ${newUser.name} (${newUser.email})`, "color: #007bff; font-weight: bold;");
-    console.log(`%cEmail Subject: Welcome to Broadrange AI, ${newUser.name}!`, "color: #007bff;");
-    console.log(`%cEmail Body: Hi ${newUser.name},\n\nThank you for registering with Broadrange AI. We're excited to help you achieve your study goals!\n\nBest regards,\nThe Broadrange AI Team`, "color: #007bff;");
-
-    return true;
-  }, [getStoredUsers, saveStoredUsers, setCurrentUser]);
-
-  const updateUser = useCallback(async (updatedData: Partial<StoredUser>): Promise<boolean> => {
+  const updateUser = useCallback(async (updatedData: Partial<Omit<StoredUser, 'id' | 'email' | 'password_unsafe' | 'securityAnswer_hash' >>): Promise<boolean> => {
     if (!currentUser) return false;
-    const users = getStoredUsers();
-    const userIndex = users.findIndex(u => u.email === currentUser.email);
-
-    if (userIndex === -1) {
-      return false;
+    
+    // Optimistic update for UI responsiveness
+    const newClientUser: StoredUser = {
+      ...currentUser,
+      ...updatedData,
+      // Ensure aiSettings are merged, not overwritten if only one part is updated
+      aiSettings: {
+        ...currentUser.aiSettings,
+        ...updatedData.aiSettings,
+      }
+    };
+    setCurrentUser(newClientUser);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(LOCAL_STORAGE_FULL_USER_KEY, JSON.stringify(newClientUser));
     }
 
-    const updatedUser: StoredUser = {
-      ...users[userIndex],
-      ...updatedData,
-      email: users[userIndex].email, // Ensure email and id are not overwritten if not in updatedData
-      id: users[userIndex].id,
-    };
-
-    users[userIndex] = updatedUser;
-    saveStoredUsers(users);
-    setCurrentUser(updatedUser);
-    return true;
-  }, [currentUser, getStoredUsers, saveStoredUsers, setCurrentUser]);
+    // TODO: Implement backend API call to /api/users/update (or similar)
+    // For now, we'll simulate a successful backend update after a short delay
+    // try {
+    //   const response = await fetch('/api/users/update', { // This endpoint doesn't exist yet
+    //     method: 'PUT', // or POST
+    //     headers: { 'Content-Type': 'application/json', /* 'Authorization': 'Bearer YOUR_TOKEN_HERE' */ },
+    //     body: JSON.stringify({ email: currentUser.email, ...updatedData }),
+    //   });
+    //   if (!response.ok) {
+    //     // Revert optimistic update if backend fails
+    //     setCurrentUser(currentUser); 
+    //      if (typeof window !== 'undefined') {
+    //        localStorage.setItem(LOCAL_STORAGE_FULL_USER_KEY, JSON.stringify(currentUser));
+    //     }
+    //     return false;
+    //   }
+    //   const confirmedUserData = await response.json();
+    //   setCurrentUser(confirmedUserData); // Update with data from backend if it differs
+    //   if (typeof window !== 'undefined') {
+    //      localStorage.setItem(LOCAL_STORAGE_FULL_USER_KEY, JSON.stringify(confirmedUserData));
+    //   }
+    //   return true;
+    // } catch (error) {
+    //   console.error("Update user API error:", error);
+    //   // Revert optimistic update
+    //   setCurrentUser(currentUser);
+    //   if (typeof window !== 'undefined') {
+    //      localStorage.setItem(LOCAL_STORAGE_FULL_USER_KEY, JSON.stringify(currentUser));
+    //   }
+    //   return false;
+    // }
+    return true; // Placeholder for successful "backend" update
+  }, [currentUser, setCurrentUser]);
 
 
   const logout = useCallback(() => {
     setCurrentUser(null);
     if (typeof window !== 'undefined') {
-      localStorage.removeItem(LOCAL_STORAGE_CURRENT_USER_KEY);
+      localStorage.removeItem(LOCAL_STORAGE_FULL_USER_KEY);
+      localStorage.removeItem(LOCAL_STORAGE_CURRENT_USER_EMAIL_KEY);
       sessionStorage.removeItem("registrationStep1Data");
       sessionStorage.removeItem("registrationStep2Data");
       sessionStorage.removeItem("registrationStep3Data");
     }
-    router.push('/login');
+    // No need to explicitly call router.push here if AppLayout handles redirection
+    // However, it's fine to keep for explicitness if desired.
+    router.push('/login'); 
   }, [router, setCurrentUser]);
 
   return (
