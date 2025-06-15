@@ -74,7 +74,6 @@ function AnalyticsPageContent() {
         if (!response.ok) {
           if (response.status === 404) {
             toast({ title: "Plan Not Found", description: `Could not find plan with ID: ${planIdFromQuery}`, variant: "destructive" });
-            // Fallback to default behavior or show specific error
           } else {
             throw new Error(`Failed to fetch specific plan: ${response.statusText}`);
           }
@@ -83,7 +82,7 @@ function AnalyticsPageContent() {
         }
       }
       
-      if (!planToAnalyze) { // If specific plan not found or no query ID, fetch all and pick default
+      if (!planToAnalyze) { 
         const response = await fetch(`/api/plans?userId=${currentUser.id}`);
         if (!response.ok) {
           throw new Error(`Failed to fetch plans: ${response.statusText}`);
@@ -98,7 +97,7 @@ function AnalyticsPageContent() {
             const activePlans = allPlans.filter(p => p.status === 'active').sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
             if (activePlans.length > 0) planToAnalyze = activePlans[0];
           }
-          if (!planToAnalyze) {
+          if (!planToAnalyze && allPlans.length > 0) {
               planToAnalyze = allPlans.sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
           }
         }
@@ -121,10 +120,10 @@ function AnalyticsPageContent() {
 
   useEffect(() => {
     reloadDataForAnalytics();
-    const handleStudyPlanUpdate = () => reloadDataForAnalytics(); // This might need to be smarter if a specific plan is being viewed
+    const handleStudyPlanUpdate = () => reloadDataForAnalytics();
     window.addEventListener('studyPlanUpdated', handleStudyPlanUpdate);
     return () => window.removeEventListener('studyPlanUpdated', handleStudyPlanUpdate);
-  }, [reloadDataForAnalytics, planIdFromQuery]); // Added planIdFromQuery
+  }, [reloadDataForAnalytics, planIdFromQuery]);
 
   const fetchPlanReflection = useCallback(async (plan: ScheduleData) => {
     if (!plan.planDetails || !plan.tasks || plan.tasks.length === 0 || isGeneratingReflection) return;
@@ -140,11 +139,26 @@ function AnalyticsPageContent() {
       setPlanReflection(reflection);
     } catch (error) {
       console.error("Failed to generate plan reflection for analytics:", error);
-      setPlanReflection(null);
+      let detailMessage = "An AI processing error occurred. Please try again later.";
+      if (error instanceof Error) {
+        if (error.message.includes("AI failed to generate a reflection") || error.message.includes("Output was null")) {
+          detailMessage = "The AI couldn't structure its response for reflection. This can sometimes happen. You might try again or check the plan data.";
+        } else if (error.message.includes("Plan details and tasks are required")) {
+          detailMessage = "Missing necessary plan data to generate the reflection.";
+        } else if (error.message.length < 150) { // Show shorter messages directly
+          detailMessage = error.message;
+        }
+      }
+      toast({
+          title: "Reflection Generation Error",
+          description: detailMessage,
+          variant: "destructive"
+      });
+      setPlanReflection(null); 
     } finally {
       setIsGeneratingReflection(false);
     }
-  }, [isGeneratingReflection]);
+  }, [isGeneratingReflection, toast]); // Added toast to dependency array
 
   useEffect(() => {
     if (currentStudyPlanForAnalytics && currentStudyPlanForAnalytics.status === 'completed') {
