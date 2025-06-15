@@ -26,7 +26,7 @@ interface Achievement {
 const sampleAchievements: Achievement[] = [
   { id: "first_plan", title: "Planner Pioneer", description: "Successfully created your first study plan.", icon: PlusCircle, achieved: false, color: "text-green-500" },
   { id: "task_initiate", title: "Task Starter", description: "Completed your first task in a study plan.", icon: CheckCircle2, achieved: false, color: "text-blue-500" },
-  { id: "streak_beginner", title: "Study Dabbler", description: "Maintained a 3-day study streak.", icon: Flame, achieved: false, color: "text-orange-500" },
+  { id: "streak_beginner", title: "Study Dabbler", description: "Maintained a 3-day study streak.", icon: Flame, achieved: false, color: "text-orange-500" }, // Streak logic not yet implemented
   { id: "quiz_taker", title: "Quiz Challenger", description: "Attempted your first AI-generated quiz.", icon: Brain, achieved: false, color: "text-purple-500" },
   { id: "reflection_reader", title: "Insight Seeker", description: "Viewed your first plan reflection.", icon: Lightbulb, achieved: false, color: "text-yellow-500"},
   { id: "plan_completer", title: "Finisher", description: "Successfully completed a full study plan.", icon: Trophy, achieved: false, color: "text-amber-600" },
@@ -43,7 +43,7 @@ function parseTasksFromString(scheduleString: string, existingTasks?: ScheduleTa
          return parsed.map((item, index) => ({
           ...item,
           date: item.date,
-          id: existingTasks[index]?.id || String(index),
+          id: existingTasks[index]?.id || String(Date.now() + index + Math.random()),
           completed: existingTasks[index]?.completed || false,
           youtubeSearchQuery: item.youtubeSearchQuery,
           referenceSearchQuery: item.referenceSearchQuery,
@@ -55,7 +55,7 @@ function parseTasksFromString(scheduleString: string, existingTasks?: ScheduleTa
       return parsed.map((item, index) => ({
         ...item,
         date: item.date,
-        id: String(index),
+        id: String(Date.now() + index + Math.random()),
         completed: false,
         youtubeSearchQuery: item.youtubeSearchQuery,
         referenceSearchQuery: item.referenceSearchQuery,
@@ -64,6 +64,7 @@ function parseTasksFromString(scheduleString: string, existingTasks?: ScheduleTa
         quizAttempted: false,
       }));
     }
+    console.warn("AchievementsPage: Failed to parse schedule string into expected array of objects.");
     return existingTasks || [];
   } catch (error) {
     console.warn("AchievementsPage: Failed to parse schedule string:", error);
@@ -96,7 +97,13 @@ export default function AchievementsPage() {
                 const newlyParsedTasks = parseTasksFromString(savedPlan.scheduleString, savedPlan.tasks);
                 if (newlyParsedTasks.length > 0) tasksToUse = newlyParsedTasks;
             } else {
-                 tasksToUse = tasksToUse.map(task => ({...task, subTasks: task.subTasks || [], quizScore: task.quizScore, quizAttempted: task.quizAttempted || false}));
+                 // Ensure subTasks, quizScore, and quizAttempted are initialized if not present
+                 tasksToUse = tasksToUse.map(task => ({
+                    ...task, 
+                    subTasks: task.subTasks || [], 
+                    quizScore: task.quizScore, 
+                    quizAttempted: task.quizAttempted || false
+                }));
             }
             setCurrentStudyPlan(savedPlan);
             setParsedTasksForPlan(tasksToUse);
@@ -127,27 +134,37 @@ export default function AchievementsPage() {
 
   const dynamicAchievements = useMemo(() => {
       return sampleAchievements.map(ach => {
-        let achieved = ach.achieved; 
-        if (ach.id === 'first_plan' && currentStudyPlan) {
-          achieved = true;
-        }
-        if (ach.id === 'task_initiate' && completedTasksCount > 0) {
-           achieved = true;
-        }
-        if (ach.id === 'plan_completer' && isPlanCompleted) {
-           achieved = true;
-        }
-        if (ach.id === 'quiz_taker' && parsedTasksForPlan.some(t => t.quizAttempted)) {
-            achieved = true;
-        }
-        if (ach.id === 'reflection_reader' && currentStudyPlan?.status === 'completed') {
-            achieved = currentStudyPlan?.status === 'completed';
+        let achieved = false; // Start with false, explicitly set to true if conditions met
+        switch (ach.id) {
+          case 'first_plan':
+            achieved = !!currentStudyPlan;
+            break;
+          case 'task_initiate':
+            achieved = completedTasksCount > 0;
+            break;
+          case 'streak_beginner':
+            // Placeholder: True streak logic would be more complex and require daily tracking.
+            // For now, this badge remains unachieved by default unless manually set or future logic added.
+            achieved = false; // Or keep ach.achieved if you want to manually test it
+            break;
+          case 'quiz_taker':
+            achieved = parsedTasksForPlan.some(task => task.quizAttempted === true);
+            break;
+          case 'reflection_reader':
+            // Assumes viewing reflection is tied to plan completion
+            achieved = isPlanCompleted;
+            break;
+          case 'plan_completer':
+            achieved = isPlanCompleted;
+            break;
+          default:
+            achieved = ach.achieved; // Retain original static value if not specifically handled
         }
         return { ...ach, achieved };
       });
   }, [currentStudyPlan, completedTasksCount, isPlanCompleted, parsedTasksForPlan]);
 
-  if (isLoadingPlan && !currentStudyPlan) { // Show loader only if plan is truly loading for the first time
+  if (isLoadingPlan && !currentStudyPlan) { 
     return (
       <AppLayout>
         <div className="flex items-center justify-center min-h-[calc(100vh-100px)]">
