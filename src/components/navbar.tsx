@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { LogIn, UserPlus, LogOut, Moon, Sun, Settings, LayoutDashboard, BookOpen, BarChartBig, CalendarDaysIcon } from "lucide-react";
+import { LogIn, UserPlus, LogOut, Moon, Sun, Settings, LayoutDashboard, BookOpen, BarChartBig, CalendarDaysIcon, Award } from "lucide-react"; // Added Award
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import {
@@ -61,8 +61,9 @@ export function AppHeader() {
   const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/planner", label: "AI Planner", icon: BookOpen },
-    { href: "/calendar", label: "Calendar", icon: CalendarDaysIcon }, // Restored Calendar
+    { href: "/calendar", label: "Calendar", icon: CalendarDaysIcon },
     { href: "/analytics", label: "Analytics", icon: BarChartBig },
+    { href: "/achievements", label: "Achievements", icon: Award }, // Added Achievements link
   ];
 
   return (

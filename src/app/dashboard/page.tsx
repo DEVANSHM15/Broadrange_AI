@@ -4,7 +4,7 @@
 import AppLayout from "@/components/AppLayout";
 import Link from "next/link";
 import { useAuth } from "@/contexts/auth-context";
-import { Zap, Brain, Settings as SettingsIcon, PlusCircle, ListChecks, Edit, HelpCircle, Lightbulb, CheckCircle2, Loader2, AlertCircle, BarChart3, BookOpen, CalendarDaysIcon, Target, MessageCircle, Repeat, Sparkles, Hourglass, Flame, Gauge, Star, BookCopy, Trophy, Award, ShieldCheck } from "lucide-react";
+import { Zap, Brain, Settings as SettingsIcon, PlusCircle, ListChecks, Edit, HelpCircle, Lightbulb, CheckCircle2, Loader2, AlertCircle, BarChart3, BookOpen, CalendarDaysIcon, Target, MessageCircle, Repeat, Sparkles, Hourglass, Flame, Gauge, Star, BookCopy } from "lucide-react";
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { PomodoroTimerModal } from "@/components/pomodoro-timer";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -63,25 +63,6 @@ function parseTasksFromString(scheduleString: string, existingTasks?: ScheduleTa
   }
 }
 
-interface Achievement {
-  id: string;
-  title: string;
-  description: string;
-  icon: React.ElementType;
-  achieved: boolean;
-  color?: string;
-}
-
-const sampleAchievements: Achievement[] = [
-  { id: "first_plan", title: "Planner Pioneer", description: "Successfully created your first study plan.", icon: PlusCircle, achieved: false, color: "text-green-500" },
-  { id: "task_initiate", title: "Task Starter", description: "Completed your first task in a study plan.", icon: CheckCircle2, achieved: false, color: "text-blue-500" },
-  { id: "streak_beginner", title: "Study Dabbler", description: "Maintained a 3-day study streak.", icon: Flame, achieved: false, color: "text-orange-500" },
-  { id: "quiz_taker", title: "Quiz Challenger", description: "Attempted your first AI-generated quiz.", icon: Brain, achieved: false, color: "text-purple-500" },
-  { id: "reflection_reader", title: "Insight Seeker", description: "Viewed your first plan reflection.", icon: Lightbulb, achieved: false, color: "text-yellow-500"},
-  { id: "plan_completer", title: "Finisher", description: "Successfully completed a full study plan.", icon: Trophy, achieved: false, color: "text-amber-600" },
-];
-
-
 const studyTips = [
   "Break down large tasks into smaller, manageable chunks.",
   "Use the Pomodoro Technique to maintain focus.",
@@ -95,7 +76,11 @@ const studyTips = [
   "Set specific, measurable, achievable, relevant, and time-bound (SMART) goals.",
   "Don't be afraid to ask for help if you're stuck on a topic.",
   "Visualize your success and stay positive!",
-  "Active recall (retrieving information from memory) is more effective than passive review."
+  "Active recall (retrieving information from memory) is more effective than passive review.",
+  "Mix up your study subjects to keep things fresh and improve retention (interleaving).",
+  "Practice explaining concepts in your own words, as if teaching someone else.",
+  "Get adequate sleep; it's crucial for memory consolidation.",
+  "Create a study schedule and stick to it as much as possible.",
 ];
 
 export default function DashboardPage() {
@@ -245,23 +230,6 @@ export default function DashboardPage() {
   // Debug log for when the component renders to see currentStudyPlan
   console.log("[Dashboard Render] Current Plan Duration from state:", currentStudyPlan?.planDetails?.studyDurationDays, "Total Study Hours KPI:", totalStudyHours);
 
-  // Update placeholder achievements based on current data (simple example)
-  const dynamicAchievements = useMemo(() => {
-      return sampleAchievements.map(ach => {
-        if (ach.id === 'first_plan' && currentStudyPlan) {
-          return { ...ach, achieved: true };
-        }
-        if (ach.id === 'task_initiate' && completedTasksCount > 0) {
-           return { ...ach, achieved: true };
-        }
-        if (ach.id === 'plan_completer' && isPlanCompleted) {
-           return { ...ach, achieved: true };
-        }
-        // Add more dynamic achievement checks here later
-        // For 'streak_beginner', we'd need actual streak tracking logic
-        return ach;
-      });
-  }, [currentStudyPlan, completedTasksCount, isPlanCompleted]);
 
   return (
     <AppLayout>
@@ -387,30 +355,6 @@ export default function DashboardPage() {
                 <p className="text-xs text-muted-foreground">{averageQuizScore !== "N/A" ? "From quizzes" : "No quizzes taken"}</p>
               </CardContent>
             </Card>
-          </div>
-        </section>
-
-        <section>
-          <h2 className="text-2xl font-semibold mb-6">Your Achievements</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {dynamicAchievements.map((ach) => (
-              <Card key={ach.id} className={`shadow-md transition-all hover:shadow-lg ${ach.achieved ? 'border-green-500/50 bg-green-500/5' : 'border-border'}`}>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg flex items-center gap-3">
-                    <ach.icon className={`h-7 w-7 ${ach.achieved ? (ach.color || 'text-green-500') : 'text-muted-foreground/70'}`} />
-                    {ach.title}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className={`text-sm ${ach.achieved ? 'text-foreground' : 'text-muted-foreground'}`}>{ach.description}</p>
-                </CardContent>
-                {ach.achieved && (
-                  <CardFooter className="pt-2 pb-3">
-                      <Badge variant="default" className="bg-green-600 hover:bg-green-700 text-white text-xs">Achieved!</Badge>
-                  </CardFooter>
-                )}
-              </Card>
-            ))}
           </div>
         </section>
 
@@ -549,11 +493,6 @@ export default function DashboardPage() {
 
     
 
-
     
-
-
-
-
 
     
