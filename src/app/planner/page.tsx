@@ -41,16 +41,16 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 const getPlannerStorageKey = (userEmail: string | undefined | null) =>
   userEmail ? `studyMindAiPlannerData_v2_array_${userEmail}` : `studyMindAiPlannerData_v2_array_guest`;
 
-function parseTasksFromString(scheduleString: string, existingTasks?: ScheduleTask[]): ScheduleTask[] {
+function parseTasksFromString(scheduleString: string, planId: string, existingTasks?: ScheduleTask[]): ScheduleTask[] {
   try {
     const parsed = JSON.parse(scheduleString) as ParsedRawScheduleItem[];
     if (Array.isArray(parsed) && parsed.every(item => typeof item.date === 'string' && typeof item.task === 'string')) {
       return parsed.map((item, index) => {
-        const existingTask = existingTasks?.find(et => et.id === `task-${index}-${new Date(item.date).getTime()}`); // Basic matching
+        const existingTask = existingTasks?.find(et => et.id.startsWith(`task-${planId}-${index}`)); // Match by planId and index
         return {
           ...item,
           date: item.date, // Ensure date is correctly formatted from source
-          id: existingTask?.id || `task-${index}-${new Date(item.date).getTime()}-${Math.random().toString(36).substring(2,9)}`,
+          id: existingTask?.id || `task-${planId}-${index}-${new Date(item.date).getTime()}-${Math.random().toString(36).substring(2,9)}`,
           completed: existingTask?.completed || false,
           youtubeSearchQuery: item.youtubeSearchQuery,
           referenceSearchQuery: item.referenceSearchQuery,
@@ -215,12 +215,13 @@ export default function PlannerPage() {
 
       if (result && result.schedule) {
         const now = new Date().toISOString();
+        const planId = `plan-${Date.now()}-${Math.random().toString(36).substring(2,9)}`;
         const newPlan: ScheduleData = {
-          id: `plan-${Date.now()}-${Math.random().toString(36).substring(2,9)}`,
+          id: planId,
           createdAt: now,
           updatedAt: now,
           scheduleString: result.schedule,
-          tasks: parseTasksFromString(result.schedule, []),
+          tasks: parseTasksFromString(result.schedule, planId, []),
           planDetails: { ...plannerFormInput },
           status: 'active',
         };
@@ -304,7 +305,7 @@ export default function PlannerPage() {
         ...activePlan.planDetails,
         studyDurationDays: newDurationDays,
       };
-      const revisedTasks = parseTasksFromString(revisedData.revisedSchedule, activePlan.tasks); // Pass existing tasks for potential ID reuse
+      const revisedTasks = parseTasksFromString(revisedData.revisedSchedule, activePlan.id, activePlan.tasks); // Pass existing tasks for potential ID reuse
       const replannedActivePlan: ScheduleData = {
         ...activePlan,
         scheduleString: revisedData.revisedSchedule,
@@ -399,8 +400,8 @@ export default function PlannerPage() {
   };
 
   const handleCalendarTaskToggle = (taskId: string) => {
-    if (!activePlan || activePlan.status === 'completed' || !activePlan.tasks) {
-      toast({ title: "Action Restricted", description: "Cannot modify tasks for a completed plan or if no plan is active.", variant: "default" });
+    if (!activePlan || activePlan.status === 'completed' || activePlan.status === 'archived' || !activePlan.tasks) {
+      toast({ title: "Action Restricted", description: "Cannot modify tasks for a completed/archived plan or if no plan is active.", variant: "default" });
       return;
     }
     const updatedTasks = activePlan.tasks.map((task) => task.id === taskId ? { ...task, completed: !task.completed } : task );
@@ -648,8 +649,6 @@ export default function PlannerPage() {
               </div>
             </div>
           );
-        }
-        return <p className="text-center text-muted-foreground">Error: Invalid state.</p>;
       default:
         return null;
     }
