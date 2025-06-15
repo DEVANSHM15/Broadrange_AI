@@ -23,10 +23,10 @@ function ensureTaskStructure(tasks: ScheduleTask[] | undefined, planId: string):
   return tasks.map((task, index) => ({
     ...task,
     id: task.id || `task-${planId}-${index}-${new Date(task.date).getTime()}-${Math.random().toString(36).substring(2,9)}`, // Ensure ID
-    completed: task.completed || false,
+    completed: Boolean(task.completed), // Ensure boolean
     subTasks: task.subTasks || [],
     quizScore: task.quizScore,
-    quizAttempted: task.quizAttempted || false,
+    quizAttempted: Boolean(task.quizAttempted), // Ensure boolean
   }));
 }
 
@@ -42,12 +42,12 @@ function parseTasksFromString(scheduleString: string, planId: string, existingTa
           ...item,
           date: item.date,
           id: existingTask?.id || `task-${planId}-${index}-${new Date(item.date).getTime()}-${Math.random().toString(36).substring(2,9)}`,
-          completed: existingTask?.completed || false,
+          completed: existingTask ? Boolean(existingTask.completed) : false,
           youtubeSearchQuery: item.youtubeSearchQuery,
           referenceSearchQuery: item.referenceSearchQuery,
           subTasks: existingTask?.subTasks || [],
           quizScore: existingTask?.quizScore,
-          quizAttempted: existingTask?.quizAttempted || false,
+          quizAttempted: existingTask ? Boolean(existingTask.quizAttempted) : false,
         };
       });
     }
@@ -155,15 +155,14 @@ export default function CalendarPage() {
         tasks: ensureTaskStructure(updatedPlanFromServer.tasks, updatedPlanFromServer.id)
       };
       setActiveStudyPlan(processedUpdatedPlan); // Update active plan with server response
-      // Update allUserPlans array if needed (not directly managed here, but could be if full list was kept)
-      window.dispatchEvent(new CustomEvent('studyPlanUpdated')); // Notify other components if needed
+      window.dispatchEvent(new CustomEvent('studyPlanUpdated')); 
       setIsSavingPlan(false);
       return true;
     } catch (error) {
       console.error("Failed to save plan changes (Calendar):", error);
       toast({ title: "Error Saving Plan", description: (error as Error).message, variant: "destructive" });
       setIsSavingPlan(false);
-      fetchAndSetPlans(); // Re-fetch to get consistent state from server on error
+      fetchAndSetPlans(); 
       return false;
     }
   }, [currentUser?.id, toast, fetchAndSetPlans]);
@@ -172,8 +171,8 @@ export default function CalendarPage() {
     if (activeStudyPlan) {
       const now = new Date().toISOString();
       const updatedActivePlan = { ...activeStudyPlan, tasks: updatedTasks, updatedAt: now };
-      setActiveStudyPlan(updatedActivePlan); // Optimistic UI update
-      savePlanChanges(updatedActivePlan); // Save to backend
+      setActiveStudyPlan(updatedActivePlan); 
+      savePlanChanges(updatedActivePlan); 
     }
   };
 
@@ -199,7 +198,7 @@ export default function CalendarPage() {
     const updatedTasks = activeStudyPlan.tasks.map((task) =>
       task.id === taskId ? { ...task, completed: !task.completed } : task
     );
-    handleProgressUpdate(updatedTasks); // This will call savePlanChanges
+    handleProgressUpdate(updatedTasks); 
 
     const changedTask = updatedTasks.find(t => t.id === taskId);
     toast({
@@ -219,7 +218,7 @@ export default function CalendarPage() {
     const updatedGlobalTasks = activeStudyPlan.tasks.map(t =>
       t.id === updatedTaskFromModal.id ? updatedTaskFromModal : t
     );
-    handleProgressUpdate(updatedGlobalTasks); // This will call savePlanChanges
+    handleProgressUpdate(updatedGlobalTasks); 
     setIsBreakdownModalOpen(false);
     setSelectedTaskForBreakdown(null);
     toast({ title: "Sub-tasks updated", description: `Changes saved for task "${updatedTaskFromModal.task.substring(0,30)}...".`});
@@ -429,5 +428,3 @@ export default function CalendarPage() {
     </AppLayout>
   );
 }
-
-      

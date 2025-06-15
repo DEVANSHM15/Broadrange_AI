@@ -39,10 +39,10 @@ function ensureTaskStructure(tasks: ScheduleTask[] | undefined, planId: string):
   return tasks.map((task, index) => ({
     ...task,
     id: task.id || `task-${planId}-${index}-${new Date(task.date).getTime()}-${Math.random().toString(36).substring(2,9)}`,
-    completed: task.completed || false,
+    completed: Boolean(task.completed), // Ensure boolean
     subTasks: task.subTasks || [],
     quizScore: task.quizScore,
-    quizAttempted: task.quizAttempted || false,
+    quizAttempted: Boolean(task.quizAttempted), // Ensure boolean
   }));
 }
 
@@ -115,7 +115,6 @@ const PlanDisplayCard: React.FC<PlanDisplayCardProps> = ({ plan, cardType }) => 
       </CardContent>
       <CardFooter className="flex flex-col sm:flex-row gap-2">
         <Button asChild className="w-full sm:flex-grow" variant="outline">
-          {/* Link to planner, potentially with planId in future to load specific plan */}
           <Link href={`/planner?planId=${plan.id}`}> 
             <Edit className="mr-2 h-4 w-4"/>
             {plan.status === 'completed' || plan.status === 'archived' ? "Review Plan Details" : "View or Edit Plan"}
@@ -316,6 +315,3 @@ export default function AchievementsPage() {
     </AppLayout>
   );
 }
-
-
-    

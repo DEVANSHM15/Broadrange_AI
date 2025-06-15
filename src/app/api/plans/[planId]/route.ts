@@ -44,7 +44,7 @@ export async function GET(
       return NextResponse.json({ error: 'Study plan not found or not authorized' }, { status: 404 });
     }
 
-    const tasksFromDb = await db.all<ScheduleTask[]>(
+    const tasksFromDb = await db.all<any[]>( // Use any[] for raw DB results
       `SELECT id, date, task, completed, youtubeSearchQuery, referenceSearchQuery, quizScore, quizAttempted
        FROM schedule_tasks
        WHERE planId = ?
@@ -52,12 +52,18 @@ export async function GET(
       planId
     );
     
-    for (const task of tasksFromDb) {
+    const processedTasks: ScheduleTask[] = [];
+    for (const t of tasksFromDb) {
         const subTasksFromDb = await db.all(
             `SELECT id, text, completed FROM sub_tasks WHERE taskId = ?`,
-            task.id
+            t.id
         );
-        task.subTasks = subTasksFromDb || [];
+        processedTasks.push({
+            ...t,
+            completed: Boolean(t.completed), // Explicitly cast to boolean
+            quizAttempted: Boolean(t.quizAttempted), // Explicitly cast to boolean
+            subTasks: subTasksFromDb.map(st => ({...st, completed: Boolean(st.completed)})) || []
+        });
     }
 
     const plan: ScheduleData = {
@@ -72,7 +78,7 @@ export async function GET(
         subjectDetails: planRow.subjectDetails,
         startDate: planRow.startDate,
       },
-      tasks: tasksFromDb.map(t => ({...t, subTasks: t.subTasks || [] })),
+      tasks: processedTasks,
       status: planRow.status as ScheduleData['status'],
       completionDate: planRow.completionDate,
     };
@@ -158,11 +164,11 @@ export async function PUT(
           planId,
           task.date,
           task.task,
-          task.completed,
+          Boolean(task.completed), // Ensure boolean is stored as 0/1
           task.youtubeSearchQuery,
           task.referenceSearchQuery,
           task.quizScore,
-          task.quizAttempted
+          Boolean(task.quizAttempted) // Ensure boolean is stored as 0/1
         );
         if (task.subTasks && task.subTasks.length > 0) {
             for (const subTask of task.subTasks) {
@@ -170,7 +176,7 @@ export async function PUT(
                     subTask.id,
                     task.id,
                     subTask.text,
-                    subTask.completed
+                    Boolean(subTask.completed) // Ensure boolean is stored as 0/1
                 );
             }
         }
@@ -186,20 +192,27 @@ export async function PUT(
       `SELECT id, userId, createdAt, updatedAt, scheduleString, subjects, dailyStudyHours, studyDurationDays, subjectDetails, startDate, status, completionDate
        FROM study_plans WHERE id = ? AND userId = ?`, planId, userId
     );
-     if (!updatedPlanRow) { // Should not happen if update was successful, but good check
-        await db.run('ROLLBACK'); // Should not be strictly necessary here as commit was done, but as safeguard
+     if (!updatedPlanRow) { 
+        await db.run('ROLLBACK'); 
         return NextResponse.json({ error: 'Failed to retrieve updated plan after saving.' }, { status: 500 });
     }
-     const updatedTasksFromDb = await db.all<ScheduleTask[]>(
+     const updatedTasksFromDb = await db.all<any[]>( // Use any[] for raw DB results
         `SELECT id, date, task, completed, youtubeSearchQuery, referenceSearchQuery, quizScore, quizAttempted
          FROM schedule_tasks WHERE planId = ? ORDER BY date ASC, id ASC`, planId
     );
-    for (const task of updatedTasksFromDb) {
+    
+    const processedUpdatedTasks: ScheduleTask[] = [];
+    for (const t of updatedTasksFromDb) {
         const subTasksFromDb = await db.all(
             `SELECT id, text, completed FROM sub_tasks WHERE taskId = ?`,
-            task.id
+            t.id
         );
-        task.subTasks = subTasksFromDb || [];
+        processedUpdatedTasks.push({
+            ...t,
+            completed: Boolean(t.completed), // Explicitly cast to boolean
+            quizAttempted: Boolean(t.quizAttempted), // Explicitly cast to boolean
+            subTasks: subTasksFromDb.map(st => ({...st, completed: Boolean(st.completed)})) || []
+        });
     }
 
     const returnPlan: ScheduleData = {
@@ -214,7 +227,7 @@ export async function PUT(
             subjectDetails: updatedPlanRow.subjectDetails,
             startDate: updatedPlanRow.startDate,
         },
-        tasks: updatedTasksFromDb.map(t => ({...t, subTasks: t.subTasks || [] })),
+        tasks: processedUpdatedTasks,
         status: updatedPlanRow.status as ScheduleData['status'],
         completionDate: updatedPlanRow.completionDate,
     };
@@ -222,8 +235,8 @@ export async function PUT(
     return NextResponse.json(returnPlan, { status: 200 });
 
   } catch (error) {
-    const db = await getDb(); // Ensure db instance is available for rollback
-    await db.run('ROLLBACK'); // Rollback transaction on any error during the try block
+    const db = await getDb(); 
+    await db.run('ROLLBACK'); 
     console.error(`Failed to update study plan ${planId}:`, error);
      if (error instanceof SyntaxError) {
         return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
@@ -255,28 +268,19 @@ export async function DELETE(
     if (!plan) {
       return NextResponse.json({ error: 'Plan not found' }, { status: 404 });
     }
-     // Ensure userId from DB (INTEGER) matches userId from request (can be string)
     if (String(plan.userId) !== String(userId)) { 
          return NextResponse.json({ error: 'Unauthorized to delete this plan' }, { status: 403 });
     }
 
-    // Foreign key constraints with ON DELETE CASCADE should handle tasks and sub_tasks.
-    // So, simply deleting from study_plans is enough if DB is set up correctly.
     const result = await db.run('DELETE FROM study_plans WHERE id = ? AND userId = ?', planId, userId);
 
     if (result.changes === 0) {
-      // This case should ideally be caught by the ownership check above,
-      // but it's a fallback.
       return NextResponse.json({ error: 'Plan not found or not authorized to delete' }, { status: 404 });
     }
 
     return NextResponse.json({ message: 'Study plan deleted successfully' }, { status: 200 });
   } catch (error) {
     console.error(`Failed to delete study plan ${planId}:`, error);
-    // No explicit rollback needed for a single DELETE if not in a transaction,
-    // but if other operations were involved, a transaction would be good.
     return NextResponse.json({ error: 'Failed to delete study plan', details: (error as Error).message }, { status: 500 });
   }
 }
-
-    

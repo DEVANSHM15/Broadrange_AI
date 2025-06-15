@@ -27,10 +27,10 @@ function ensureTaskStructure(tasks: ScheduleTask[] | undefined, planId: string):
   return tasks.map((task, index) => ({
     ...task,
     id: task.id || `task-${planId}-${index}-${new Date(task.date).getTime()}-${Math.random().toString(36).substring(2,9)}`,
-    completed: task.completed || false,
+    completed: Boolean(task.completed), // Ensure boolean
     subTasks: task.subTasks || [],
     quizScore: task.quizScore,
-    quizAttempted: task.quizAttempted || false,
+    quizAttempted: Boolean(task.quizAttempted), // Ensure boolean
   }));
 }
 
@@ -145,7 +145,9 @@ function AnalyticsPageContent() {
           detailMessage = "The AI couldn't structure its response for reflection. This can sometimes happen. You might try again or check the plan data.";
         } else if (error.message.includes("Plan details and tasks are required")) {
           detailMessage = "Missing necessary plan data to generate the reflection.";
-        } else if (error.message.length < 150) { // Show shorter messages directly
+        } else if (error.message.toLowerCase().includes("schema validation failed") || error.message.toLowerCase().includes("parse errors")) {
+          detailMessage = "Data sent to AI for reflection was not in the expected format. Please check plan data integrity.";
+        } else if (error.message.length < 150) { 
           detailMessage = error.message;
         }
       }
@@ -158,7 +160,7 @@ function AnalyticsPageContent() {
     } finally {
       setIsGeneratingReflection(false);
     }
-  }, [isGeneratingReflection, toast]); // Added toast to dependency array
+  }, [isGeneratingReflection, toast]); 
 
   useEffect(() => {
     if (currentStudyPlanForAnalytics && currentStudyPlanForAnalytics.status === 'completed') {
@@ -457,5 +459,3 @@ export default function AnalyticsPage() {
     </Suspense>
   );
 }
-
-    

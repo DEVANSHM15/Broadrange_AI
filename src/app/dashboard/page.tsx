@@ -29,10 +29,10 @@ function ensureTaskStructure(tasks: ScheduleTask[] | undefined, planId: string):
   return tasks.map((task, index) => ({
     ...task,
     id: task.id || `task-${planId}-${index}-${new Date(task.date).getTime()}-${Math.random().toString(36).substring(2,9)}`, // Ensure ID
-    completed: task.completed || false,
+    completed: Boolean(task.completed), // Ensure boolean
     subTasks: task.subTasks || [],
     quizScore: task.quizScore,
-    quizAttempted: task.quizAttempted || false,
+    quizAttempted: Boolean(task.quizAttempted), // Ensure boolean
   }));
 }
 
@@ -158,7 +158,7 @@ export default function DashboardPage() {
     };
     fetchPlanReflection();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeStudyPlan, parsedTasksForActivePlan]); // Removed isGeneratingReflection
+  }, [activeStudyPlan, parsedTasksForActivePlan]); 
 
 
   useEffect(() => {
@@ -473,6 +473,3 @@ export default function DashboardPage() {
     </AppLayout>
   );
 }
-    
-
-    

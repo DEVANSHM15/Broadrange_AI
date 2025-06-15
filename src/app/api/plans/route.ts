@@ -69,11 +69,11 @@ export async function POST(req: Request) {
           typedPlanData.id, // planId
           task.date,
           task.task,
-          task.completed,
+          task.completed, // Stored as 0 or 1 by SQLite driver if boolean
           task.youtubeSearchQuery,
           task.referenceSearchQuery,
           task.quizScore,
-          task.quizAttempted
+          task.quizAttempted // Stored as 0 or 1 by SQLite driver if boolean
         );
         // Note: Sub-tasks are not handled in this POST, they would be part of PUT or a separate endpoint
       }
@@ -122,7 +122,7 @@ export async function GET(req: Request) {
 
     const plans: ScheduleData[] = [];
     for (const planRow of plansFromDb) {
-      const tasksFromDb = await db.all<ScheduleTask[]>(
+      const tasksFromDb = await db.all<any[]>( // Use any[] and then cast inside map for clarity
         `SELECT id, date, task, completed, youtubeSearchQuery, referenceSearchQuery, quizScore, quizAttempted 
          FROM schedule_tasks 
          WHERE planId = ? 
@@ -130,8 +130,12 @@ export async function GET(req: Request) {
         planRow.id
       );
       
-      // Here we would also fetch sub-tasks for each task if needed, for now tasksFromDb is enough
-      // For each task in tasksFromDb, fetch sub_tasks (deferred for now)
+      const processedTasks: ScheduleTask[] = tasksFromDb.map(t => ({
+        ...t,
+        completed: Boolean(t.completed), // Explicitly cast to boolean
+        quizAttempted: Boolean(t.quizAttempted), // Explicitly cast to boolean
+        subTasks: t.subTasks || [], // Initialize subTasks if not present
+      }));
 
       const plan: ScheduleData = {
         id: planRow.id,
@@ -145,7 +149,7 @@ export async function GET(req: Request) {
           subjectDetails: planRow.subjectDetails,
           startDate: planRow.startDate,
         },
-        tasks: tasksFromDb.map(t => ({...t, subTasks: t.subTasks || [] })), // Initialize subTasks if not present
+        tasks: processedTasks,
         status: planRow.status as ScheduleData['status'],
         completionDate: planRow.completionDate,
       };
