@@ -9,16 +9,17 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Legend, Cell } from "recharts"; // Added Cell for Bar colors
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Legend, Cell } from "recharts";
 import type { InsightDisplayData, ScheduleData, ScheduleTask, PlanInput, ParsedRawScheduleItem } from "@/types";
 import { useAuth } from "@/contexts/auth-context";
 import { useState, useEffect, useMemo, useCallback, Suspense } from "react";
 import { useSearchParams } from 'next/navigation';
-import { differenceInWeeks, parseISO, format, startOfWeek, addWeeks, isValid, getDay } from "date-fns"; // Added getDay
+import { differenceInWeeks, parseISO, format, startOfWeek, addWeeks, isValid, getDay, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, getDate } from "date-fns";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { HelpCircle, Loader2, Lightbulb, AlertCircle as AlertCircleIcon, Target, MessageSquareText, Repeat, SparklesIcon } from "lucide-react";
+import { HelpCircle, Loader2, Lightbulb, AlertCircle as AlertCircleIcon, Target, MessageSquareText, Repeat, SparklesIcon, CalendarDays } from "lucide-react";
 import { generatePlanReflection, type GeneratePlanReflectionInput, type GeneratePlanReflectionOutput } from "@/ai/flows/generate-plan-reflection";
 import { useToast } from "@/hooks/use-toast";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 
 // Helper function to ensure tasks have necessary fields, especially after fetching from API
@@ -40,22 +41,15 @@ const staticExampleRecommendations: InsightDisplayData[] = [
   { agent: "📊 AnalyticsAI", text: "Users who consistently complete tasks show better long-term retention.", confidence: "General Observation" },
 ];
 
-const chartColors = [
-  "hsl(var(--chart-1))",
-  "hsl(var(--chart-2))",
-  "hsl(var(--chart-3))",
-  "hsl(var(--chart-4))",
-  "hsl(var(--chart-5))",
-];
 
-const dayOfWeekColors = [
-  "hsl(var(--chart-1))", // Sunday
-  "hsl(var(--chart-2))", // Monday
-  "hsl(var(--chart-3))", // Tuesday
-  "hsl(var(--chart-4))", // Wednesday
-  "hsl(var(--chart-5))", // Thursday
-  "hsl(260 70% 60%)",    // Friday (new color - closer to purple)
-  "hsl(320 70% 60%)",    // Saturday (new color - closer to pink/magenta)
+const dayOfWeekColors = [ // More distinct colors
+  "hsl(var(--chart-1))", // Sun - Primary Blue
+  "hsl(140 70% 50%)",   // Mon - Green
+  "hsl(190 70% 50%)",   // Tue - Cyan
+  "hsl(30 90% 55%)",    // Wed - Orange
+  "hsl(var(--chart-5))",// Thu - Purple
+  "hsl(330 70% 60%)",   // Fri - Pink
+  "hsl(60 80% 50%)",    // Sat - Yellow
 ];
 
 
@@ -167,7 +161,7 @@ function AnalyticsPageContent() {
         } else if (error.message.includes("Plan details and tasks are required")) {
           detailMessage = "Missing necessary plan data to generate the reflection.";
         } else if (error.message.toLowerCase().includes("schema validation failed") || error.message.toLowerCase().includes("parse errors")) {
-          detailMessage = `Data sent to AI for reflection was not in the expected format. Ensure tasks have boolean 'completed' status. Details: ${error.message.substring(0,200)}`;
+           detailMessage = `Data sent to AI for reflection was not in the expected format. Ensure tasks have boolean 'completed' status. Details: ${error.message.substring(0,200)}`;
         } else if (error.message.length < 150) { 
           detailMessage = error.message;
         }
@@ -181,7 +175,7 @@ function AnalyticsPageContent() {
     } finally {
       setIsGeneratingReflection(false);
     }
-  }, [toast]); // Removed isGeneratingReflection from dependencies
+  }, [toast]);
 
   useEffect(() => {
     if (currentStudyPlanForAnalytics && currentStudyPlanForAnalytics.status === 'completed') {
@@ -245,7 +239,7 @@ function AnalyticsPageContent() {
       day,
       tasksCompleted: taskCountsByDay[day],
       fill: dayOfWeekColors[index % dayOfWeekColors.length],
-    })).filter(d => d.tasksCompleted > 0); // Optionally filter out days with 0 tasks for cleaner chart
+    }));
   }, [currentStudyPlanForAnalytics]);
   
   const productiveDaysChartConfig: ChartConfig = productiveDaysData.reduce((acc, item) => {
@@ -273,6 +267,48 @@ function AnalyticsPageContent() {
   const dailyCompletionChartConfig: ChartConfig = {
     tasks: { label: "Tasks Completed", color: "hsl(var(--chart-1))" },
   };
+
+  const monthlyActivityData = useMemo(() => {
+    if (!currentStudyPlanForAnalytics || !currentStudyPlanForAnalytics.tasks || currentStudyPlanForAnalytics.tasks.length === 0) {
+      return { monthName: format(new Date(), "MMMM yyyy"), days: [] };
+    }
+  
+    let targetDate: Date;
+    if (currentStudyPlanForAnalytics.planDetails.startDate && isValid(parseISO(currentStudyPlanForAnalytics.planDetails.startDate))) {
+      targetDate = parseISO(currentStudyPlanForAnalytics.planDetails.startDate);
+    } else {
+      const sortedTasks = [...currentStudyPlanForAnalytics.tasks].sort((a,b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
+      targetDate = parseISO(sortedTasks[0].date);
+    }
+    if (!isValid(targetDate)) targetDate = new Date(); // Fallback if no valid date found
+  
+    const monthStart = startOfMonth(targetDate);
+    const monthEnd = endOfMonth(targetDate);
+    const displayStartDate = startOfWeek(monthStart);
+    const displayEndDate = endOfWeek(monthEnd);
+  
+    const days = eachDayOfInterval({ start: displayStartDate, end: displayEndDate }).map(day => {
+      const tasksCompleted = currentStudyPlanForAnalytics.tasks.filter(
+        task => task.completed && task.date && isValid(parseISO(task.date)) && isSameDay(parseISO(task.date), day)
+      ).length;
+      return {
+        date: day,
+        tasksCompleted,
+        isCurrentMonth: isSameMonth(day, monthStart),
+      };
+    });
+  
+    return { monthName: format(monthStart, "MMMM yyyy"), days };
+  }, [currentStudyPlanForAnalytics]);
+
+  const getHeatmapColor = (count: number): string => {
+    if (count === 0) return "bg-muted/30 hover:bg-muted/50"; // Very light gray for no tasks
+    if (count <= 1) return "bg-green-200 hover:bg-green-300 dark:bg-green-900 dark:hover:bg-green-800"; // Lightest green
+    if (count <= 3) return "bg-green-400 hover:bg-green-500 dark:bg-green-700 dark:hover:bg-green-600"; // Medium green
+    if (count <= 5) return "bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-400"; // Darker green
+    return "bg-green-800 hover:bg-green-900 dark:bg-green-300 dark:hover:bg-green-200"; // Darkest green
+  };
+
 
   if (isLoadingPlan) {
     return (
@@ -309,6 +345,8 @@ function AnalyticsPageContent() {
                         ? format(parseISO(currentStudyPlanForAnalytics.updatedAt), 'PPp') 
                         : 'N/A';
 
+  const daysOfWeekShort = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
   return (
     <AppLayout>
       <main id="analytics" className="app-main active">
@@ -326,7 +364,7 @@ function AnalyticsPageContent() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
             <Card className="analytics-card shadow-md hover:shadow-lg transition-shadow">
               <CardHeader><CardTitle>Performance Trends (Tasks/Week)</CardTitle></CardHeader>
-              <CardContent className="h-[300px] p-2 relative">
+              <CardContent className="h-[300px] p-4 relative"> {/* Adjusted padding */}
                 {performanceData.length > 0 ? (
                   <ChartContainer config={performanceChartConfig} className="w-full h-full">
                     <ResponsiveContainer width="100%" height="100%">
@@ -349,7 +387,7 @@ function AnalyticsPageContent() {
             </Card>
             <Card className="analytics-card shadow-md hover:shadow-lg transition-shadow">
               <CardHeader><CardTitle>Productive Days of the Week</CardTitle></CardHeader>
-              <CardContent className="h-[300px] p-2 relative">
+              <CardContent className="h-[300px] p-4 relative"> {/* Adjusted padding */}
                 {productiveDaysData.length > 0 ? (
                   <ChartContainer config={productiveDaysChartConfig} className="w-full h-full">
                     <ResponsiveContainer width="100%" height="100%">
@@ -376,7 +414,7 @@ function AnalyticsPageContent() {
             </Card>
             <Card className="analytics-card md:col-span-2 shadow-md hover:shadow-lg transition-shadow">
               <CardHeader><CardTitle>Daily Task Completion</CardTitle></CardHeader>
-              <CardContent className="h-[300px] p-2 relative">
+              <CardContent className="h-[300px] p-4 relative"> {/* Adjusted padding */}
                 {dailyCompletionData.length > 0 ? (
                    <ChartContainer config={dailyCompletionChartConfig} className="w-full h-full">
                       <ResponsiveContainer width="100%" height="100%">
@@ -393,6 +431,45 @@ function AnalyticsPageContent() {
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center">
                     <p className="text-center text-muted-foreground p-4">No tasks completed yet for daily tracking in this plan.</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="analytics-card md:col-span-2 shadow-md hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><CalendarDays className="text-primary h-5 w-5"/> Monthly Activity Heatmap</CardTitle>
+                <CardDescription>{monthlyActivityData.monthName}</CardDescription>
+              </CardHeader>
+              <CardContent className="p-4">
+                {monthlyActivityData.days.length > 0 ? (
+                  <TooltipProvider>
+                    <div className="grid grid-cols-7 gap-1 text-center text-xs">
+                      {daysOfWeekShort.map(day => (
+                        <div key={day} className="font-medium text-muted-foreground pb-1">{day}</div>
+                      ))}
+                      {monthlyActivityData.days.map(({ date, tasksCompleted, isCurrentMonth }) => (
+                        <Tooltip key={date.toISOString()} delayDuration={100}>
+                          <TooltipTrigger asChild>
+                            <div
+                              className={`w-full aspect-square rounded flex items-center justify-center border transition-colors
+                                          ${isCurrentMonth ? getHeatmapColor(tasksCompleted) : 'bg-background/50 text-muted-foreground/50 cursor-default'}
+                                          ${isCurrentMonth && tasksCompleted > 0 ? 'text-primary-foreground dark:text-background font-semibold' : (isCurrentMonth ? 'text-muted-foreground' : '')}
+                                        `}
+                            >
+                              {getDate(date)}
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{format(date, "PPP")}: {tasksCompleted} task{tasksCompleted !== 1 ? 's' : ''} completed</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      ))}
+                    </div>
+                  </TooltipProvider>
+                ) : (
+                  <div className="flex items-center justify-center min-h-[150px]">
+                     <p className="text-center text-muted-foreground">No activity data for this month in the current plan.</p>
                   </div>
                 )}
               </CardContent>
