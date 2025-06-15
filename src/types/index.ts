@@ -14,38 +14,39 @@ export interface SubTask {
 }
 
 export interface ScheduleTask {
-  id: string;
+  id:string; // Unique ID for the task within its plan
   date: string; // YYYY-MM-DD
   task: string;
   completed: boolean;
   youtubeSearchQuery?: string;
-  referenceSearchQuery?: string; // Added for general reference material search
-  subTasks?: SubTask[]; // Added for breaking down tasks
-  quizScore?: number; // Score as a percentage (0-100)
-  quizAttempted?: boolean; // True if a quiz for this task has been attempted
-  // quizQuestions?: QuizQuestion[]; // We'll store quiz content transiently in modal state for now
-}
-
-// Used when loading from local storage or after parsing AI string
-export interface ScheduleData {
-  scheduleString: string; // The raw JSON string from AI
-  tasks: ScheduleTask[];
-  planDetails: PlanInput; // The inputs that generated this plan
-  status?: 'active' | 'completed'; // Added status
-  completionDate?: string; // Added completionDate (ISO string)
-  // Optional: add fields for plan overview stats if needed from your HTML
-  daysToGoal?: number;
-  successProbability?: number;
-  totalHours?: number;
+  referenceSearchQuery?: string;
+  subTasks?: SubTask[];
+  quizScore?: number;
+  quizAttempted?: boolean;
 }
 
 export interface ParsedRawScheduleItem {
   date: string; // YYYY-MM-DD
   task: string;
   youtubeSearchQuery?: string;
-  referenceSearchQuery?: string; // Added
-  // subTasks are not expected directly from AI, so not here
+  referenceSearchQuery?: string;
 }
+
+export interface ScheduleData {
+  id: string; // Unique ID for this specific plan instance
+  createdAt: string; // ISO date string
+  updatedAt: string; // ISO date string
+  scheduleString: string; // The raw JSON string from AI (or revised)
+  tasks: ScheduleTask[];
+  planDetails: PlanInput;
+  status: 'active' | 'completed' | 'archived'; // More refined status
+  completionDate?: string; // ISO string
+  // Optional: add fields for plan overview stats if needed from your HTML
+  daysToGoal?: number;
+  successProbability?: number;
+  totalHours?: number;
+}
+
 
 export interface AISettings {
   plannerBotEnabled: boolean;
@@ -68,8 +69,8 @@ export interface StoredUser extends Required<Omit<UserCredentials, 'password'>> 
   studyLevel?: string;
   preferredStudyTime?: string;
   aiSettings?: AISettings;
-  securityQuestion?: string; // Added for password recovery
-  securityAnswer?: string;   // Added for password recovery
+  securityQuestion?: string;
+  securityAnswer?: string;
 }
 
 
@@ -80,7 +81,6 @@ export interface AgentDisplayData {
   role: string;
   specialty?: string;
   confidence: number;
-  // activity: string; // Activity string removed from type as per user request
   active?: boolean;
   agentKey: string;
 }

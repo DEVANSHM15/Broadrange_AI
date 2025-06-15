@@ -12,48 +12,40 @@ import {
 import { BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import type { InsightDisplayData, ScheduleData, ScheduleTask, PlanInput, ParsedRawScheduleItem } from "@/types";
 import { useAuth } from "@/contexts/auth-context";
-import { useState, useEffect, useMemo } from "react";
-import { differenceInWeeks, parseISO, format, startOfWeek, addWeeks } from "date-fns";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { differenceInWeeks, parseISO, format, startOfWeek, addWeeks, isValid } from "date-fns";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { HelpCircle, Loader2, Lightbulb, AlertCircle as AlertCircleIcon } from "lucide-react";
 import { generatePlanReflection, type GeneratePlanReflectionInput, type GeneratePlanReflectionOutput } from "@/ai/flows/generate-plan-reflection";
 
 
 const getPlannerStorageKey = (userEmail: string | undefined | null) =>
-  userEmail ? `studyMindAiPlannerData_v2_${userEmail}` : `studyMindAiPlannerData_v2_guest`;
+  userEmail ? `studyMindAiPlannerData_v2_array_${userEmail}` : `studyMindAiPlannerData_v2_array_guest`;
 
 // Helper function to parse schedule string into tasks
-function parseTasksFromString(scheduleString: string, existingTasks?: ScheduleTask[]): ScheduleTask[] {
+function parseTasksFromString(scheduleString: string, planId: string, existingTasks?: ScheduleTask[]): ScheduleTask[] {
   try {
     const parsed = JSON.parse(scheduleString) as ParsedRawScheduleItem[];
     if (Array.isArray(parsed) && parsed.every(item => typeof item.date === 'string' && typeof item.task === 'string')) {
-      // If existingTasks are provided and lengths match, merge to preserve IDs/completion
-      if (existingTasks && existingTasks.length > 0 && existingTasks.length === parsed.length) {
-         return parsed.map((item, index) => ({
+      return parsed.map((item, index) => {
+        const existingTask = existingTasks?.find(et => et.id.startsWith(`task-${planId}-${index}`));
+        return {
           ...item,
           date: item.date,
-          id: existingTasks[index]?.id || String(index),
-          completed: existingTasks[index]?.completed || false,
+          id: existingTask?.id || `task-${planId}-${index}-${new Date(item.date).getTime()}-${Math.random().toString(36).substring(2,9)}`,
+          completed: existingTask?.completed || false,
           youtubeSearchQuery: item.youtubeSearchQuery,
-          quizScore: existingTasks[index]?.quizScore,
-          quizAttempted: existingTasks[index]?.quizAttempted || false,
-        }));
-      }
-      // Otherwise, create new tasks
-      return parsed.map((item, index) => ({
-        ...item,
-        date: item.date,
-        id: String(index),
-        completed: false,
-        youtubeSearchQuery: item.youtubeSearchQuery,
-        quizScore: undefined,
-        quizAttempted: false,
-      }));
+          referenceSearchQuery: item.referenceSearchQuery,
+          subTasks: existingTask?.subTasks || [],
+          quizScore: existingTask?.quizScore,
+          quizAttempted: existingTask?.quizAttempted || false,
+        };
+      });
     }
-    return existingTasks || []; // Return existing or empty if parsing fails significantly
+    return existingTasks || [];
   } catch (error) {
     console.warn("AnalyticsPage: Failed to parse schedule string:", error);
-    return existingTasks || []; // Return existing or empty on error
+    return existingTasks || [];
   }
 }
 
@@ -73,65 +65,78 @@ const chartColors = [
 
 export default function AnalyticsPage() {
   const { currentUser } = useAuth();
-  const [currentStudyPlan, setCurrentStudyPlan] = useState<ScheduleData | null>(null);
+  const [currentStudyPlanForAnalytics, setCurrentStudyPlanForAnalytics] = useState<ScheduleData | null>(null);
   const [isLoadingPlan, setIsLoadingPlan] = useState(true);
   const [planReflection, setPlanReflection] = useState<GeneratePlanReflectionOutput | null>(null);
   const [isGeneratingReflection, setIsGeneratingReflection] = useState(false);
   const plannerStorageKey = getPlannerStorageKey(currentUser?.email);
 
-  useEffect(() => {
-    let isMounted = true;
-    if (currentUser?.email) {
-      const savedPlanJson = localStorage.getItem(plannerStorageKey);
-      if (savedPlanJson) {
-        try {
-          const savedPlan: ScheduleData = JSON.parse(savedPlanJson);
-          let tasksToUse = savedPlan.tasks || [];
-          
-          if ((!tasksToUse || tasksToUse.length === 0) && savedPlan.scheduleString) {
-            const newlyParsedTasks = parseTasksFromString(savedPlan.scheduleString, savedPlan.tasks);
-            if (newlyParsedTasks.length > 0) {
-              tasksToUse = newlyParsedTasks;
-              localStorage.setItem(plannerStorageKey, JSON.stringify({ ...savedPlan, tasks: tasksToUse })); 
-            }
-          } else if (tasksToUse.length > 0) {
-            tasksToUse = tasksToUse.map(task => ({
-              ...task,
-              quizScore: task.quizScore,
-              quizAttempted: task.quizAttempted || false,
-            }));
-            const updatedPlanForStorage = { ...savedPlan, tasks: tasksToUse };
-            if (JSON.stringify(savedPlan.tasks) !== JSON.stringify(tasksToUse)) {
-              localStorage.setItem(plannerStorageKey, JSON.stringify(updatedPlanForStorage));
-            }
-          }
-          savedPlan.tasks = tasksToUse;
 
-
-          if (isMounted) setCurrentStudyPlan(savedPlan);
-
-          if (isMounted && savedPlan.status === 'completed' && savedPlan.planDetails && savedPlan.tasks.length > 0 && !planReflection && !isGeneratingReflection) {
-            fetchPlanReflection(savedPlan, savedPlan.tasks, isMounted);
-          }
-        } catch (error) {
-          console.error("Analytics: Failed to parse saved plan:", error);
-          if (isMounted) setCurrentStudyPlan(null);
-        }
-      } else {
-        if (isMounted) setCurrentStudyPlan(null);
-      }
-    } else if (!currentUser && typeof window !== 'undefined') {
-        if (isMounted) setCurrentStudyPlan(null);
+  const reloadDataForAnalytics = useCallback(() => {
+    setIsLoadingPlan(true);
+     if (!currentUser?.email) {
+        setCurrentStudyPlanForAnalytics(null);
+        setIsLoadingPlan(false);
+        return;
     }
-    if (isMounted) setIsLoadingPlan(false);
-    return () => { isMounted = false; };
+    const savedPlansJson = localStorage.getItem(plannerStorageKey);
+    let planToAnalyze: ScheduleData | null = null;
+
+    if (savedPlansJson) {
+      try {
+        const allPlans: ScheduleData[] = JSON.parse(savedPlansJson);
+        if (Array.isArray(allPlans) && allPlans.length > 0) {
+          // Prioritize the most recent 'completed' plan for analytics
+          const completedPlans = allPlans.filter(p => p.status === 'completed').sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+          if (completedPlans.length > 0) {
+            planToAnalyze = completedPlans[0];
+          } else {
+            // If no completed, take the most recent 'active' plan
+            const activePlans = allPlans.filter(p => p.status === 'active').sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+            if (activePlans.length > 0) planToAnalyze = activePlans[0];
+          }
+           if (!planToAnalyze) { // Fallback to most recently updated if no active/completed
+              planToAnalyze = allPlans.sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
+          }
+        }
+        
+        if (planToAnalyze) {
+            let tasksToUse = planToAnalyze.tasks || [];
+            if ((!tasksToUse || tasksToUse.length === 0) && planToAnalyze.scheduleString) {
+                tasksToUse = parseTasksFromString(planToAnalyze.scheduleString, planToAnalyze.id, planToAnalyze.tasks);
+            } else {
+                tasksToUse = tasksToUse.map(task => ({...task, subTasks: task.subTasks || [], quizScore: task.quizScore, quizAttempted: task.quizAttempted || false}));
+            }
+            planToAnalyze.tasks = tasksToUse;
+        }
+      } catch (error) {
+        console.error("Analytics: Failed to parse or process plans:", error);
+        planToAnalyze = null;
+      }
+    }
+    setCurrentStudyPlanForAnalytics(planToAnalyze);
+    setIsLoadingPlan(false);
+
+    if (planToAnalyze && planToAnalyze.status === 'completed' && planToAnalyze.planDetails && planToAnalyze.tasks.length > 0 && !isGeneratingReflection) {
+      fetchPlanReflection(planToAnalyze, planToAnalyze.tasks);
+    } else if (planToAnalyze?.status !== 'completed') {
+      setPlanReflection(null);
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser, plannerStorageKey]);
+  }, [currentUser, plannerStorageKey, isGeneratingReflection]);
 
 
-  const fetchPlanReflection = async (plan: ScheduleData, tasks: ScheduleTask[], isMounted: boolean) => {
+  useEffect(() => {
+    reloadDataForAnalytics();
+    const handleStudyPlanUpdate = () => reloadDataForAnalytics();
+    window.addEventListener('studyPlanUpdated', handleStudyPlanUpdate);
+    return () => window.removeEventListener('studyPlanUpdated', handleStudyPlanUpdate);
+  }, [reloadDataForAnalytics]);
+
+
+  const fetchPlanReflection = async (plan: ScheduleData, tasks: ScheduleTask[]) => {
     if (!plan.planDetails) return;
-    if (isMounted) setIsGeneratingReflection(true);
+    setIsGeneratingReflection(true);
     try {
       const input: GeneratePlanReflectionInput = {
         planDetails: plan.planDetails,
@@ -139,67 +144,52 @@ export default function AnalyticsPage() {
         completionDate: plan.completionDate,
       };
       const reflection = await generatePlanReflection(input);
-      if (isMounted) setPlanReflection(reflection);
+      setPlanReflection(reflection);
     } catch (error) {
       console.error("Failed to generate plan reflection for analytics:", error);
-      if (isMounted) setPlanReflection(null);
+      setPlanReflection(null);
     } finally {
-      if (isMounted) setIsGeneratingReflection(false);
+      setIsGeneratingReflection(false);
     }
   };
 
   const performanceData = useMemo(() => {
-    if (!currentStudyPlan || !currentStudyPlan.tasks || currentStudyPlan.tasks.length === 0) return [];
-    const completedTasks = currentStudyPlan.tasks.filter(t => t.completed);
+    if (!currentStudyPlanForAnalytics || !currentStudyPlanForAnalytics.tasks || currentStudyPlanForAnalytics.tasks.length === 0) return [];
+    const completedTasks = currentStudyPlanForAnalytics.tasks.filter(t => t.completed);
     if (completedTasks.length === 0) return [];
     
-    const validTasks = currentStudyPlan.tasks.filter(task => {
-        try {
-            parseISO(task.date);
-            return true;
-        } catch { return false; }
-    });
-
+    const validTasks = currentStudyPlanForAnalytics.tasks.filter(task => task.date && isValid(parseISO(task.date)));
     if(validTasks.length === 0) return [];
 
-    let planStartDateRef: Date;
-     if (validTasks.length > 0) { 
-        const earliestTaskDate = validTasks.reduce((earliest, task) =>
-            parseISO(task.date) < parseISO(earliest.date) ? task : earliest
-        ).date;
-        planStartDateRef = parseISO(earliestTaskDate);
-    } else {
-        return [];
-    }
+    const planStartDateRef = parseISO(validTasks.sort((a,b) => parseISO(a.date).getTime() - parseISO(b.date).getTime())[0].date);
     const planStartDate = startOfWeek(planStartDateRef, { weekStartsOn: 1 });
     const weeklyCompletion: { [week: string]: number } = {};
     
     completedTasks.forEach(task => {
-      try {
-        const taskDate = parseISO(task.date);
-        const weekNumber = differenceInWeeks(taskDate, planStartDate) + 1;
-        if (weekNumber < 1) return; 
-        const weekKey = `Week ${weekNumber}`;
-        weeklyCompletion[weekKey] = (weeklyCompletion[weekKey] || 0) + 1;
-      } catch { /* ignore invalid task dates for this calculation */ }
+      if (!task.date || !isValid(parseISO(task.date))) return;
+      const taskDate = parseISO(task.date);
+      const weekNumber = differenceInWeeks(taskDate, planStartDate) + 1;
+      if (weekNumber < 1) return; 
+      const weekKey = `Week ${weekNumber}`;
+      weeklyCompletion[weekKey] = (weeklyCompletion[weekKey] || 0) + 1;
     });
 
     return Object.entries(weeklyCompletion)
       .map(([week, count]) => ({ week, tasksCompleted: count }))
       .sort((a,b) => parseInt(a.week.split(' ')[1]) - parseInt(b.week.split(' ')[1]));
-  }, [currentStudyPlan]);
+  }, [currentStudyPlanForAnalytics]);
 
   const performanceChartConfig: ChartConfig = {
     tasksCompleted: { label: "Tasks Completed", color: "hsl(var(--chart-1))" },
   };
 
   const subjectFocusData = useMemo(() => {
-    if (!currentStudyPlan?.planDetails || !currentStudyPlan.tasks) return [];
-    const { subjects } = currentStudyPlan.planDetails;
+    if (!currentStudyPlanForAnalytics?.planDetails || !currentStudyPlanForAnalytics.tasks) return [];
+    const { subjects } = currentStudyPlanForAnalytics.planDetails;
     const subjectArray = subjects.split(',').map(s => s.trim().toLowerCase()).filter(s => s.length > 0);
     if (subjectArray.length === 0) return [];
 
-    const completedTasks = currentStudyPlan.tasks.filter(t => t.completed);
+    const completedTasks = currentStudyPlanForAnalytics.tasks.filter(t => t.completed);
     if (completedTasks.length === 0) return [];
 
     const subjectCounts: { [subject: string]: number } = {};
@@ -218,7 +208,6 @@ export default function AnalyticsPage() {
     const totalCompletedWithSubject = Object.values(subjectCounts).reduce((sum, count) => sum + count, 0);
     if (totalCompletedWithSubject === 0) return subjectArray.map((name, index) => ({ name: name.charAt(0).toUpperCase() + name.slice(1), value: 0, fill: chartColors[index % chartColors.length] }));
 
-
     return Object.entries(subjectCounts)
       .map(([name, count], index) => ({
         name: name.charAt(0).toUpperCase() + name.slice(1),
@@ -226,7 +215,7 @@ export default function AnalyticsPage() {
         fill: chartColors[index % chartColors.length],
       }))
       .filter(item => item.value > 0);
-  }, [currentStudyPlan]);
+  }, [currentStudyPlanForAnalytics]);
 
 
   const subjectChartConfig = useMemo(() =>
@@ -237,25 +226,20 @@ export default function AnalyticsPage() {
   , [subjectFocusData]);
 
   const dailyCompletionData = useMemo(() => {
-    if (!currentStudyPlan || !currentStudyPlan.tasks) return [];
+    if (!currentStudyPlanForAnalytics || !currentStudyPlanForAnalytics.tasks) return [];
     const dailyMap: { [date: string]: number } = {};
     
-    currentStudyPlan.tasks.filter(t => t.completed).forEach(task => {
-      try {
-        const formattedDate = format(parseISO(task.date), 'MMM d');
-        dailyMap[formattedDate] = (dailyMap[formattedDate] || 0) + 1;
-      } catch { /* ignore */ }
+    currentStudyPlanForAnalytics.tasks.filter(t => t.completed && t.date && isValid(parseISO(t.date))).forEach(task => {
+      const formattedDate = format(parseISO(task.date), 'MMM d');
+      dailyMap[formattedDate] = (dailyMap[formattedDate] || 0) + 1;
     });
 
     return Object.entries(dailyMap).map(([date, tasks]) => {
-        const originalTask = currentStudyPlan.tasks.find(t => {
-            try { return format(parseISO(t.date), 'MMM d') === date && t.completed; }
-            catch { return false; }
-        });
+        const originalTask = currentStudyPlanForAnalytics.tasks.find(t => t.date && isValid(parseISO(t.date)) && format(parseISO(t.date), 'MMM d') === date && t.completed);
         return { date, tasks, originalDate: originalTask ? parseISO(originalTask.date) : new Date(0) }; 
     }).sort((a,b) => a.originalDate.getTime() - b.originalDate.getTime())
       .map(({date, tasks}) => ({date, tasks}));
-  }, [currentStudyPlan]);
+  }, [currentStudyPlanForAnalytics]);
 
   const dailyCompletionChartConfig: ChartConfig = {
     tasks: { label: "Tasks Completed", color: "hsl(var(--chart-1))" },
@@ -271,7 +255,7 @@ export default function AnalyticsPage() {
     );
   }
 
-  if (!currentStudyPlan || !currentStudyPlan.planDetails) {
+  if (!currentStudyPlanForAnalytics || !currentStudyPlanForAnalytics.planDetails) {
     return (
       <AppLayout>
         <main id="analytics" className="app-main active py-10">
@@ -280,7 +264,7 @@ export default function AnalyticsPage() {
                 <HelpCircle className="h-4 w-4" />
                 <AlertTitle>No Study Plan Found</AlertTitle>
                 <AlertDescription>
-                  Create a study plan to see your analytics here.
+                  Complete a study plan to see your analytics and reflections here. Create a new one on the AI Planner page.
                 </AlertDescription>
               </Alert>
           </div>
@@ -295,6 +279,9 @@ export default function AnalyticsPage() {
         <div className="container mx-auto py-6 px-4 md:px-6">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
             <h1 className="text-3xl font-bold tracking-tight">Study Analytics</h1>
+            <p className="text-sm text-muted-foreground mt-1 md:mt-0">
+                Displaying analytics for: <span className="font-semibold text-primary">{currentStudyPlanForAnalytics.planDetails.subjects}</span> (Updated: {format(parseISO(currentStudyPlanForAnalytics.updatedAt), 'PPp')})
+            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
@@ -314,7 +301,7 @@ export default function AnalyticsPage() {
                     </ResponsiveContainer>
                   </ChartContainer>
                 ) : (
-                  <p className="text-center text-muted-foreground pt-10">No task completion data yet to show trends.</p>
+                  <p className="text-center text-muted-foreground pt-10">No task completion data yet to show trends for this plan.</p>
                 )}
               </CardContent>
             </Card>
@@ -336,7 +323,7 @@ export default function AnalyticsPage() {
                     </ResponsiveContainer>
                   </ChartContainer>
                 ) : (
-                   <p className="text-center text-muted-foreground pt-10">No subject focus data to display. Complete tasks to see your focus areas.</p>
+                   <p className="text-center text-muted-foreground pt-10">No subject focus data to display. Complete tasks to see focus.</p>
                 )}
               </CardContent>
             </Card>
@@ -356,7 +343,7 @@ export default function AnalyticsPage() {
                       </ResponsiveContainer>
                     </ChartContainer>
                 ) : (
-                  <p className="text-center text-muted-foreground pt-10">No tasks completed yet for daily tracking.</p>
+                  <p className="text-center text-muted-foreground pt-10">No tasks completed yet for daily tracking in this plan.</p>
                 )}
               </CardContent>
             </Card>
@@ -370,7 +357,7 @@ export default function AnalyticsPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {currentStudyPlan?.status === 'completed' ? (
+                {currentStudyPlanForAnalytics?.status === 'completed' ? (
                   isGeneratingReflection ? (
                     <div className="flex flex-col items-center justify-center p-6">
                       <Loader2 className="h-10 w-10 animate-spin text-primary mb-3" />
@@ -400,14 +387,14 @@ export default function AnalyticsPage() {
                       <AlertCircleIcon className="h-4 w-4" />
                       <AlertTitle>Reflection Not Available</AlertTitle>
                       <AlertDescription>
-                          We couldn't generate a reflection for this completed plan at the moment. This might be due to a lack of task data or an AI processing error.
+                          We couldn't generate a reflection for this completed plan. This might be due to a lack of task data or an AI processing error.
                       </AlertDescription>
                     </Alert>
                   )
                 ) : (
                   <>
                     <p className="text-sm text-muted-foreground mb-4">
-                        Complete your study plan to receive personalized AI reflections on your performance. Here are some examples of what ReflectionAI might provide:
+                        Complete your study plan to receive personalized AI reflections. Example insights:
                     </p>
                     <div className="space-y-3">
                       {staticExampleRecommendations.map((rec, idx) => (
@@ -429,4 +416,3 @@ export default function AnalyticsPage() {
     </AppLayout>
   );
 }
-

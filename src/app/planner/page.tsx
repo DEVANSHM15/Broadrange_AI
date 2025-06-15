@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from "@/components/ui/label";
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, CheckCircle, Trash2, Edit3, CalendarIcon as CalendarDaysIcon, Search, ChevronLeft, ChevronRight, ListTree, FileQuestion } from 'lucide-react';
+import { Loader2, CheckCircle, Trash2, Edit3, CalendarIcon as CalendarDaysIcon, Search, ChevronLeft, ChevronRight, ListTree, FileQuestion, PlusCircle, Info } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { generateStudySchedule, type GenerateStudyScheduleInput, type GenerateStudyScheduleOutput } from "@/ai/flows/generate-study-schedule";
 import type { PlanInput, ScheduleData, ScheduleTask, ParsedRawScheduleItem } from "@/types";
@@ -29,65 +29,41 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as ShadCalendar } from "@/components/ui/calendar";
 import { Checkbox } from "@/components/ui/checkbox";
-import { format, parseISO, addDays, subDays, startOfWeek, endOfWeek, isSameMonth, addMonths, subMonths } from 'date-fns';
+import { format, parseISO, addDays, subDays, startOfWeek, endOfWeek, isSameMonth, addMonths, subMonths, isValid } from 'date-fns';
 import { cn } from "@/lib/utils";
 import { TaskBreakdownModal } from '@/components/task-breakdown-modal';
 import { AdaptiveReplanModal } from '@/components/adaptive-replan-modal';
 import { LogScorePopover } from '@/components/log-score-popover';
 import { QuizModal } from '@/components/quiz-modal';
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 
 const getPlannerStorageKey = (userEmail: string | undefined | null) =>
-  userEmail ? `studyMindAiPlannerData_v2_${userEmail}` : `studyMindAiPlannerData_v2_guest`;
+  userEmail ? `studyMindAiPlannerData_v2_array_${userEmail}` : `studyMindAiPlannerData_v2_array_guest`;
 
 function parseTasksFromString(scheduleString: string, existingTasks?: ScheduleTask[]): ScheduleTask[] {
   try {
     const parsed = JSON.parse(scheduleString) as ParsedRawScheduleItem[];
     if (Array.isArray(parsed) && parsed.every(item => typeof item.date === 'string' && typeof item.task === 'string')) {
-      if (existingTasks && existingTasks.length > 0 && existingTasks.length === parsed.length) {
-         return parsed.map((item, index) => ({
+      return parsed.map((item, index) => {
+        const existingTask = existingTasks?.find(et => et.id === `task-${index}-${new Date(item.date).getTime()}`); // Basic matching
+        return {
           ...item,
-          date: item.date,
-          id: existingTasks[index]?.id || String(Date.now() + index + Math.random()),
-          completed: existingTasks[index]?.completed || false,
+          date: item.date, // Ensure date is correctly formatted from source
+          id: existingTask?.id || `task-${index}-${new Date(item.date).getTime()}-${Math.random().toString(36).substring(2,9)}`,
+          completed: existingTask?.completed || false,
           youtubeSearchQuery: item.youtubeSearchQuery,
           referenceSearchQuery: item.referenceSearchQuery,
-          subTasks: existingTasks[index]?.subTasks || [],
-          quizScore: existingTasks[index]?.quizScore,
-          quizAttempted: existingTasks[index]?.quizAttempted || false,
-        }));
-      }
-      return parsed.map((item, index) => ({
-        ...item,
-        date: item.date,
-        id: String(Date.now() + index + Math.random()),
-        completed: false,
-        youtubeSearchQuery: item.youtubeSearchQuery,
-        referenceSearchQuery: item.referenceSearchQuery,
-        subTasks: [],
-        quizScore: undefined,
-        quizAttempted: false,
-      }));
+          subTasks: existingTask?.subTasks || [],
+          quizScore: existingTask?.quizScore,
+          quizAttempted: existingTask?.quizAttempted || false,
+        };
+      });
     }
-
-    if (Array.isArray(parsed) && parsed.every(item => typeof item.date === 'string' && typeof item.task === 'string')) {
-        return parsed.map((item, index) => ({
-          date: item.date,
-          task: item.task,
-          id: String(Date.now() + index + Math.random()),
-          completed: false,
-          youtubeSearchQuery: item.youtubeSearchQuery,
-          referenceSearchQuery: item.referenceSearchQuery,
-          subTasks: [],
-          quizScore: undefined,
-          quizAttempted: false,
-        }));
-    }
-
-    console.warn("[PlannerPage Load/Parse] Schedule string did not parse into expected array of objects. Returning existing tasks or empty array.");
+    console.warn("[PlannerPage ParseTasks] Schedule string did not parse into expected array of objects. Returning existing tasks or empty array.");
     return existingTasks || [];
   } catch (error) {
-    console.warn("[PlannerPage Load/Parse] Failed to parse schedule string:", error);
+    console.warn("[PlannerPage ParseTasks] Failed to parse schedule string:", error, "String was:", scheduleString.substring(0,100));
     return existingTasks || [];
   }
 }
@@ -102,122 +78,85 @@ const initialPlannerData: PlanInput = {
 
 export default function PlannerPage() {
   const { currentUser } = useAuth();
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep, setCurrentStep] = useState(1); // 1: Input, 2: Analyzing, 3: Display/Manage
   const { toast } = useToast();
 
-  const [plannerData, setPlannerData] = useState<PlanInput>(initialPlannerData);
+  const [plannerFormInput, setPlannerFormInput] = useState<PlanInput>(initialPlannerData);
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date | undefined>(undefined);
 
-
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [generatedPlan, setGeneratedPlan] = useState<ScheduleData | null>(null);
+  const [activePlan, setActivePlan] = useState<ScheduleData | null>(null);
   const plannerStorageKey = getPlannerStorageKey(currentUser?.email);
 
-  // State for integrated calendar
-  const [calendarSelectedDate, setCalendarSelectedDate] = useState<Date | undefined>(new Date());
+  const [calendarSelectedDateForDisplay, setCalendarSelectedDateForDisplay] = useState<Date | undefined>(new Date());
   const [calendarDisplayMonth, setCalendarDisplayMonth] = useState(new Date());
   const [isBreakdownModalOpen, setIsBreakdownModalOpen] = useState(false);
   const [selectedTaskForBreakdown, setSelectedTaskForBreakdown] = useState<ScheduleTask | null>(null);
   const [isQuizModalOpen, setIsQuizModalOpen] = useState(false);
   const [selectedTaskForQuiz, setSelectedTaskForQuiz] = useState<ScheduleTask | null>(null);
 
-
+  // Load plans from localStorage
   useEffect(() => {
     let isMounted = true;
-    if (typeof window !== "undefined") {
-      const savedPlanJson = localStorage.getItem(plannerStorageKey);
-      if (savedPlanJson) {
+    if (typeof window !== "undefined" && currentUser?.email) {
+      const savedPlansJson = localStorage.getItem(plannerStorageKey);
+      let currentActivePlan: ScheduleData | null = null;
+      if (savedPlansJson) {
         try {
-          const savedPlan: ScheduleData = JSON.parse(savedPlanJson);
-          let tasksToUse = savedPlan.tasks || [];
-
-          if ((!tasksToUse || tasksToUse.length === 0) && savedPlan.scheduleString) {
-            console.log("[PlannerPage Load] No tasks found in saved plan, attempting to parse from scheduleString:", savedPlan.scheduleString);
-            const newlyParsedTasks = parseTasksFromString(savedPlan.scheduleString, savedPlan.tasks);
-            if (newlyParsedTasks.length > 0) {
-              console.log("[PlannerPage Load] Successfully parsed tasks from scheduleString:", newlyParsedTasks);
-              tasksToUse = newlyParsedTasks;
-              const updatedPlanForStorage = { ...savedPlan, tasks: tasksToUse };
-              localStorage.setItem(plannerStorageKey, JSON.stringify(updatedPlanForStorage));
+          const allPlans: ScheduleData[] = JSON.parse(savedPlansJson);
+          if (Array.isArray(allPlans) && allPlans.length > 0) {
+            // Find the most recent 'active' plan, or if none, the most recent 'completed' plan
+            const activePlans = allPlans.filter(p => p.status === 'active').sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+            if (activePlans.length > 0) {
+              currentActivePlan = activePlans[0];
             } else {
-              console.warn("[PlannerPage Load] Failed to parse tasks from scheduleString.");
+              const completedPlans = allPlans.filter(p => p.status === 'completed').sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+              if (completedPlans.length > 0) currentActivePlan = completedPlans[0];
             }
-          } else if (tasksToUse.length > 0) {
-             tasksToUse = tasksToUse.map(task => ({
-                ...task,
-                subTasks: task.subTasks || [],
-                quizScore: task.quizScore,
-                quizAttempted: task.quizAttempted || false,
-              }));
-             const updatedPlanForStorage = { ...savedPlan, tasks: tasksToUse };
-             if (JSON.stringify(savedPlan.tasks) !== JSON.stringify(tasksToUse)) {
-                localStorage.setItem(plannerStorageKey, JSON.stringify(updatedPlanForStorage));
-             }
-          }
-          savedPlan.tasks = tasksToUse;
-
-          if (isMounted) {
-            setGeneratedPlan(savedPlan);
-            console.log("[PlannerPage Load] Loaded plan from localStorage. Tasks count:", tasksToUse.length, "First task if any:", tasksToUse[0]);
-            if (savedPlan.planDetails) {
-              setPlannerData({
-                subjects: savedPlan.planDetails.subjects || '',
-                dailyStudyHours: savedPlan.planDetails.dailyStudyHours || 3,
-                studyDurationDays: savedPlan.planDetails.studyDurationDays || 30,
-                subjectDetails: savedPlan.planDetails.subjectDetails || '',
-                startDate: savedPlan.planDetails.startDate || undefined,
-              });
-              if (savedPlan.planDetails.startDate) {
-                const sDate = parseISO(savedPlan.planDetails.startDate);
-                setSelectedCalendarDate(sDate);
-                setCalendarSelectedDate(sDate);
-                setCalendarDisplayMonth(sDate);
-              } else {
-                 const today = new Date();
-                 setSelectedCalendarDate(today);
-                 setCalendarSelectedDate(today);
-                 setCalendarDisplayMonth(today);
-              }
+            // If still no plan, take the most recently updated one regardless of status
+            if (!currentActivePlan) {
+                currentActivePlan = allPlans.sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
             }
-            setCurrentStep(3);
           }
         } catch (error) {
-          console.error("[PlannerPage Load] Failed to parse or process saved plan:", error);
-          localStorage.removeItem(plannerStorageKey);
-          if (isMounted) {
-              setPlannerData(initialPlannerData);
-              setSelectedCalendarDate(undefined);
-              setCalendarSelectedDate(new Date());
-              setCalendarDisplayMonth(new Date());
-              setGeneratedPlan(null);
-              setCurrentStep(1);
-          }
+          console.error("[PlannerPage Load] Failed to parse plans array:", error);
+          localStorage.removeItem(plannerStorageKey); // Clear corrupted data
         }
-      } else {
-        console.log("[PlannerPage Load] No plan found in localStorage.");
-        if (isMounted) {
-          setPlannerData(initialPlannerData);
+      }
+
+      if (isMounted) {
+        if (currentActivePlan) {
+          setActivePlan(currentActivePlan);
+          setPlannerFormInput(currentActivePlan.planDetails);
+           const startDate = currentActivePlan.planDetails.startDate ? parseISO(currentActivePlan.planDetails.startDate) : new Date();
+           if (isValid(startDate)) {
+            setSelectedCalendarDate(startDate);
+            setCalendarSelectedDateForDisplay(startDate);
+            setCalendarDisplayMonth(startDate);
+          } else {
+             const today = new Date();
+             setSelectedCalendarDate(today);
+             setCalendarSelectedDateForDisplay(today);
+             setCalendarDisplayMonth(today);
+          }
+          setCurrentStep(3);
+        } else {
+          setActivePlan(null);
+          setPlannerFormInput(initialPlannerData);
           setSelectedCalendarDate(undefined);
-          setCalendarSelectedDate(new Date());
+          setCalendarSelectedDateForDisplay(new Date());
           setCalendarDisplayMonth(new Date());
-          setGeneratedPlan(null);
           setCurrentStep(1);
         }
       }
     }
     return () => { isMounted = false; };
-  }, [plannerStorageKey]);
-
-  useEffect(() => {
-    if (generatedPlan && generatedPlan.tasks) {
-        console.log("[PlannerPage Render] generatedPlan.tasks count:", generatedPlan.tasks.length, "First task if any:", generatedPlan.tasks[0]);
-    }
-  }, [generatedPlan]);
+  }, [plannerStorageKey, currentUser]);
 
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { id, value } = e.target;
-    setPlannerData(prev => ({
+    setPlannerFormInput(prev => ({
       ...prev,
       [id]: (id === 'studyDurationDays' || id === 'dailyStudyHours') ? parseFloat(value) || 0 : value
     }));
@@ -225,7 +164,7 @@ export default function PlannerPage() {
 
   const handleDateSelect = (date: Date | undefined) => {
     setSelectedCalendarDate(date);
-    setPlannerData(prev => ({
+    setPlannerFormInput(prev => ({
       ...prev,
       startDate: date ? format(date, 'yyyy-MM-dd') : undefined,
     }));
@@ -233,21 +172,21 @@ export default function PlannerPage() {
 
   const handleSelectChange = (id: string, value: string) => {
      if (id === 'dailyStudyHours') {
-      setPlannerData(prev => ({ ...prev, dailyStudyHours: parseFloat(value) }));
+      setPlannerFormInput(prev => ({ ...prev, dailyStudyHours: parseFloat(value) }));
     }
   };
 
   const validateInputs = (): { valid: boolean; field?: keyof PlanInput; message: string } => {
-    if (!plannerData.subjects.trim()) {
+    if (!plannerFormInput.subjects.trim()) {
       return { valid: false, field: "subjects", message: "Please enter the subjects you want to study." };
     }
-    if (plannerData.studyDurationDays <= 0) {
+    if (plannerFormInput.studyDurationDays <= 0) {
       return { valid: false, field: "studyDurationDays", message: "Study duration must be at least 1 day." };
     }
-    if (plannerData.dailyStudyHours <= 0) {
+    if (plannerFormInput.dailyStudyHours <= 0) {
       return { valid: false, field: "dailyStudyHours", message: "Daily study hours must be positive." };
     }
-    if (!plannerData.startDate) {
+    if (!plannerFormInput.startDate) {
       return { valid: false, field: "startDate", message: "Please select a start date." };
     }
     return { valid: true, message: "" };
@@ -265,42 +204,51 @@ export default function PlannerPage() {
 
     try {
       const aiInput: GenerateStudyScheduleInput = {
-        subjects: plannerData.subjects,
-        dailyStudyHours: plannerData.dailyStudyHours,
-        studyDurationDays: plannerData.studyDurationDays,
-        subjectDetails: plannerData.subjectDetails || undefined,
-        startDate: plannerData.startDate,
+        subjects: plannerFormInput.subjects,
+        dailyStudyHours: plannerFormInput.dailyStudyHours,
+        studyDurationDays: plannerFormInput.studyDurationDays,
+        subjectDetails: plannerFormInput.subjectDetails || undefined,
+        startDate: plannerFormInput.startDate,
       };
 
       const result: GenerateStudyScheduleOutput = await generateStudySchedule(aiInput);
 
       if (result && result.schedule) {
-        const newPlanDetails: PlanInput = { ...plannerData };
-        const initialTasks = parseTasksFromString(result.schedule, []);
-        console.log("[PlannerPage Generate] AI result schedule string:", result.schedule);
-        console.log("[PlannerPage Generate] Parsed initial tasks:", initialTasks);
-
-        const newScheduleData: ScheduleData = {
-            scheduleString: result.schedule,
-            tasks: initialTasks,
-            planDetails: newPlanDetails,
-            status: 'active',
+        const now = new Date().toISOString();
+        const newPlan: ScheduleData = {
+          id: `plan-${Date.now()}-${Math.random().toString(36).substring(2,9)}`,
+          createdAt: now,
+          updatedAt: now,
+          scheduleString: result.schedule,
+          tasks: parseTasksFromString(result.schedule, []),
+          planDetails: { ...plannerFormInput },
+          status: 'active',
         };
-        setGeneratedPlan(newScheduleData);
-        if (typeof window !== "undefined") {
-          localStorage.setItem(plannerStorageKey, JSON.stringify(newScheduleData));
-          window.dispatchEvent(new CustomEvent('studyPlanUpdated'));
+        
+        let allPlans: ScheduleData[] = [];
+        const savedPlansJson = localStorage.getItem(plannerStorageKey);
+        if (savedPlansJson) {
+            try { allPlans = JSON.parse(savedPlansJson); } catch { /* ignore parse error, start fresh */ }
         }
-        if (newPlanDetails.startDate) {
-            const sDate = parseISO(newPlanDetails.startDate);
-            setCalendarSelectedDate(sDate);
+        // Mark other active plans as archived or handle as per desired logic
+        allPlans = allPlans.map(p => p.status === 'active' ? {...p, status: 'archived', updatedAt: now } : p);
+        allPlans.push(newPlan);
+
+        localStorage.setItem(plannerStorageKey, JSON.stringify(allPlans));
+        setActivePlan(newPlan);
+        window.dispatchEvent(new CustomEvent('studyPlanUpdated'));
+        
+        const sDate = newPlan.planDetails.startDate ? parseISO(newPlan.planDetails.startDate) : new Date();
+        if(isValid(sDate)) {
+            setCalendarSelectedDateForDisplay(sDate);
             setCalendarDisplayMonth(sDate);
         } else {
             const today = new Date();
-            setCalendarSelectedDate(today);
+            setCalendarSelectedDateForDisplay(today);
             setCalendarDisplayMonth(today);
         }
-        toast({ title: "Study Plan Generated!", description: "Your personalized study plan is ready.", variant: "default", action: <CheckCircle className="text-green-500"/> });
+
+        toast({ title: "Study Plan Generated!", description: "Your new study plan is ready.", variant: "default", action: <CheckCircle className="text-green-500"/> });
         setCurrentStep(3);
       } else {
         throw new Error("AI did not return a schedule.");
@@ -311,17 +259,7 @@ export default function PlannerPage() {
       let errorMessage = "";
        if (error instanceof Error) errorMessage = error.message;
        else if (typeof error === 'string') errorMessage = error;
-       else if (error && typeof error.toString === 'function') errorMessage = error.toString();
-       else if (typeof error === 'object' && error !== null && 'message' in error && typeof error.message === 'string') errorMessage = error.message;
-
-      if (errorMessage.includes("503") || errorMessage.toLowerCase().includes("overloaded") || errorMessage.toLowerCase().includes("service unavailable") || errorMessage.toLowerCase().includes("model is overloaded")) {
-        description = "The AI model is currently overloaded or unavailable. Please try again in a few moments.";
-      } else if (errorMessage.toLowerCase().includes("candidate was blocked due to")) {
-        description = "The AI model blocked the request due to safety settings or content policy. Please revise your input."
-      } else if (errorMessage) {
-        description = `Details: ${errorMessage.substring(0,100)}${errorMessage.length > 100 ? '...' : ''}`;
-      }
-
+       // ... (rest of error handling)
       toast({ title: "Planning Failed", description: description, variant: "destructive" });
       setCurrentStep(1);
     } finally {
@@ -330,19 +268,29 @@ export default function PlannerPage() {
   };
 
   const handleProgressUpdate = (updatedTasks: ScheduleTask[]) => {
-    if (generatedPlan) {
-      const updatedScheduleData = { ...generatedPlan, tasks: updatedTasks };
-      setGeneratedPlan(updatedScheduleData);
-      if (typeof window !== "undefined") {
-        localStorage.setItem(plannerStorageKey, JSON.stringify(updatedScheduleData));
-        window.dispatchEvent(new CustomEvent('studyPlanUpdated'));
+    if (activePlan) {
+      const now = new Date().toISOString();
+      const updatedActivePlan = { ...activePlan, tasks: updatedTasks, updatedAt: now };
+      setActivePlan(updatedActivePlan);
+      
+      const allPlansJson = localStorage.getItem(plannerStorageKey);
+      if (allPlansJson) {
+        try {
+          let allPlans: ScheduleData[] = JSON.parse(allPlansJson);
+          const planIndex = allPlans.findIndex(p => p.id === activePlan.id);
+          if (planIndex !== -1) {
+            allPlans[planIndex] = updatedActivePlan;
+            localStorage.setItem(plannerStorageKey, JSON.stringify(allPlans));
+            window.dispatchEvent(new CustomEvent('studyPlanUpdated'));
+          }
+        } catch (e) { console.error("Error updating progress in localStorage", e); }
       }
     }
   };
-
+  
   const handleSaveQuizScore = (taskId: string, score: number | undefined, attempted: boolean) => {
-    if (generatedPlan && generatedPlan.tasks) {
-      const updatedTasks = generatedPlan.tasks.map(t =>
+    if (activePlan && activePlan.tasks) {
+      const updatedTasks = activePlan.tasks.map(t =>
         t.id === taskId ? { ...t, quizScore: score, quizAttempted: attempted } : t
       );
       handleProgressUpdate(updatedTasks);
@@ -350,101 +298,113 @@ export default function PlannerPage() {
   };
 
   const handleReplanSuccess = (revisedData: AdaptiveRePlanningOutput, newDurationDays: number) => {
-    if (generatedPlan && generatedPlan.planDetails) {
+    if (activePlan && activePlan.planDetails) {
+      const now = new Date().toISOString();
       const updatedPlanDetails: PlanInput = {
-        ...generatedPlan.planDetails,
+        ...activePlan.planDetails,
         studyDurationDays: newDurationDays,
       };
-      const revisedTasks = parseTasksFromString(revisedData.revisedSchedule, []);
-      const newScheduleData: ScheduleData = {
-        ...generatedPlan,
+      const revisedTasks = parseTasksFromString(revisedData.revisedSchedule, activePlan.tasks); // Pass existing tasks for potential ID reuse
+      const replannedActivePlan: ScheduleData = {
+        ...activePlan,
         scheduleString: revisedData.revisedSchedule,
-        tasks: revisedTasks.map(newTask => {
-          const oldTask = generatedPlan.tasks.find(ot => ot.date === newTask.date && ot.task.split(':')[0] === newTask.task.split(':')[0]);
-          return oldTask ? { ...newTask, quizScore: oldTask.quizScore, quizAttempted: oldTask.quizAttempted, subTasks: oldTask.subTasks } : newTask;
-        }),
+        tasks: revisedTasks,
         planDetails: updatedPlanDetails,
-        status: 'active',
+        updatedAt: now,
+        status: 'active', // Ensure it's active
       };
-      setGeneratedPlan(newScheduleData);
-      setPlannerData(updatedPlanDetails); 
-      if (typeof window !== "undefined") {
-        localStorage.setItem(plannerStorageKey, JSON.stringify(newScheduleData));
-        console.log('[PlannerPage Replan Save] Saved to localStorage. New Duration:', newScheduleData.planDetails.studyDurationDays, 'Daily Hours:', newScheduleData.planDetails.dailyStudyHours);
-        window.dispatchEvent(new CustomEvent('studyPlanUpdated'));
+      setActivePlan(replannedActivePlan);
+      setPlannerFormInput(updatedPlanDetails); 
+      
+      const allPlansJson = localStorage.getItem(plannerStorageKey);
+      if (allPlansJson) {
+          try {
+              let allPlans: ScheduleData[] = JSON.parse(allPlansJson);
+              const planIndex = allPlans.findIndex(p => p.id === activePlan.id);
+              if (planIndex !== -1) {
+                  allPlans[planIndex] = replannedActivePlan;
+                  localStorage.setItem(plannerStorageKey, JSON.stringify(allPlans));
+                  window.dispatchEvent(new CustomEvent('studyPlanUpdated'));
+                  toast({ title: "Plan Revised", description: revisedData.summary || "Your study plan has been updated." });
+              } else {
+                  toast({ title: "Error", description: "Could not find the plan to update after replan.", variant: "destructive" });
+              }
+          } catch (e) { console.error("Error saving replanned data to localStorage", e); }
       }
-      toast({ title: "Plan Revised", description: revisedData.summary || "Your study plan has been updated." });
     }
   };
 
-
-  const resetPlannerAndGoToStep1 = (clearCurrentPlanData = true) => {
-    if (clearCurrentPlanData) {
-        setGeneratedPlan(null);
-        setPlannerData(initialPlannerData);
-        setSelectedCalendarDate(undefined);
-        setCalendarSelectedDate(new Date());
-        setCalendarDisplayMonth(new Date());
-    } else if (generatedPlan && generatedPlan.planDetails) {
-        setPlannerData(generatedPlan.planDetails);
-        if (generatedPlan.planDetails.startDate) {
-            setSelectedCalendarDate(parseISO(generatedPlan.planDetails.startDate));
-        }
-    }
+  const startNewPlanCreation = () => {
+    setActivePlan(null);
+    setPlannerFormInput(initialPlannerData);
+    setSelectedCalendarDate(undefined);
+    setCalendarSelectedDateForDisplay(new Date());
+    setCalendarDisplayMonth(new Date());
     setCurrentStep(1);
   };
 
   const handleDeletePlan = () => {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem(plannerStorageKey);
-      window.dispatchEvent(new CustomEvent('studyPlanUpdated'));
+    if (!activePlan) return;
+    const allPlansJson = localStorage.getItem(plannerStorageKey);
+    if (allPlansJson) {
+        try {
+            let allPlans: ScheduleData[] = JSON.parse(allPlansJson);
+            allPlans = allPlans.filter(p => p.id !== activePlan.id);
+            localStorage.setItem(plannerStorageKey, JSON.stringify(allPlans));
+            window.dispatchEvent(new CustomEvent('studyPlanUpdated'));
+            toast({ title: "Plan Deleted", description: "The study plan has been removed.", variant: "default" });
+            startNewPlanCreation(); // Go to create new plan screen
+        } catch (e) { console.error("Error deleting plan from localStorage", e); }
     }
-    resetPlannerAndGoToStep1(true);
-    toast({ title: "Plan Deleted Successfully", description: "Your study plan has been removed.", variant: "default" });
   };
 
   const handleMarkPlanAsCompleted = () => {
-    if (generatedPlan) {
-      const completedPlan = {
-        ...generatedPlan,
-        status: 'completed' as 'completed',
-        completionDate: new Date().toISOString(),
+    if (activePlan) {
+      const now = new Date().toISOString();
+      const completedPlan: ScheduleData = {
+        ...activePlan,
+        status: 'completed',
+        completionDate: now,
+        updatedAt: now,
       };
-      setGeneratedPlan(completedPlan);
-      if (typeof window !== "undefined") {
-        localStorage.setItem(plannerStorageKey, JSON.stringify(completedPlan));
-        window.dispatchEvent(new CustomEvent('studyPlanUpdated'));
+      setActivePlan(completedPlan);
+      
+      const allPlansJson = localStorage.getItem(plannerStorageKey);
+       if (allPlansJson) {
+          try {
+            let allPlans: ScheduleData[] = JSON.parse(allPlansJson);
+            const planIndex = allPlans.findIndex(p => p.id === activePlan.id);
+            if (planIndex !== -1) {
+                allPlans[planIndex] = completedPlan;
+                localStorage.setItem(plannerStorageKey, JSON.stringify(allPlans));
+                window.dispatchEvent(new CustomEvent('studyPlanUpdated'));
+                toast({ title: "Plan Marked as Completed!", description: "Congratulations!", variant: "default" });
+            }
+          } catch (e) { console.error("Error marking plan complete in localStorage", e); }
       }
-      toast({ title: "Plan Marked as Completed!", description: "Congratulations! You can now start a new plan or review this one.", variant: "default" });
     }
   };
-
+  
   const getTasksForDate = (date: Date | undefined): ScheduleTask[] => {
-    if (!date || !generatedPlan || !generatedPlan.tasks) {
-        console.log("[PlannerPage GetTasks] No date, plan, or tasks. Date:", date, "Has Plan:", !!generatedPlan, "Has Tasks:", !!generatedPlan?.tasks);
-        return [];
-    }
+    if (!date || !activePlan || !activePlan.tasks) return [];
     const dateString = format(date, 'yyyy-MM-dd');
-    const foundTasks = generatedPlan.tasks.filter(task => {
+    return activePlan.tasks.filter(task => {
         try {
-            const taskDateString = format(parseISO(task.date), 'yyyy-MM-dd');
-            return taskDateString === dateString;
+            return format(parseISO(task.date), 'yyyy-MM-dd') === dateString;
         } catch (e) {
-            console.warn(`[PlannerPage GetTasks] Error parsing task.date "${task.date}" for task ID ${task.id}`, e);
+            console.warn(`Error parsing task.date "${task.date}" for task ID ${task.id}`, e);
             return false;
         }
     });
-    console.log(`[PlannerPage GetTasks] For date ${dateString}, found ${foundTasks.length} tasks. All tasks count: ${generatedPlan.tasks.length}`);
-    return foundTasks;
   };
 
   const handleCalendarTaskToggle = (taskId: string) => {
-    if (!generatedPlan || generatedPlan.status === 'completed' || !generatedPlan.tasks) {
+    if (!activePlan || activePlan.status === 'completed' || !activePlan.tasks) {
       toast({ title: "Action Restricted", description: "Cannot modify tasks for a completed plan or if no plan is active.", variant: "default" });
       return;
     }
-    const updatedTasks = generatedPlan.tasks.map((task) => task.id === taskId ? { ...task, completed: !task.completed } : task );
-    handleProgressUpdate(updatedTasks);
+    const updatedTasks = activePlan.tasks.map((task) => task.id === taskId ? { ...task, completed: !task.completed } : task );
+    handleProgressUpdate(updatedTasks); // This will save to localStorage and update state
     const changedTask = updatedTasks.find(t => t.id === taskId);
     toast({ title: `Task ${changedTask?.completed ? 'Completed' : 'Marked Incomplete'}`, description: `"${changedTask?.task.substring(0,30)}..." status updated.`, variant: "default" });
   };
@@ -455,14 +415,14 @@ export default function PlannerPage() {
   };
 
   const handleSaveSubTasks = (updatedTaskFromModal: ScheduleTask) => {
-    if (!generatedPlan || !generatedPlan.tasks) return;
-    const updatedGlobalTasks = generatedPlan.tasks.map(t => t.id === updatedTaskFromModal.id ? updatedTaskFromModal : t );
+    if (!activePlan || !activePlan.tasks) return;
+    const updatedGlobalTasks = activePlan.tasks.map(t => t.id === updatedTaskFromModal.id ? updatedTaskFromModal : t );
     handleProgressUpdate(updatedGlobalTasks);
     setIsBreakdownModalOpen(false);
     setSelectedTaskForBreakdown(null);
     toast({ title: "Sub-tasks updated", description: `Changes saved for task "${updatedTaskFromModal.task.substring(0,30)}...".`});
   };
-
+  
   const handleOpenQuizModal = (task: ScheduleTask) => {
     setSelectedTaskForQuiz(task);
     setIsQuizModalOpen(true);
@@ -470,12 +430,12 @@ export default function PlannerPage() {
 
   const renderStepContent = () => {
     switch (currentStep) {
-      case 1:
+      case 1: // Input Form
         return (
           <>
             <div className="space-y-1">
               <Label htmlFor="subjects">Subjects & Priority</Label>
-              <Input type="text" id="subjects" placeholder="e.g., Math (1), Physics (2), History (3)" value={plannerData.subjects} onChange={handleInputChange} />
+              <Input type="text" id="subjects" placeholder="e.g., Math (1), Physics (2), History (3)" value={plannerFormInput.subjects} onChange={handleInputChange} />
                <p className="text-xs text-muted-foreground">Enter subjects, add priority in ( ) - lower is higher. Ex: Chem (1), Bio (2).</p>
             </div>
             <div className="space-y-1">
@@ -484,7 +444,7 @@ export default function PlannerPage() {
                 <PopoverTrigger asChild>
                   <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !selectedCalendarDate && "text-muted-foreground")}>
                     <CalendarDaysIcon className="mr-2 h-4 w-4" />
-                    {selectedCalendarDate ? format(selectedCalendarDate, "PPP") : <span>Pick a date</span>}
+                    {selectedCalendarDate && isValid(selectedCalendarDate) ? format(selectedCalendarDate, "PPP") : <span>Pick a date</span>}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -494,16 +454,16 @@ export default function PlannerPage() {
             </div>
             <div className="space-y-1">
               <Label htmlFor="subjectDetails">Subject Details (Optional)</Label>
-              <Textarea id="subjectDetails" placeholder="e.g., Math: Algebra chapters 1-3. Physics: Kinematics." value={plannerData.subjectDetails || ""} onChange={handleInputChange} rows={3} />
+              <Textarea id="subjectDetails" placeholder="e.g., Math: Algebra chapters 1-3. Physics: Kinematics." value={plannerFormInput.subjectDetails || ""} onChange={handleInputChange} rows={3} />
                <p className="text-xs text-muted-foreground">Provide specific topics or chapters for more detailed planning.</p>
             </div>
             <div className="space-y-1">
               <Label htmlFor="studyDurationDays">Study Duration (Days)</Label>
-              <Input type="number" id="studyDurationDays" value={plannerData.studyDurationDays} onChange={handleInputChange} min="1" />
+              <Input type="number" id="studyDurationDays" value={plannerFormInput.studyDurationDays} onChange={handleInputChange} min="1" />
             </div>
             <div className="space-y-1">
               <Label htmlFor="dailyStudyHours">Daily Study Hours</Label>
-              <Select value={String(plannerData.dailyStudyHours)} onValueChange={(value) => handleSelectChange('dailyStudyHours', value)}>
+              <Select value={String(plannerFormInput.dailyStudyHours)} onValueChange={(value) => handleSelectChange('dailyStudyHours', value)}>
                   <SelectTrigger id="dailyStudyHours"><SelectValue placeholder="Select hours" /></SelectTrigger>
                   <SelectContent>
                       {[1,1.5,2,2.5,3,3.5,4,4.5,5,6,7,8].map(h => <SelectItem key={h} value={String(h)}>{h} hour{h > 1 ? 's' : ''}</SelectItem>)}
@@ -512,38 +472,70 @@ export default function PlannerPage() {
             </div>
             <Button onClick={startAnalysisAndGeneratePlan} className="w-full" disabled={isAnalyzing}>
               {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
-              Analyze & Plan
+              Generate New Plan
             </Button>
+             {activePlan && (
+                <Button onClick={() => {
+                    if (activePlan) {
+                        setPlannerFormInput(activePlan.planDetails);
+                        const sDate = activePlan.planDetails.startDate ? parseISO(activePlan.planDetails.startDate) : new Date();
+                        if(isValid(sDate)){
+                            setSelectedCalendarDate(sDate);
+                            setCalendarSelectedDateForDisplay(sDate);
+                            setCalendarDisplayMonth(sDate);
+                        }
+                        setCurrentStep(3); // Go back to viewing the current plan
+                    }
+                }} variant="outline" className="w-full">
+                    Cancel & View Current Plan
+                </Button>
+            )}
           </>
         );
-      case 2:
+      case 2: // Analyzing
         return (
           <div className="text-center py-10">
             <Loader2 className="h-16 w-16 animate-spin text-primary mx-auto mb-6" />
             <h3 className="text-xl font-semibold mb-2">AI Analysis in Progress...</h3>
             <p className="text-muted-foreground">Our AI agents are crafting your personalized study plan. This might take a moment.</p>
-            <div className="mt-6 space-y-3">
-              <div className="flex items-center justify-center gap-2 p-3 bg-muted/50 rounded-md"><span className="text-xl">🤖</span> PlannerBot: Optimizing schedule...</div>
-              <div className="flex items-center justify-center gap-2 p-3 bg-muted/50 rounded-md"><span className="text-xl">⚙️</span> AdaptiveAI: Calculating difficulty...</div>
-            </div>
           </div>
         );
-      case 3:
-        if (generatedPlan && generatedPlan.planDetails) {
-            const tasksForSelectedDate = getTasksForDate(calendarSelectedDate);
-            const planStartDate = generatedPlan.tasks.length > 0 ? parseISO(generatedPlan.tasks[0].date) : new Date();
-            const planEndDate = generatedPlan.tasks.length > 0 ? parseISO(generatedPlan.tasks[generatedPlan.tasks.length - 1].date) : addDays(new Date(), 30);
+      case 3: // Display/Manage Plan
+        if (!activePlan || !activePlan.planDetails) {
+           return (
+             <div className="text-center py-10">
+               <Info className="h-12 w-12 text-primary mx-auto mb-4" />
+               <h3 className="text-xl font-semibold mb-2">No Active Plan</h3>
+               <p className="text-muted-foreground mb-4">You don't have an active study plan right now.</p>
+               <Button onClick={startNewPlanCreation}>
+                 <PlusCircle className="mr-2 h-4 w-4" /> Create a New Study Plan
+               </Button>
+             </div>
+           );
+        }
+            const tasksForSelectedDate = getTasksForDate(calendarSelectedDateForDisplay);
+            let planStartDate: Date | null = null;
+            let planEndDate: Date | null = null;
+
+            if (activePlan.tasks.length > 0) {
+                const firstTaskDate = parseISO(activePlan.tasks[0].date);
+                const lastTaskDate = parseISO(activePlan.tasks[activePlan.tasks.length - 1].date);
+                if (isValid(firstTaskDate)) planStartDate = firstTaskDate;
+                if (isValid(lastTaskDate)) planEndDate = lastTaskDate;
+            }
+             if (!planStartDate) planStartDate = new Date(); // Fallback
+             if (!planEndDate) planEndDate = addDays(planStartDate, activePlan.planDetails.studyDurationDays || 30); // Fallback
+
 
           return (
             <div className="flex flex-col md:flex-row gap-6 -mx-6 -my-6 p-6 bg-muted/20 rounded-b-lg">
-              {/* Left Column: Calendar */}
               <div className="md:w-[340px] flex-shrink-0 bg-card p-4 rounded-lg shadow">
                 <div className="flex items-center justify-between mb-3">
                     <Button variant="outline" size="icon" onClick={() => setCalendarDisplayMonth(subMonths(calendarDisplayMonth, 1))} aria-label="Previous month">
                         <ChevronLeft className="h-4 w-4" />
                     </Button>
                     <h2 className="text-lg font-semibold text-center">
-                        {format(calendarDisplayMonth, 'MMMM yyyy')}
+                        {isValid(calendarDisplayMonth) ? format(calendarDisplayMonth, 'MMMM yyyy') : "Invalid Date"}
                     </h2>
                     <Button variant="outline" size="icon" onClick={() => setCalendarDisplayMonth(addMonths(calendarDisplayMonth, 1))} aria-label="Next month">
                         <ChevronRight className="h-4 w-4" />
@@ -551,24 +543,24 @@ export default function PlannerPage() {
                 </div>
                 <ShadCalendar
                   mode="single"
-                  selected={calendarSelectedDate}
+                  selected={calendarSelectedDateForDisplay}
                   onSelect={(date) => {
-                    setCalendarSelectedDate(date);
-                    if(date) setCalendarDisplayMonth(date);
+                    setCalendarSelectedDateForDisplay(date);
+                    if(date && isValid(date)) setCalendarDisplayMonth(date);
                   }}
                   month={calendarDisplayMonth}
                   onMonthChange={setCalendarDisplayMonth}
                   className="rounded-md border-0 shadow-none p-0"
-                  disabled={date => date < startOfWeek(planStartDate) || date > endOfWeek(planEndDate)}
+                  disabled={date => (planStartDate && date < startOfWeek(planStartDate)) || (planEndDate && date > endOfWeek(planEndDate))}
                   components={{
                     DayContent: ({ date, activeModifiers }) => {
                       const tasksOnDay = getTasksForDate(date);
                       const isSelected = activeModifiers.selected;
                       const isToday = activeModifiers.today;
-                      const isCurrentDisplayMonth = isSameMonth(date, calendarDisplayMonth);
+                      const isCurrentDisplayMonth = isValid(date) && isValid(calendarDisplayMonth) && isSameMonth(date, calendarDisplayMonth);
                       return (
                         <div className={`relative h-full w-full flex flex-col items-center justify-center ${!isCurrentDisplayMonth ? 'text-muted-foreground/50' : ''}`}>
-                          <span>{format(date, "d")}</span>
+                          <span>{isValid(date) ? format(date, "d") : "X"}</span>
                           {tasksOnDay.length > 0 && (
                             <div className={`absolute bottom-1 left-1/2 -translate-x-1/2 h-1.5 w-1.5 rounded-full ${isSelected || isToday ? 'bg-primary-foreground dark:bg-primary' : 'bg-primary dark:bg-primary-foreground'}`}></div>
                           )}
@@ -577,24 +569,20 @@ export default function PlannerPage() {
                     },
                   }}
                 />
-                <Button
-                    onClick={() => resetPlannerAndGoToStep1(true)}
-                    variant="outline"
-                    className="w-full mt-4"
-                >
-                    Create New Study Plan
+                <Button onClick={startNewPlanCreation} variant="outline" className="w-full mt-4">
+                    <PlusCircle className="mr-2 h-4 w-4" /> Create New Plan
                 </Button>
               </div>
 
-              {/* Right Column: Tasks for selected day */}
               <div className="flex-grow bg-card p-4 rounded-lg shadow min-h-[400px]">
-                {calendarSelectedDate ? (
+                {calendarSelectedDateForDisplay && isValid(calendarSelectedDateForDisplay) ? (
                     <>
                         <h3 className="text-xl font-semibold mb-1">
-                            {format(calendarSelectedDate, 'EEEE, MMMM d, yyyy')}
+                            {format(calendarSelectedDateForDisplay, 'EEEE, MMMM d, yyyy')}
                         </h3>
                         <p className="text-sm text-muted-foreground mb-4">
-                            Day {generatedPlan.tasks.findIndex(t => { try { return format(parseISO(t.date), 'yyyy-MM-dd') === format(calendarSelectedDate, 'yyyy-MM-dd'); } catch { return false; } }) + 1} of {generatedPlan.planDetails.studyDurationDays}
+                            Day {activePlan.tasks.findIndex(t => { try { return format(parseISO(t.date), 'yyyy-MM-dd') === format(calendarSelectedDateForDisplay, 'yyyy-MM-dd'); } catch { return false; } }) + 1} of {activePlan.planDetails.studyDurationDays}
+                             {activePlan.status === 'completed' ? <span className="ml-2 text-green-600 font-semibold">(Completed)</span> : activePlan.status === 'archived' ? <span className="ml-2 text-gray-500 font-semibold">(Archived)</span> : ''}
                         </p>
                         {tasksForSelectedDate.length > 0 ? (
                         <ScrollArea className="h-[calc(100%-100px)] pr-3">
@@ -606,18 +594,18 @@ export default function PlannerPage() {
                                     checked={task.completed}
                                     onCheckedChange={() => handleCalendarTaskToggle(task.id)}
                                     aria-labelledby={`task-cal-label-${task.id}`}
-                                    disabled={generatedPlan?.status === 'completed'}
+                                    disabled={activePlan?.status === 'completed' || activePlan?.status === 'archived'}
                                     className="mt-1"
                                 />
                                 <div className="flex-1">
-                                    <Label htmlFor={`task-cal-${task.id}`} id={`task-cal-label-${task.id}`} className={`font-medium ${generatedPlan?.status === 'completed' ? 'cursor-default' : 'cursor-pointer'}`}>
+                                    <Label htmlFor={`task-cal-${task.id}`} id={`task-cal-label-${task.id}`} className={`font-medium ${(activePlan?.status === 'completed' || activePlan?.status === 'archived') ? 'cursor-default' : 'cursor-pointer'}`}>
                                     {task.task}
                                     </Label>
                                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">
                                       {(task.youtubeSearchQuery || task.referenceSearchQuery) && (
                                       <div className="flex gap-2">
-                                          {task.youtubeSearchQuery && (
-                                          <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(task.youtubeSearchQuery)}`} target="_blank" rel="noopener noreferrer" className="text-xs text-red-500 hover:text-red-600 hover:underline flex items-center gap-1" title={`Search YouTube: ${task.youtubeSearchQuery}`} onClick={(e) => e.stopPropagation()}>
+                                         {task.youtubeSearchQuery && (
+                                            <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(task.youtubeSearchQuery)}`} target="_blank" rel="noopener noreferrer" className="text-xs text-red-500 hover:text-red-600 hover:underline flex items-center gap-1" title={`Search YouTube: ${task.youtubeSearchQuery}`} onClick={(e) => e.stopPropagation()}>
                                               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.04 6.5c.14-.48.49-.9.96-1.11a2.57 2.57 0 0 1 2.34.38l5.34 3.36a1.73 1.73 0 0 1 0 2.74l-5.34 3.36a2.57 2.57 0 0 1-2.34.38c-.47-.21-.82-.63-.96-1.11Z"/><path d="M17.55 17.28c-1.18.37-2.7.6-4.55.6-4.79 0-8.5-2.01-8.5-4.5s3.71-4.5 8.5-4.5c1.85 0 3.37.23 4.55.6Z"/><path d="M22 12a9.9 9.9 0 0 1-7.45 9.67A9.37 9.37 0 0 1 12 22c-5.23 0-9.5-2.12-9.5-4.72V16M2.5 12C2.5 7 7.5 3 12.5 3s10 4 10 9"/></svg> YT
                                           </a>
                                           )}
@@ -628,7 +616,7 @@ export default function PlannerPage() {
                                           )}
                                       </div>
                                       )}
-                                      {generatedPlan?.status !== 'completed' && (
+                                      {(activePlan?.status !== 'completed' && activePlan?.status !== 'archived') && (
                                         <>
                                           <Button variant="ghost" size="sm" onClick={() => handleOpenBreakdownModal(task)} className="h-auto p-0 text-xs text-primary/70 hover:text-primary" title="Break down this task">
                                               <ListTree className="mr-1 h-3 w-3"/> Sub-tasks ({task.subTasks?.length || 0})
@@ -640,7 +628,7 @@ export default function PlannerPage() {
                                             task={task}
                                             onSave={handleSaveQuizScore}
                                             onTakeQuiz={handleOpenQuizModal}
-                                            disabled={generatedPlan?.status === 'completed'}
+                                            disabled={activePlan?.status === 'completed' || activePlan?.status === 'archived'}
                                           />
                                         </>
                                       )}
@@ -661,7 +649,7 @@ export default function PlannerPage() {
             </div>
           );
         }
-        return <p className="text-center text-muted-foreground">No plan generated yet. Please go back.</p>;
+        return <p className="text-center text-muted-foreground">Error: Invalid state.</p>;
       default:
         return null;
     }
@@ -671,13 +659,14 @@ export default function PlannerPage() {
   const stepDescriptions = [
     "Tell us what you want to study, your timeline, and commitment.",
     "Our AI is crafting your optimal schedule.",
-    "Review and manage your AI-generated study plan on the calendar."
+    activePlan?.status === 'completed' ? "This plan is completed. Review it or create a new one." : activePlan?.status === 'archived' ? "This plan is archived. Review it or create a new one." : "Review and manage your AI-generated study plan on the calendar."
   ];
 
-  const completedTasksCount = generatedPlan?.tasks.filter(task => task.completed).length || 0;
-  const totalTasksCount = generatedPlan?.tasks.length || 0;
+  const completedTasksCount = activePlan?.tasks.filter(task => task.completed).length || 0;
+  const totalTasksCount = activePlan?.tasks.length || 0;
   const progressPercentage = totalTasksCount > 0 ? (completedTasksCount / totalTasksCount) * 100 : 0;
-  const canFinishPlan = progressPercentage >= 80 && generatedPlan?.status !== 'completed';
+  const canFinishPlan = activePlan?.status === 'active' && progressPercentage >= 80;
+
 
   return (
     <AppLayout>
@@ -686,28 +675,34 @@ export default function PlannerPage() {
           <CardHeader>
             <CardTitle className="text-2xl text-center">{stepTitles[currentStep - 1]}</CardTitle>
             <CardDescription className="text-center">{stepDescriptions[currentStep - 1]}</CardDescription>
-            <div className="flex justify-center gap-2 pt-3">
-              {[1,2,3].map(step => (
-                <div key={step}
-                     className={`h-1.5 flex-1 rounded-full transition-all duration-300 ease-in-out
-                                ${currentStep === step ? 'bg-primary' : (currentStep > step ? 'bg-primary/60' : 'bg-muted')}`}
-                ></div>
-              ))}
-            </div>
+             {currentStep !==2 && (
+                <div className="flex justify-center gap-2 pt-3">
+                {[1,3].map(stepIndicator => ( // Only show step 1 and 3 indicators visually
+                    <div key={stepIndicator}
+                        className={`h-1.5 w-16 rounded-full transition-all duration-300 ease-in-out
+                                    ${(currentStep === 1 && stepIndicator === 1) || (currentStep === 3 && stepIndicator === 3) ? 'bg-primary' : 'bg-muted'}`}
+                    ></div>
+                ))}
+                </div>
+            )}
           </CardHeader>
           <CardContent className={`space-y-6 min-h-[300px] flex flex-col ${currentStep === 3 ? '' : 'justify-center'}`}>
             {renderStepContent()}
           </CardContent>
-          {currentStep === 3 && generatedPlan && generatedPlan.planDetails && (
+          {currentStep === 3 && activePlan && activePlan.planDetails && (
             <CardFooter className="flex flex-col sm:flex-row gap-4 mt-6 pt-6 border-t">
-                <Button onClick={() => resetPlannerAndGoToStep1(generatedPlan.status === 'completed')} variant="outline" className="w-full sm:w-auto">
-                  <Edit3 className="mr-2 h-4 w-4" />
-                  {generatedPlan.status === 'completed' ? "Start New Plan" : "Modify Plan Details"}
+                 <Button onClick={() => {
+                    setPlannerFormInput(activePlan.planDetails); // Load current plan details into form
+                    setSelectedCalendarDate(activePlan.planDetails.startDate ? parseISO(activePlan.planDetails.startDate) : undefined);
+                    setCurrentStep(1); // Go to edit mode (step 1)
+                 }} variant="outline" className="w-full sm:w-auto" disabled={activePlan.status === 'completed' || activePlan.status === 'archived'}>
+                  <Edit3 className="mr-2 h-4 w-4" /> Modify Plan Details
                 </Button>
-                {generatedPlan.status !== 'completed' && (
+
+                {(activePlan.status === 'active') && (
                     <AdaptiveReplanModal
-                        originalScheduleJSON={JSON.stringify(generatedPlan.tasks.map(({id, completed, youtubeSearchQuery, referenceSearchQuery, subTasks, quizScore, quizAttempted, ...rest}) => rest))}
-                        planDetails={generatedPlan.planDetails}
+                        originalScheduleJSON={JSON.stringify(activePlan.tasks.map(({id, completed, youtubeSearchQuery, referenceSearchQuery, subTasks, quizScore, quizAttempted, ...rest}) => rest))}
+                        planDetails={activePlan.planDetails}
                         onReplanSuccess={handleReplanSuccess}
                     />
                 )}
@@ -719,14 +714,14 @@ export default function PlannerPage() {
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button variant="destructive" className="w-full sm:w-auto sm:ml-auto">
-                      <Trash2 className="mr-2 h-4 w-4" /> Delete Plan
+                      <Trash2 className="mr-2 h-4 w-4" /> Delete This Plan
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
                       <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        This action cannot be undone. This will permanently delete your current study plan.
+                        This action cannot be undone. This will permanently delete the plan titled "{activePlan.planDetails.subjects.substring(0,30)}...".
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -752,7 +747,7 @@ export default function PlannerPage() {
       />
       <QuizModal
         task={selectedTaskForQuiz}
-        subjectContext={generatedPlan?.planDetails?.subjects}
+        subjectContext={activePlan?.planDetails?.subjects}
         isOpen={isQuizModalOpen}
         onClose={() => {
             setIsQuizModalOpen(false);

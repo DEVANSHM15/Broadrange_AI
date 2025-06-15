@@ -12,8 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import type { ScheduleData, ScheduleTask, ParsedRawScheduleItem, PlanInput } from "@/types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { parseISO, isValid } from "date-fns";
 
-// This type and sample data are moved from dashboard
 interface Achievement {
   id: string;
   title: string;
@@ -26,45 +26,34 @@ interface Achievement {
 const sampleAchievements: Achievement[] = [
   { id: "first_plan", title: "Planner Pioneer", description: "Successfully created your first study plan.", icon: PlusCircle, achieved: false, color: "text-green-500" },
   { id: "task_initiate", title: "Task Starter", description: "Completed your first task in a study plan.", icon: CheckCircle2, achieved: false, color: "text-blue-500" },
-  { id: "streak_beginner", title: "Study Dabbler", description: "Maintained a 3-day study streak.", icon: Flame, achieved: false, color: "text-orange-500" }, // Streak logic not yet implemented
+  { id: "streak_beginner", title: "Study Dabbler", description: "Maintained a 3-day study streak.", icon: Flame, achieved: false, color: "text-orange-500" }, 
   { id: "quiz_taker", title: "Quiz Challenger", description: "Attempted your first AI-generated quiz.", icon: Brain, achieved: false, color: "text-purple-500" },
   { id: "reflection_reader", title: "Insight Seeker", description: "Viewed your first plan reflection.", icon: Lightbulb, achieved: false, color: "text-yellow-500"},
   { id: "plan_completer", title: "Finisher", description: "Successfully completed a full study plan.", icon: Trophy, achieved: false, color: "text-amber-600" },
 ];
 
 const getPlannerStorageKey = (userEmail: string | undefined | null) =>
-  userEmail ? `studyMindAiPlannerData_v2_${userEmail}` : `studyMindAiPlannerData_v2_guest`;
+  userEmail ? `studyMindAiPlannerData_v2_array_${userEmail}` : `studyMindAiPlannerData_v2_array_guest`;
 
-function parseTasksFromString(scheduleString: string, existingTasks?: ScheduleTask[]): ScheduleTask[] {
+function parseTasksFromString(scheduleString: string, planId: string, existingTasks?: ScheduleTask[]): ScheduleTask[] {
   try {
     const parsed = JSON.parse(scheduleString) as ParsedRawScheduleItem[];
     if (Array.isArray(parsed) && parsed.every(item => typeof item.date === 'string' && typeof item.task === 'string')) {
-      if (existingTasks && existingTasks.length > 0 && existingTasks.length === parsed.length) {
-         return parsed.map((item, index) => ({
+      return parsed.map((item, index) => {
+        const existingTask = existingTasks?.find(et => et.id.startsWith(`task-${planId}-${index}`));
+        return {
           ...item,
           date: item.date,
-          id: existingTasks[index]?.id || String(Date.now() + index + Math.random()),
-          completed: existingTasks[index]?.completed || false,
+          id: existingTask?.id || `task-${planId}-${index}-${new Date(item.date).getTime()}-${Math.random().toString(36).substring(2,9)}`,
+          completed: existingTask?.completed || false,
           youtubeSearchQuery: item.youtubeSearchQuery,
           referenceSearchQuery: item.referenceSearchQuery,
-          subTasks: existingTasks[index]?.subTasks || [],
-          quizScore: existingTasks[index]?.quizScore,
-          quizAttempted: existingTasks[index]?.quizAttempted || false,
-        }));
-      }
-      return parsed.map((item, index) => ({
-        ...item,
-        date: item.date,
-        id: String(Date.now() + index + Math.random()),
-        completed: false,
-        youtubeSearchQuery: item.youtubeSearchQuery,
-        referenceSearchQuery: item.referenceSearchQuery,
-        subTasks: [],
-        quizScore: undefined,
-        quizAttempted: false,
-      }));
+          subTasks: existingTask?.subTasks || [],
+          quizScore: existingTask?.quizScore,
+          quizAttempted: existingTask?.quizAttempted || false,
+        };
+      });
     }
-    console.warn("AchievementsPage: Failed to parse schedule string into expected array of objects.");
     return existingTasks || [];
   } catch (error) {
     console.warn("AchievementsPage: Failed to parse schedule string:", error);
@@ -75,48 +64,61 @@ function parseTasksFromString(scheduleString: string, existingTasks?: ScheduleTa
 
 export default function AchievementsPage() {
   const { currentUser } = useAuth();
-  const [currentStudyPlan, setCurrentStudyPlan] = useState<ScheduleData | null>(null);
-  const [parsedTasksForPlan, setParsedTasksForPlan] = useState<ScheduleTask[]>([]);
-  const [isLoadingPlan, setIsLoadingPlan] = useState(true);
+  const [activeStudyPlan, setActiveStudyPlan] = useState<ScheduleData | null>(null);
+  const [parsedTasksForActivePlan, setParsedTasksForActivePlan] = useState<ScheduleTask[]>([]);
+  const [allStudyPlans, setAllStudyPlans] = useState<ScheduleData[]>([]);
+  const [isLoadingPlans, setIsLoadingPlans] = useState(true);
   const plannerStorageKey = getPlannerStorageKey(currentUser?.email);
 
   const reloadDataFromStorage = useCallback(() => {
-    setIsLoadingPlan(true);
+    setIsLoadingPlans(true);
     if (!currentUser?.email) {
-        setCurrentStudyPlan(null);
-        setParsedTasksForPlan([]);
-        setIsLoadingPlan(false);
+        setActiveStudyPlan(null);
+        setParsedTasksForActivePlan([]);
+        setAllStudyPlans([]);
+        setIsLoadingPlans(false);
         return;
     }
-    const savedPlanJson = localStorage.getItem(plannerStorageKey);
-    if (savedPlanJson) {
+    const savedPlansJson = localStorage.getItem(plannerStorageKey);
+    let currentActivePlan: ScheduleData | null = null;
+    let loadedPlans: ScheduleData[] = [];
+
+    if (savedPlansJson) {
         try {
-            const savedPlan: ScheduleData = JSON.parse(savedPlanJson);
-            let tasksToUse: ScheduleTask[] = savedPlan.tasks || [];
-            if ((!tasksToUse || tasksToUse.length === 0) && savedPlan.scheduleString) {
-                const newlyParsedTasks = parseTasksFromString(savedPlan.scheduleString, savedPlan.tasks);
-                if (newlyParsedTasks.length > 0) tasksToUse = newlyParsedTasks;
-            } else {
-                 // Ensure subTasks, quizScore, and quizAttempted are initialized if not present
-                 tasksToUse = tasksToUse.map(task => ({
-                    ...task, 
-                    subTasks: task.subTasks || [], 
-                    quizScore: task.quizScore, 
-                    quizAttempted: task.quizAttempted || false
-                }));
+            loadedPlans = JSON.parse(savedPlansJson);
+            if (Array.isArray(loadedPlans) && loadedPlans.length > 0) {
+                // Determine active plan logic (e.g., last active or most recent)
+                const activePlans = loadedPlans.filter(p => p.status === 'active').sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+                if (activePlans.length > 0) {
+                    currentActivePlan = activePlans[0];
+                } else {
+                    const mostRecentCompleted = loadedPlans.filter(p => p.status === 'completed').sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+                    if (mostRecentCompleted.length > 0) currentActivePlan = mostRecentCompleted[0];
+                }
+                 if (!currentActivePlan) { // Fallback to most recently updated if no active/completed
+                    currentActivePlan = loadedPlans.sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
+                }
             }
-            setCurrentStudyPlan(savedPlan);
-            setParsedTasksForPlan(tasksToUse);
+            
+            if (currentActivePlan) {
+                let tasksToUse = currentActivePlan.tasks || [];
+                if ((!tasksToUse || tasksToUse.length === 0) && currentActivePlan.scheduleString) {
+                     tasksToUse = parseTasksFromString(currentActivePlan.scheduleString, currentActivePlan.id, currentActivePlan.tasks);
+                } else {
+                     tasksToUse = tasksToUse.map(task => ({...task, subTasks: task.subTasks || [], quizScore: task.quizScore, quizAttempted: task.quizAttempted || false}));
+                }
+                currentActivePlan.tasks = tasksToUse;
+            }
         } catch (error) {
-            console.error("AchievementsPage: Failed to parse saved plan:", error);
-            setCurrentStudyPlan(null);
-            setParsedTasksForPlan([]);
+            console.error("AchievementsPage: Failed to parse saved plans:", error);
+            currentActivePlan = null;
+            loadedPlans = [];
         }
-    } else {
-        setCurrentStudyPlan(null);
-        setParsedTasksForPlan([]);
     }
-    setIsLoadingPlan(false);
+    setActiveStudyPlan(currentActivePlan);
+    setParsedTasksForActivePlan(currentActivePlan?.tasks || []);
+    setAllStudyPlans(loadedPlans);
+    setIsLoadingPlans(false);
   }, [currentUser, plannerStorageKey]);
 
   useEffect(() => {
@@ -126,45 +128,45 @@ export default function AchievementsPage() {
     return () => window.removeEventListener('studyPlanUpdated', handleStudyPlanUpdate);
   }, [reloadDataFromStorage]);
 
-  const completedTasksCount = useMemo(() => parsedTasksForPlan.filter(task => task.completed).length, [parsedTasksForPlan]);
-  const totalTasksCount = useMemo(() => parsedTasksForPlan.length, [parsedTasksForPlan]);
+  const completedTasksCount = useMemo(() => parsedTasksForActivePlan.filter(task => task.completed).length, [parsedTasksForActivePlan]);
+  const totalTasksCount = useMemo(() => parsedTasksForActivePlan.length, [parsedTasksForActivePlan]);
   const progressPercentage = useMemo(() => totalTasksCount > 0 ? Math.round((completedTasksCount / totalTasksCount) * 100) : 0, [completedTasksCount, totalTasksCount]);
-  const isPlanCompleted = useMemo(() => currentStudyPlan?.status === 'completed', [currentStudyPlan]);
-
+  
+  // For "Finisher" and "Insight Seeker", we check if *any* plan is completed.
+  const hasCompletedAnyPlan = useMemo(() => allStudyPlans.some(plan => plan.status === 'completed'), [allStudyPlans]);
 
   const dynamicAchievements = useMemo(() => {
       return sampleAchievements.map(ach => {
-        let achieved = false; // Start with false, explicitly set to true if conditions met
+        let achieved = false;
         switch (ach.id) {
           case 'first_plan':
-            achieved = !!currentStudyPlan;
+            achieved = allStudyPlans.length > 0; // Achieved if any plan exists
             break;
           case 'task_initiate':
-            achieved = completedTasksCount > 0;
+            // Achieved if any task in any plan is completed
+            achieved = allStudyPlans.some(plan => (plan.tasks || []).some(task => task.completed));
             break;
           case 'streak_beginner':
-            // Placeholder: True streak logic would be more complex and require daily tracking.
-            // For now, this badge remains unachieved by default unless manually set or future logic added.
-            achieved = false; // Or keep ach.achieved if you want to manually test it
+            achieved = false; // Static for now
             break;
           case 'quiz_taker':
-            achieved = parsedTasksForPlan.some(task => task.quizAttempted === true);
+            // Achieved if any task in any plan has been attempted
+            achieved = allStudyPlans.some(plan => (plan.tasks || []).some(task => task.quizAttempted === true));
             break;
           case 'reflection_reader':
-            // Assumes viewing reflection is tied to plan completion
-            achieved = isPlanCompleted;
+            achieved = hasCompletedAnyPlan; // Tied to completing any plan
             break;
           case 'plan_completer':
-            achieved = isPlanCompleted;
+            achieved = hasCompletedAnyPlan; // Tied to completing any plan
             break;
           default:
-            achieved = ach.achieved; // Retain original static value if not specifically handled
+            achieved = ach.achieved; 
         }
         return { ...ach, achieved };
       });
-  }, [currentStudyPlan, completedTasksCount, isPlanCompleted, parsedTasksForPlan]);
+  }, [allStudyPlans, hasCompletedAnyPlan]);
 
-  if (isLoadingPlan && !currentStudyPlan) { 
+  if (isLoadingPlans && !activeStudyPlan) { 
     return (
       <AppLayout>
         <div className="flex items-center justify-center min-h-[calc(100vh-100px)]">
@@ -183,7 +185,7 @@ export default function AchievementsPage() {
           </h1>
         </div>
 
-        {!currentStudyPlan && !isLoadingPlan && (
+        {!activeStudyPlan && !isLoadingPlans && allStudyPlans.length === 0 && (
           <Alert className="mb-8">
             <HelpCircle className="h-4 w-4" />
             <AlertTitle>No Study Plan Data Found</AlertTitle>
@@ -215,39 +217,39 @@ export default function AchievementsPage() {
         </div>
         
         <div className="mt-12">
-            <h2 className="text-2xl font-semibold mb-4">Plan History</h2>
-            {isLoadingPlan ? (
+            <h2 className="text-2xl font-semibold mb-4">Plan Overview</h2>
+            {isLoadingPlans ? (
                  <div className="flex items-center justify-center p-8 border rounded-lg bg-muted/30">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                  </div>
-            ) : currentStudyPlan && currentStudyPlan.planDetails ? (
-                <Card className={`border shadow-lg ${isPlanCompleted ? 'border-green-500/50' : 'border-primary/50'}`}>
+            ) : activeStudyPlan && activeStudyPlan.planDetails ? (
+                <Card className={`border shadow-lg ${activeStudyPlan.status === 'completed' ? 'border-green-500/50' : (activeStudyPlan.status === 'archived' ? 'border-gray-500/50' : 'border-primary/50')}`}>
                     <CardHeader>
                         <CardTitle className="text-xl flex items-center justify-between">
                         <span className="flex items-center gap-2">
-                            {isPlanCompleted ? <CheckCircle2 className="text-green-500 h-6 w-6" /> : <ListChecks className="text-primary h-6 w-6" />}
-                            {isPlanCompleted ? "Last Completed Plan" : "Current Active Plan"}
+                            {activeStudyPlan.status === 'completed' ? <CheckCircle2 className="text-green-500 h-6 w-6" /> : <ListChecks className="text-primary h-6 w-6" />}
+                            {activeStudyPlan.status === 'completed' ? "Last Completed Plan" : (activeStudyPlan.status === 'archived' ? "Last Archived Plan" : "Current Active Plan")}
                         </span>
                         </CardTitle>
                         <CardDescription>
-                            {isPlanCompleted ?
-                                `Completed on ${currentStudyPlan.completionDate ? new Date(currentStudyPlan.completionDate).toLocaleDateString() : 'N/A'}.`
-                                : "Your ongoing study journey."}
+                            {activeStudyPlan.status === 'completed' ? `Completed on ${activeStudyPlan.completionDate && isValid(parseISO(activeStudyPlan.completionDate)) ? new Date(activeStudyPlan.completionDate).toLocaleDateString() : 'N/A'}.`
+                             : activeStudyPlan.status === 'archived' ? `Archived on ${isValid(parseISO(activeStudyPlan.updatedAt)) ? new Date(activeStudyPlan.updatedAt).toLocaleDateString() : 'N/A'}.`
+                             : "Your ongoing study journey."}
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div>
                         <h4 className="text-sm font-medium text-muted-foreground">Subjects</h4>
-                        <p className="font-semibold">{currentStudyPlan.planDetails.subjects || "N/A"}</p>
+                        <p className="font-semibold">{activeStudyPlan.planDetails.subjects || "N/A"}</p>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                         <div>
                             <h4 className="text-sm font-medium text-muted-foreground">Original Duration</h4>
-                            <p className="font-semibold">{currentStudyPlan.planDetails.studyDurationDays} days</p>
+                            <p className="font-semibold">{activeStudyPlan.planDetails.studyDurationDays} days</p>
                         </div>
                         <div>
                             <h4 className="text-sm font-medium text-muted-foreground">Daily Study</h4>
-                            <p className="font-semibold">{currentStudyPlan.planDetails.dailyStudyHours} hours</p>
+                            <p className="font-semibold">{activeStudyPlan.planDetails.dailyStudyHours} hours</p>
                         </div>
                         </div>
                         {totalTasksCount > 0 && (
@@ -256,7 +258,7 @@ export default function AchievementsPage() {
                             <h4 className="text-sm font-medium text-muted-foreground">Progress</h4>
                             <span className="text-xs text-muted-foreground">{completedTasksCount} / {totalTasksCount} tasks</span>
                             </div>
-                            <Progress value={progressPercentage} className="h-2" indicatorClassName={isPlanCompleted ? "bg-green-500" : "bg-primary"} />
+                            <Progress value={progressPercentage} className="h-2" indicatorClassName={activeStudyPlan.status === 'completed' ? "bg-green-500" : "bg-primary"} />
                         </div>
                         )}
                     </CardContent>
@@ -264,7 +266,7 @@ export default function AchievementsPage() {
                         <Button asChild className="w-full" variant="outline">
                             <Link href="/planner">
                                 <Edit className="mr-2 h-4 w-4"/>
-                                {isPlanCompleted ? "Review Plan Details" : "View or Edit Plan"}
+                                {activeStudyPlan.status === 'completed' || activeStudyPlan.status === 'archived' ? "Review Plan Details" : "View or Edit Plan"}
                             </Link>
                         </Button>
                     </CardFooter>
@@ -281,9 +283,8 @@ export default function AchievementsPage() {
                     </AlertDescription>
                 </Alert>
             )}
-             {/* Placeholder for future: Listing multiple past plans */}
              <p className="text-xs text-muted-foreground text-center mt-4">
-                Note: This section currently shows your most recent plan. Full history with multiple plans coming soon.
+                Note: This section shows your most recent plan. Full history browsing coming soon.
              </p>
         </div>
       </div>

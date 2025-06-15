@@ -4,7 +4,7 @@
 import AppLayout from "@/components/AppLayout";
 import Link from "next/link";
 import { useAuth } from "@/contexts/auth-context";
-import { Zap, Brain, Settings as SettingsIcon, PlusCircle, ListChecks, Edit, HelpCircle, Lightbulb, CheckCircle2, Loader2, AlertCircle, BarChart3, BookOpen, CalendarDaysIcon, Target, MessageCircle, Repeat, Sparkles, Hourglass, Flame, Gauge, Star, BookCopy } from "lucide-react";
+import { Zap, Brain, Settings as SettingsIcon, PlusCircle, ListChecks, Edit, HelpCircle, Lightbulb, CheckCircle2, Loader2, AlertCircle, BarChart3, BookOpen, CalendarDaysIcon, Target, MessageCircle, Repeat, Sparkles, Hourglass, Flame, Gauge, Star, BookCopy, Award } from "lucide-react";
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { PomodoroTimerModal } from "@/components/pomodoro-timer";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -14,6 +14,7 @@ import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { generatePlanReflection, type GeneratePlanReflectionInput, type GeneratePlanReflectionOutput } from "@/ai/flows/generate-plan-reflection";
 import { Badge } from "@/components/ui/badge";
+import { parseISO, isValid } from "date-fns";
 
 
 const sampleAgentData: AgentDisplayData[] = [
@@ -24,37 +25,27 @@ const sampleAgentData: AgentDisplayData[] = [
 
 
 const getPlannerStorageKey = (userEmail: string | undefined | null) =>
-  userEmail ? `studyMindAiPlannerData_v2_${userEmail}` : `studyMindAiPlannerData_v2_guest`;
+  userEmail ? `studyMindAiPlannerData_v2_array_${userEmail}` : `studyMindAiPlannerData_v2_array_guest`;
 
-// Helper function to parse schedule string into tasks
-function parseTasksFromString(scheduleString: string, existingTasks?: ScheduleTask[]): ScheduleTask[] {
+
+function parseTasksFromString(scheduleString: string, planId: string, existingTasks?: ScheduleTask[]): ScheduleTask[] {
   try {
     const parsed = JSON.parse(scheduleString) as ParsedRawScheduleItem[];
     if (Array.isArray(parsed) && parsed.every(item => typeof item.date === 'string' && typeof item.task === 'string')) {
-      if (existingTasks && existingTasks.length > 0 && existingTasks.length === parsed.length) {
-         return parsed.map((item, index) => ({
+      return parsed.map((item, index) => {
+        const existingTask = existingTasks?.find(et => et.id.startsWith(`task-${planId}-${index}`)); // Match by planId and index
+        return {
           ...item,
           date: item.date,
-          id: existingTasks[index]?.id || String(index),
-          completed: existingTasks[index]?.completed || false,
+          id: existingTask?.id || `task-${planId}-${index}-${new Date(item.date).getTime()}-${Math.random().toString(36).substring(2,9)}`,
+          completed: existingTask?.completed || false,
           youtubeSearchQuery: item.youtubeSearchQuery,
           referenceSearchQuery: item.referenceSearchQuery,
-          subTasks: existingTasks[index]?.subTasks || [],
-          quizScore: existingTasks[index]?.quizScore,
-          quizAttempted: existingTasks[index]?.quizAttempted || false,
-        }));
-      }
-      return parsed.map((item, index) => ({
-        ...item,
-        date: item.date,
-        id: String(index),
-        completed: false,
-        youtubeSearchQuery: item.youtubeSearchQuery,
-        referenceSearchQuery: item.referenceSearchQuery,
-        subTasks: [],
-        quizScore: undefined,
-        quizAttempted: false,
-      }));
+          subTasks: existingTask?.subTasks || [],
+          quizScore: existingTask?.quizScore,
+          quizAttempted: existingTask?.quizAttempted || false,
+        };
+      });
     }
     return existingTasks || [];
   } catch (error) {
@@ -86,8 +77,8 @@ const studyTips = [
 export default function DashboardPage() {
   const { currentUser } = useAuth();
   const [agents, setAgents] = useState<AgentDisplayData[]>(sampleAgentData);
-  const [currentStudyPlan, setCurrentStudyPlan] = useState<ScheduleData | null>(null);
-  const [parsedTasksForPlan, setParsedTasksForPlan] = useState<ScheduleTask[]>([]);
+  const [activeStudyPlan, setActiveStudyPlan] = useState<ScheduleData | null>(null);
+  const [parsedTasksForActivePlan, setParsedTasksForActivePlan] = useState<ScheduleTask[]>([]);
   const [planReflection, setPlanReflection] = useState<GeneratePlanReflectionOutput | null>(null);
   const [isGeneratingReflection, setIsGeneratingReflection] = useState(false);
   const plannerStorageKey = getPlannerStorageKey(currentUser?.email);
@@ -96,67 +87,78 @@ export default function DashboardPage() {
 
   const reloadDataFromStorage = useCallback(() => {
     if (!currentUser?.email) {
-        setCurrentStudyPlan(null);
-        setParsedTasksForPlan([]);
-        setPlanReflection(null); // Clear reflection when no user
+        setActiveStudyPlan(null);
+        setParsedTasksForActivePlan([]);
+        setPlanReflection(null);
         return;
     }
-    const savedPlanJson = localStorage.getItem(plannerStorageKey);
-    if (savedPlanJson) {
+    const savedPlansJson = localStorage.getItem(plannerStorageKey);
+    let currentActivePlan: ScheduleData | null = null;
+
+    if (savedPlansJson) {
         try {
-            const savedPlan: ScheduleData = JSON.parse(savedPlanJson);
-            console.log("[Dashboard Reload] Read from localStorage. Duration:", savedPlan.planDetails?.studyDurationDays, "Status:", savedPlan.status, "Subjects:", savedPlan.planDetails?.subjects, "Daily Hours:", savedPlan.planDetails?.dailyStudyHours);
-
-            let tasksToUse: ScheduleTask[] = savedPlan.tasks || [];
-            if ((!tasksToUse || tasksToUse.length === 0) && savedPlan.scheduleString) {
-                const newlyParsedTasks = parseTasksFromString(savedPlan.scheduleString, savedPlan.tasks);
-                if (newlyParsedTasks.length > 0) tasksToUse = newlyParsedTasks;
-            } else {
-                 tasksToUse = tasksToUse.map(task => ({...task, subTasks: task.subTasks || [], quizScore: task.quizScore, quizAttempted: task.quizAttempted || false}));
+            const allPlans: ScheduleData[] = JSON.parse(savedPlansJson);
+            if (Array.isArray(allPlans) && allPlans.length > 0) {
+                const activePlans = allPlans.filter(p => p.status === 'active').sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+                if (activePlans.length > 0) {
+                    currentActivePlan = activePlans[0];
+                } else {
+                    const mostRecentCompleted = allPlans.filter(p => p.status === 'completed').sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+                    if (mostRecentCompleted.length > 0) currentActivePlan = mostRecentCompleted[0];
+                }
+                if (!currentActivePlan) { // Fallback to most recently updated if no active/completed
+                    currentActivePlan = allPlans.sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
+                }
             }
-
-            setCurrentStudyPlan(savedPlan);
-            setParsedTasksForPlan(tasksToUse);
-            // Reflection fetching is now handled by a separate useEffect watching currentStudyPlan
+            
+            if (currentActivePlan) {
+                let tasksToUse = currentActivePlan.tasks || [];
+                if ((!tasksToUse || tasksToUse.length === 0) && currentActivePlan.scheduleString) {
+                     tasksToUse = parseTasksFromString(currentActivePlan.scheduleString, currentActivePlan.id, currentActivePlan.tasks);
+                } else {
+                     tasksToUse = tasksToUse.map(task => ({...task, subTasks: task.subTasks || [], quizScore: task.quizScore, quizAttempted: task.quizAttempted || false}));
+                }
+                currentActivePlan.tasks = tasksToUse; // Ensure plan object has updated tasks
+                setActiveStudyPlan(currentActivePlan);
+                setParsedTasksForActivePlan(tasksToUse);
+            } else {
+                setActiveStudyPlan(null);
+                setParsedTasksForActivePlan([]);
+            }
+            
         } catch (error) {
-            console.error("Dashboard: Failed to parse saved plan on reload:", error);
-            setCurrentStudyPlan(null);
-            setParsedTasksForPlan([]);
-            setPlanReflection(null);
+            console.error("Dashboard: Failed to parse or process plans:", error);
+            setActiveStudyPlan(null);
+            setParsedTasksForActivePlan([]);
         }
     } else {
-        setCurrentStudyPlan(null);
-        setParsedTasksForPlan([]);
-        setPlanReflection(null);
+        setActiveStudyPlan(null);
+        setParsedTasksForActivePlan([]);
     }
+    setPlanReflection(null); // Reset reflection as plan context might have changed
   }, [currentUser, plannerStorageKey]);
 
 
   useEffect(() => {
-    reloadDataFromStorage(); // Initial load
+    reloadDataFromStorage(); 
 
     const handleStudyPlanUpdate = () => {
       console.log('studyPlanUpdated event received by dashboard, reloading data.');
       reloadDataFromStorage();
     };
-
     window.addEventListener('studyPlanUpdated', handleStudyPlanUpdate);
-
-    return () => {
-      window.removeEventListener('studyPlanUpdated', handleStudyPlanUpdate);
-    };
+    return () => window.removeEventListener('studyPlanUpdated', handleStudyPlanUpdate);
   }, [reloadDataFromStorage]);
 
-  // useEffect for fetching plan reflection when currentStudyPlan or tasks change
   useEffect(() => {
     const fetchPlanReflection = async () => {
-        if (currentStudyPlan && currentStudyPlan.status === 'completed' && parsedTasksForPlan.length > 0 && currentStudyPlan.planDetails) {
+        if (activeStudyPlan && activeStudyPlan.status === 'completed' && parsedTasksForActivePlan.length > 0 && activeStudyPlan.planDetails) {
             setIsGeneratingReflection(true);
             try {
                 const input: GeneratePlanReflectionInput = {
-                    planDetails: currentStudyPlan.planDetails,
-                    tasks: parsedTasksForPlan,
-                    completionDate: currentStudyPlan.completionDate
+                    planDetails: activeStudyPlan.planDetails,
+                    tasks: parsedTasksForActivePlan,
+                    completionDate: activeStudyPlan.completionDate
                 };
                 const reflectionResult = await generatePlanReflection(input);
                 setPlanReflection(reflectionResult);
@@ -166,12 +168,12 @@ export default function DashboardPage() {
             } finally {
                 setIsGeneratingReflection(false);
             }
-        } else if (currentStudyPlan?.status !== 'completed') {
-            setPlanReflection(null); // Clear reflection if plan is not completed
+        } else if (activeStudyPlan?.status !== 'completed') {
+            setPlanReflection(null); 
         }
     };
     fetchPlanReflection();
-  }, [currentStudyPlan, parsedTasksForPlan]);
+  }, [activeStudyPlan, parsedTasksForActivePlan]);
 
 
   useEffect(() => {
@@ -182,18 +184,16 @@ export default function DashboardPage() {
       })));
     }, 3000);
     
-    // Set initial tip
     setCurrentTip(studyTips[Math.floor(Math.random() * studyTips.length)]);
-    // Set interval to change tip
     const tipInterval = setInterval(() => {
       setCurrentTip(prevTip => {
         let newTip = prevTip;
-        while (newTip === prevTip) { // Ensure new tip is different from current
+        while (newTip === prevTip) {
           newTip = studyTips[Math.floor(Math.random() * studyTips.length)];
         }
         return newTip;
       });
-    }, 30000); // 30 seconds
+    }, 30000); 
 
     return () => {
       clearInterval(agentConfidenceInterval);
@@ -201,35 +201,27 @@ export default function DashboardPage() {
     };
   }, []);
 
-  const completedTasksCount = parsedTasksForPlan.filter(task => task.completed).length;
-  const totalTasksCount = parsedTasksForPlan.length;
+  const completedTasksCount = parsedTasksForActivePlan.filter(task => task.completed).length;
+  const totalTasksCount = parsedTasksForActivePlan.length;
   const progressPercentage = totalTasksCount > 0 ? Math.round((completedTasksCount / totalTasksCount) * 100) : 0;
-  const isPlanCompleted = currentStudyPlan?.status === 'completed';
+  const isPlanCompleted = activeStudyPlan?.status === 'completed';
 
-  // Recalculate totalStudyHours whenever currentStudyPlan changes
   const totalStudyHours = useMemo(() => {
-    if (currentStudyPlan?.planDetails) {
-        return currentStudyPlan.planDetails.dailyStudyHours * currentStudyPlan.planDetails.studyDurationDays;
+    if (activeStudyPlan?.planDetails) {
+        return activeStudyPlan.planDetails.dailyStudyHours * activeStudyPlan.planDetails.studyDurationDays;
     }
     return "N/A";
-  }, [currentStudyPlan]);
+  }, [activeStudyPlan]);
 
 
   const averageQuizScore = useMemo(() => {
-    const attemptedQuizzes = parsedTasksForPlan.filter(
+    const attemptedQuizzes = parsedTasksForActivePlan.filter(
       (task) => task.quizAttempted && typeof task.quizScore === 'number'
     );
-    if (attemptedQuizzes.length === 0) {
-      return "N/A";
-    }
+    if (attemptedQuizzes.length === 0) return "N/A";
     const totalScore = attemptedQuizzes.reduce((sum, task) => sum + (task.quizScore || 0), 0);
     return Math.round(totalScore / attemptedQuizzes.length);
-  }, [parsedTasksForPlan]);
-
-
-  // Debug log for when the component renders to see currentStudyPlan
-  console.log("[Dashboard Render] Current Plan Duration from state:", currentStudyPlan?.planDetails?.studyDurationDays, "Total Study Hours KPI:", totalStudyHours);
-
+  }, [parsedTasksForActivePlan]);
 
   return (
     <AppLayout>
@@ -237,10 +229,10 @@ export default function DashboardPage() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Welcome back, {currentUser?.name?.split(' ')[0] || 'User'}! 👋</h1>
-            <p className="text-muted-foreground">Your AI agents have been working while you were away.</p>
+            <p className="text-muted-foreground">Your AI agents are ready to assist.</p>
           </div>
           <div className="flex items-center gap-2 mt-4 md:mt-0">
-            {(!currentStudyPlan || isPlanCompleted) && (
+            {(!activeStudyPlan || activeStudyPlan.status !== 'active') && (
               <Button asChild>
                 <Link href="/planner"><span><PlusCircle className="mr-2 h-4 w-4"/>Create Study Plan</span></Link>
               </Button>
@@ -249,35 +241,35 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {currentStudyPlan && currentStudyPlan.planDetails && (
+        {activeStudyPlan && activeStudyPlan.planDetails && (
           <section>
-            <Card className={`border shadow-lg ${isPlanCompleted ? 'border-green-500/70' : 'border-primary/50'}`}>
+            <Card className={`border shadow-lg ${activeStudyPlan.status === 'completed' ? 'border-green-500/70' : (activeStudyPlan.status === 'archived' ? 'border-gray-500/50' : 'border-primary/50')}`}>
               <CardHeader>
                 <CardTitle className="text-xl flex items-center justify-between">
                   <span className="flex items-center gap-2">
-                    {isPlanCompleted ? <CheckCircle2 className="text-green-500 h-6 w-6" /> : <ListChecks className="text-primary h-6 w-6" />}
-                    {isPlanCompleted ? "Recently Completed Plan" : "Your Current Study Plan"}
+                    {activeStudyPlan.status === 'completed' ? <CheckCircle2 className="text-green-500 h-6 w-6" /> : <ListChecks className="text-primary h-6 w-6" />}
+                    {activeStudyPlan.status === 'completed' ? "Recently Completed Plan" : (activeStudyPlan.status === 'archived' ? "Archived Plan" : "Your Current Study Plan")}
                   </span>
                 </CardTitle>
                 <CardDescription>
-                    {isPlanCompleted ?
-                        `Completed on ${currentStudyPlan.completionDate ? new Date(currentStudyPlan.completionDate).toLocaleDateString() : 'N/A'}. Well done!`
-                        : "A quick look at your ongoing plan."}
+                    {activeStudyPlan.status === 'completed' ? `Completed on ${activeStudyPlan.completionDate && isValid(parseISO(activeStudyPlan.completionDate)) ? new Date(activeStudyPlan.completionDate).toLocaleDateString() : 'N/A'}. Well done!`
+                     : activeStudyPlan.status === 'archived' ? `Archived on ${isValid(parseISO(activeStudyPlan.updatedAt)) ? new Date(activeStudyPlan.updatedAt).toLocaleDateString() : 'N/A'}.`
+                     : "A quick look at your ongoing plan."}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
                   <h4 className="text-sm font-medium text-muted-foreground">Subjects</h4>
-                  <p className="font-semibold">{currentStudyPlan.planDetails.subjects || "N/A"}</p>
+                  <p className="font-semibold">{activeStudyPlan.planDetails.subjects || "N/A"}</p>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <h4 className="text-sm font-medium text-muted-foreground">Current Duration</h4>
-                    <p className="font-semibold">{currentStudyPlan.planDetails.studyDurationDays} days</p>
+                    <h4 className="text-sm font-medium text-muted-foreground">Duration</h4>
+                    <p className="font-semibold">{activeStudyPlan.planDetails.studyDurationDays} days</p>
                   </div>
                   <div>
                     <h4 className="text-sm font-medium text-muted-foreground">Daily Study</h4>
-                    <p className="font-semibold">{currentStudyPlan.planDetails.dailyStudyHours} hours</p>
+                    <p className="font-semibold">{activeStudyPlan.planDetails.dailyStudyHours} hours</p>
                   </div>
                 </div>
                 {totalTasksCount > 0 && (
@@ -292,17 +284,17 @@ export default function DashboardPage() {
               </CardContent>
               <CardFooter>
                 <Button asChild className="w-full">
-                  <Link href="/planner"><span><Edit className="mr-2 h-4 w-4"/> {isPlanCompleted ? "Review Completed Plan" : "View or Edit Full Plan"}</span></Link>
+                  <Link href="/planner"><span><Edit className="mr-2 h-4 w-4"/> {isPlanCompleted || activeStudyPlan.status === 'archived' ? "Review Plan Details" : "View or Edit Full Plan"}</span></Link>
                 </Button>
               </CardFooter>
             </Card>
           </section>
         )}
 
-        {!currentStudyPlan && (
+        {!activeStudyPlan && (
           <Alert>
             <HelpCircle className="h-4 w-4" />
-            <AlertTitle>No Active Study Plan</AlertTitle>
+            <AlertTitle>No Study Plan Found</AlertTitle>
             <AlertDescription>
               Create your first AI-powered study plan to see your stats and insights here!
               <Button asChild variant="link" className="p-0 h-auto ml-1">
@@ -322,7 +314,7 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{totalStudyHours}</div>
-                <p className="text-xs text-muted-foreground">Estimate based on plan</p>
+                <p className="text-xs text-muted-foreground">Estimate from plan</p>
               </CardContent>
             </Card>
             <Card>
@@ -331,8 +323,8 @@ export default function DashboardPage() {
                 <Flame className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">12</div>
-                <p className="text-xs text-muted-foreground">Personal best!</p>
+                <div className="text-2xl font-bold">0</div>
+                <p className="text-xs text-muted-foreground">Streak tracking soon!</p>
               </CardContent>
             </Card>
             <Card>
@@ -342,7 +334,7 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{totalTasksCount > 0 ? `${progressPercentage}%` : 'N/A'}</div>
-                <p className="text-xs text-muted-foreground">{totalTasksCount > 0 ? `From current plan` : 'No active plan'}</p>
+                <p className="text-xs text-muted-foreground">{totalTasksCount > 0 ? `From current/last plan` : 'No plan data'}</p>
               </CardContent>
             </Card>
             <Card>
@@ -387,20 +379,20 @@ export default function DashboardPage() {
           </div>
         </section>
 
-         {isPlanCompleted && (
+         {activeStudyPlan?.status === 'completed' && (
           <section>
             <div className="text-center mb-6">
                 <h2 className="text-2xl font-semibold mb-2 flex items-center justify-center gap-2">
                     <Lightbulb className="h-6 w-6 text-yellow-400" /> AI-Generated Plan Reflection
                 </h2>
                 <p className="text-muted-foreground max-w-xl mx-auto">
-                  ReflectionAI has analyzed your completed plan. Here's a summary of its findings:
+                  ReflectionAI has analyzed your completed plan. Here's a summary:
                 </p>
             </div>
             {isGeneratingReflection && (
               <div className="flex flex-col items-center justify-center p-8 border rounded-lg bg-muted/50">
                 <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-                <p className="text-muted-foreground">ReflectionAI is analyzing your performance...</p>
+                <p className="text-muted-foreground">ReflectionAI is analyzing...</p>
               </div>
             )}
             {planReflection && !isGeneratingReflection && (
@@ -412,7 +404,7 @@ export default function DashboardPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold text-primary">{(planReflection.overallCompletionRate * 100).toFixed(0)}%</div>
-                    <p className="text-xs text-muted-foreground">of tasks marked as completed.</p>
+                    <p className="text-xs text-muted-foreground">of tasks marked completed.</p>
                   </CardContent>
                 </Card>
                  <Card>
@@ -438,12 +430,12 @@ export default function DashboardPage() {
                 </Card>
               </div>
             )}
-            {!planReflection && !isGeneratingReflection && currentStudyPlan?.status === 'completed' && (
+            {!planReflection && !isGeneratingReflection && activeStudyPlan?.status === 'completed' && (
                 <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />
                     <AlertTitle>Reflection Not Available</AlertTitle>
                     <AlertDescription>
-                        We couldn't generate a reflection for this plan at the moment. This might be because there were no tasks in the plan or an error occurred.
+                        Could not generate a reflection for this plan.
                     </AlertDescription>
                 </Alert>
             )}
@@ -482,17 +474,8 @@ export default function DashboardPage() {
                 </Card>
             </div>
         </section>
-
       </div>
     </AppLayout>
   );
 }
-    
-
-    
-
-    
-
-    
-
     
