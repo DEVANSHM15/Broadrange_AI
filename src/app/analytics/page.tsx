@@ -27,10 +27,10 @@ function ensureTaskStructure(tasks: ScheduleTask[] | undefined, planId: string):
   return tasks.map((task, index) => ({
     ...task,
     id: task.id || `task-${planId}-${index}-${new Date(task.date).getTime()}-${Math.random().toString(36).substring(2,9)}`,
-    completed: Boolean(task.completed), // Ensure boolean
+    completed: Boolean(task.completed), // Explicitly cast to boolean
+    quizAttempted: Boolean(task.quizAttempted), // Explicitly cast to boolean
     subTasks: task.subTasks || [],
     quizScore: task.quizScore,
-    quizAttempted: Boolean(task.quizAttempted), // Ensure boolean
   }));
 }
 
@@ -78,7 +78,13 @@ function AnalyticsPageContent() {
             throw new Error(`Failed to fetch specific plan: ${response.statusText}`);
           }
         } else {
-          planToAnalyze = await response.json();
+          const fetchedPlan = await response.json();
+           if (fetchedPlan) {
+             planToAnalyze = {
+                ...fetchedPlan,
+                tasks: ensureTaskStructure(fetchedPlan.tasks, fetchedPlan.id)
+             };
+           }
         }
       }
       
@@ -132,7 +138,7 @@ function AnalyticsPageContent() {
     try {
       const input: GeneratePlanReflectionInput = {
         planDetails: plan.planDetails,
-        tasks: plan.tasks, 
+        tasks: ensureTaskStructure(plan.tasks, plan.id), // Ensure boolean conversion before sending to AI
         completionDate: plan.completionDate,
       };
       const reflection = await generatePlanReflection(input);
@@ -146,7 +152,7 @@ function AnalyticsPageContent() {
         } else if (error.message.includes("Plan details and tasks are required")) {
           detailMessage = "Missing necessary plan data to generate the reflection.";
         } else if (error.message.toLowerCase().includes("schema validation failed") || error.message.toLowerCase().includes("parse errors")) {
-          detailMessage = "Data sent to AI for reflection was not in the expected format. Please check plan data integrity.";
+          detailMessage = `Data sent to AI for reflection was not in the expected format. Details: ${error.message.substring(0,200)}`;
         } else if (error.message.length < 150) { 
           detailMessage = error.message;
         }
@@ -160,7 +166,7 @@ function AnalyticsPageContent() {
     } finally {
       setIsGeneratingReflection(false);
     }
-  }, [isGeneratingReflection, toast]); 
+  }, [toast]); // Removed isGeneratingReflection from dependency array
 
   useEffect(() => {
     if (currentStudyPlanForAnalytics && currentStudyPlanForAnalytics.status === 'completed') {
