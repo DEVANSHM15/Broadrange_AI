@@ -132,13 +132,17 @@ function AnalyticsPageContent() {
   }, [reloadDataForAnalytics, planIdFromQuery]);
 
   const fetchPlanReflection = useCallback(async (plan: ScheduleData) => {
-    if (!plan.planDetails || !plan.tasks || plan.tasks.length === 0 || isGeneratingReflection) return;
+    if (!plan.planDetails || !plan.tasks || plan.tasks.length === 0 || isGeneratingReflection ) return;
+    
+    // Ensure tasks are properly structured with boolean 'completed' for the AI flow
+    const tasksForReflection = ensureTaskStructure(plan.tasks, plan.id);
+
     setIsGeneratingReflection(true);
     setPlanReflection(null);
     try {
       const input: GeneratePlanReflectionInput = {
         planDetails: plan.planDetails,
-        tasks: ensureTaskStructure(plan.tasks, plan.id), 
+        tasks: tasksForReflection, 
         completionDate: plan.completionDate,
       };
       const reflection = await generatePlanReflection(input);
@@ -166,7 +170,7 @@ function AnalyticsPageContent() {
     } finally {
       setIsGeneratingReflection(false);
     }
-  }, [toast]); 
+  }, [toast]); // Removed isGeneratingReflection from dependencies
 
   useEffect(() => {
     if (currentStudyPlanForAnalytics && currentStudyPlanForAnalytics.status === 'completed') {
@@ -239,10 +243,10 @@ function AnalyticsPageContent() {
     const anySubjectHasData = subjectCountsArray.some(s => s.value > 0);
 
     if (!anySubjectHasData) {
-        return []; // Return empty array to trigger "No data" message
+        return []; 
     }
 
-    return subjectCountsArray.filter(item => item.value > 0); // Only return subjects that actually have data for the chart
+    return subjectCountsArray.filter(item => item.value > 0); 
   }, [currentStudyPlanForAnalytics]);
 
 
@@ -325,7 +329,7 @@ function AnalyticsPageContent() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
             <Card className="analytics-card shadow-md hover:shadow-lg transition-shadow">
               <CardHeader><CardTitle>Performance Trends (Tasks/Week)</CardTitle></CardHeader>
-              <CardContent className="h-[300px] p-2">
+              <CardContent className="h-[300px] p-2 relative">
                 {performanceData.length > 0 ? (
                   <ChartContainer config={performanceChartConfig} className="w-full h-full">
                     <ResponsiveContainer width="100%" height="100%">
@@ -340,15 +344,15 @@ function AnalyticsPageContent() {
                     </ResponsiveContainer>
                   </ChartContainer>
                 ) : (
-                  <div className="flex items-center justify-center h-full">
-                    <p className="text-center text-muted-foreground">No task completion data yet to show trends for this plan.</p>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <p className="text-center text-muted-foreground p-4">No task completion data yet to show trends for this plan.</p>
                   </div>
                 )}
               </CardContent>
             </Card>
             <Card className="analytics-card shadow-md hover:shadow-lg transition-shadow">
               <CardHeader><CardTitle>Subject Focus (Completed Tasks)</CardTitle></CardHeader>
-              <CardContent className="h-[300px] p-2">
+              <CardContent className="h-[300px] p-2 relative">
                 {subjectFocusData.length > 0 ? (
                   <ChartContainer config={subjectChartConfig} className="w-full h-full">
                     <ResponsiveContainer width="100%" height="100%">
@@ -364,15 +368,15 @@ function AnalyticsPageContent() {
                     </ResponsiveContainer>
                   </ChartContainer>
                 ) : (
-                   <div className="flex items-center justify-center h-full">
-                    <p className="text-center text-muted-foreground">No subject focus data to display. Complete tasks to see focus.</p>
+                   <div className="absolute inset-0 flex items-center justify-center">
+                    <p className="text-center text-muted-foreground p-4">No subject focus data to display. Complete tasks to see focus.</p>
                    </div>
                 )}
               </CardContent>
             </Card>
             <Card className="analytics-card md:col-span-2 shadow-md hover:shadow-lg transition-shadow">
               <CardHeader><CardTitle>Daily Task Completion</CardTitle></CardHeader>
-              <CardContent className="h-[300px] p-2">
+              <CardContent className="h-[300px] p-2 relative">
                 {dailyCompletionData.length > 0 ? (
                    <ChartContainer config={dailyCompletionChartConfig} className="w-full h-full">
                       <ResponsiveContainer width="100%" height="100%">
@@ -387,8 +391,8 @@ function AnalyticsPageContent() {
                       </ResponsiveContainer>
                     </ChartContainer>
                 ) : (
-                  <div className="flex items-center justify-center h-full">
-                    <p className="text-center text-muted-foreground">No tasks completed yet for daily tracking in this plan.</p>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <p className="text-center text-muted-foreground p-4">No tasks completed yet for daily tracking in this plan.</p>
                   </div>
                 )}
               </CardContent>
