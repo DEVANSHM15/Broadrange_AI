@@ -44,13 +44,13 @@ const staticExampleRecommendations: InsightDisplayData[] = [
 
 
 const dayOfWeekColors = [
-    "hsl(var(--chart-1))",
-    "hsl(142.1 70.6% 45.3%)", // Lush Green
-    "hsl(190 70% 50%)",
-    "hsl(26.1 80.4% 53.1%)", // Bright Orange
-    "hsl(262.1 83.3% 57.8%)",
-    "hsl(320.1 70.8% 58.2%)", // Vivid Pink
-    "hsl(47.9 95.8% 53.1%)",  // Bright Yellow
+    "hsl(var(--chart-1))",       // Primary Blue
+    "hsl(142.1 70.6% 45.3%)",    // Lush Green
+    "hsl(190 70% 50%)",          // Bright Cyan/Teal
+    "hsl(26.1 80.4% 53.1%)",     // Bright Orange
+    "hsl(262.1 83.3% 57.8%)",    // Vivid Purple
+    "hsl(320.1 70.8% 58.2%)",    // Vivid Pink
+    "hsl(47.9 95.8% 53.1%)",     // Bright Yellow
 ];
 
 
@@ -198,7 +198,7 @@ function AnalyticsPageContent() {
     } finally {
       setIsGeneratingReflection(false);
     }
-  }, [toast]);
+  }, [toast]); // Removed isGeneratingReflection from dependencies
 
   useEffect(() => {
     if (currentStudyPlanForAnalytics && currentStudyPlanForAnalytics.status === 'completed') {
