@@ -9,7 +9,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Legend, Cell } from "recharts";
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Legend, Cell, PieChart, Pie } from "recharts";
 import type { InsightDisplayData, ScheduleData, ScheduleTask, PlanInput, ParsedRawScheduleItem } from "@/types";
 import { useAuth } from "@/contexts/auth-context";
 import { useState, useEffect, useMemo, useCallback, Suspense } from "react";
@@ -29,8 +29,8 @@ function ensureTaskStructure(tasks: ScheduleTask[] | undefined, planId: string):
   return tasks.map((task, index) => ({
     ...task,
     id: task.id || `task-${planId}-${index}-${new Date(task.date).getTime()}-${Math.random().toString(36).substring(2,9)}`,
-    completed: Boolean(task.completed), // Explicitly cast to boolean
-    quizAttempted: Boolean(task.quizAttempted), // Explicitly cast to boolean
+    completed: Boolean(task.completed),
+    quizAttempted: Boolean(task.quizAttempted),
     subTasks: task.subTasks || [],
     quizScore: task.quizScore,
   }));
@@ -160,9 +160,10 @@ function AnalyticsPageContent() {
   }, [reloadDataForAnalytics, planIdFromQuery]);
 
  const fetchPlanReflection = useCallback(async (plan: ScheduleData) => {
-    if (!plan.planDetails || !plan.tasks || plan.tasks.length === 0 ) return;
-    if (isGeneratingReflection) return;
+    if (!plan.planDetails || !plan.tasks || plan.tasks.length === 0) return;
+    if (isGeneratingReflection) return; // Prevent re-entry
     
+    // Ensure tasks are structured correctly for the AI flow, especially boolean fields
     const tasksForReflection = ensureTaskStructure(plan.tasks, plan.id);
 
     setIsGeneratingReflection(true);
@@ -198,7 +199,7 @@ function AnalyticsPageContent() {
     } finally {
       setIsGeneratingReflection(false);
     }
-  }, [toast]);
+  }, [toast]); // Removed isGeneratingReflection from here
 
   useEffect(() => {
     if (currentStudyPlanForAnalytics && currentStudyPlanForAnalytics.status === 'completed') {
@@ -269,10 +270,12 @@ function AnalyticsPageContent() {
 
   }, [currentStudyPlanForAnalytics]);
   
-  const productiveDaysChartConfig: ChartConfig = productiveDaysData.reduce((acc, item) => {
-      acc[item.day] = { label: item.day, color: item.fill };
-      return acc;
-  }, {} as ChartConfig);
+  const productiveDaysChartConfig: ChartConfig = useMemo(() => {
+    return (productiveDaysData || []).reduce((acc, item) => {
+        acc[item.day] = { label: item.day, color: item.fill };
+        return acc;
+    }, {} as ChartConfig);
+  }, [productiveDaysData]);
 
 
   const dailyCompletionData = useMemo(() => {
@@ -482,37 +485,39 @@ function AnalyticsPageContent() {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="p-2"> {/* Reduced padding */}
-                {monthlyActivityData.days.length > 0 ? (
-                  <TooltipProvider>
-                    <div className="grid grid-cols-7 gap-0.5 text-center text-xs"> {/* Reduced gap */}
-                      {daysOfWeekShort.map(day => (
-                        <div key={day} className="font-medium text-muted-foreground pb-1 text-[10px]">{day}</div>
-                      ))}
-                      {monthlyActivityData.days.map(({ date, tasksCompleted, isCurrentMonth }) => (
-                        <Tooltip key={date.toISOString()} delayDuration={100}>
-                          <TooltipTrigger asChild>
-                            <div
-                              className={`w-full aspect-square rounded-sm flex items-center justify-center border border-transparent transition-colors text-[10px]
-                                          ${isCurrentMonth ? getHeatmapColor(tasksCompleted) : 'bg-background/30 text-muted-foreground/30 cursor-default'}
-                                          ${isCurrentMonth && tasksCompleted > 0 ? 'text-primary-foreground dark:text-background font-semibold' : (isCurrentMonth ? 'text-muted-foreground' : '')}
-                                        `}
-                            >
-                              {getDate(date)}
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>{format(date, "PPP")}: {tasksCompleted} task{tasksCompleted !== 1 ? 's' : ''} completed</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      ))}
+              <CardContent className="p-2">
+                <div className="max-w-sm mx-auto"> {/* Constrain width here */}
+                  {monthlyActivityData.days.length > 0 ? (
+                    <TooltipProvider>
+                      <div className="grid grid-cols-7 gap-0.5 text-center text-xs">
+                        {daysOfWeekShort.map(day => (
+                          <div key={day} className="font-medium text-muted-foreground pb-1 text-[10px]">{day}</div>
+                        ))}
+                        {monthlyActivityData.days.map(({ date, tasksCompleted, isCurrentMonth }) => (
+                          <Tooltip key={date.toISOString()} delayDuration={100}>
+                            <TooltipTrigger asChild>
+                              <div
+                                className={`w-full aspect-square rounded-sm flex items-center justify-center border border-transparent transition-colors text-[10px]
+                                            ${isCurrentMonth ? getHeatmapColor(tasksCompleted) : 'bg-background/30 text-muted-foreground/30 cursor-default'}
+                                            ${isCurrentMonth && tasksCompleted > 0 ? 'text-primary-foreground dark:text-background font-semibold' : (isCurrentMonth ? 'text-muted-foreground' : '')}
+                                          `}
+                              >
+                                {getDate(date)}
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{format(date, "PPP")}: {tasksCompleted} task{tasksCompleted !== 1 ? 's' : ''} completed</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        ))}
+                      </div>
+                    </TooltipProvider>
+                  ) : (
+                    <div className="flex items-center justify-center min-h-[100px]">
+                       <p className="text-center text-muted-foreground">No activity data for this month in the current plan.</p>
                     </div>
-                  </TooltipProvider>
-                ) : (
-                  <div className="flex items-center justify-center min-h-[100px]">
-                     <p className="text-center text-muted-foreground">No activity data for this month in the current plan.</p>
-                  </div>
-                )}
+                  )}
+                </div>
               </CardContent>
             </Card>
           </div>
