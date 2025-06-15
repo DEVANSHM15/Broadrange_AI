@@ -14,12 +14,13 @@ import type { InsightDisplayData, ScheduleData, ScheduleTask, PlanInput, ParsedR
 import { useAuth } from "@/contexts/auth-context";
 import { useState, useEffect, useMemo, useCallback, Suspense } from "react";
 import { useSearchParams } from 'next/navigation';
-import { differenceInWeeks, parseISO, format, startOfWeek, endOfWeek, addWeeks, isValid, getDay, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, getDate } from "date-fns"; // Added endOfWeek
+import { differenceInWeeks, parseISO, format, startOfWeek, endOfWeek, addWeeks, isValid, getDay, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, getDate, addMonths, subMonths } from "date-fns";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { HelpCircle, Loader2, Lightbulb, AlertCircle as AlertCircleIcon, Target, MessageSquareText, Repeat, SparklesIcon, CalendarDays } from "lucide-react";
+import { HelpCircle, Loader2, Lightbulb, AlertCircle as AlertCircleIcon, Target, MessageSquareText, Repeat, SparklesIcon, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { generatePlanReflection, type GeneratePlanReflectionInput, type GeneratePlanReflectionOutput } from "@/ai/flows/generate-plan-reflection";
 import { useToast } from "@/hooks/use-toast";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
 
 
 // Helper function to ensure tasks have necessary fields, especially after fetching from API
@@ -43,13 +44,13 @@ const staticExampleRecommendations: InsightDisplayData[] = [
 
 
 const dayOfWeekColors = [
-    "hsl(var(--chart-1))",   // Sun - Blue
-    "hsl(140 70% 50%)",      // Mon - Green
-    "hsl(190 70% 50%)",      // Tue - Cyan
-    "hsl(30 90% 55%)",       // Wed - Orange
-    "hsl(260 70% 60%)",      // Thu - Purple (changed from chart-5)
-    "hsl(330 70% 60%)",      // Fri - Pink
-    "hsl(60 80% 50%)",       // Sat - Yellow
+    "hsl(var(--chart-1))",
+    "hsl(142.1 70.6% 45.3%)", // Lush Green
+    "hsl(190 70% 50%)",
+    "hsl(26.1 80.4% 53.1%)", // Bright Orange
+    "hsl(262.1 83.3% 57.8%)",
+    "hsl(320.1 70.8% 58.2%)", // Vivid Pink
+    "hsl(47.9 95.8% 53.1%)",  // Bright Yellow
 ];
 
 
@@ -63,6 +64,7 @@ function AnalyticsPageContent() {
   const [isLoadingPlan, setIsLoadingPlan] = useState(true);
   const [planReflection, setPlanReflection] = useState<GeneratePlanReflectionOutput | null>(null);
   const [isGeneratingReflection, setIsGeneratingReflection] = useState(false);
+  const [heatmapDisplayMonth, setHeatmapDisplayMonth] = useState<Date>(startOfMonth(new Date()));
 
   const reloadDataForAnalytics = useCallback(async () => {
     if (!currentUser?.id) {
@@ -128,6 +130,27 @@ function AnalyticsPageContent() {
     }
   }, [currentUser, toast, planIdFromQuery]);
 
+  useEffect(() => {
+    if (currentStudyPlanForAnalytics) {
+      let initialHeatmapDate: Date | null = null;
+      if (currentStudyPlanForAnalytics.planDetails.startDate && isValid(parseISO(currentStudyPlanForAnalytics.planDetails.startDate))) {
+        initialHeatmapDate = parseISO(currentStudyPlanForAnalytics.planDetails.startDate);
+      } else if (currentStudyPlanForAnalytics.tasks.length > 0) {
+        const sortedTasksByDate = [...currentStudyPlanForAnalytics.tasks]
+          .filter(task => task.date && isValid(parseISO(task.date)))
+          .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
+        if (sortedTasksByDate.length > 0) {
+          initialHeatmapDate = parseISO(sortedTasksByDate[0].date);
+        }
+      }
+      if (initialHeatmapDate && isValid(initialHeatmapDate)) {
+        setHeatmapDisplayMonth(startOfMonth(initialHeatmapDate));
+      } else {
+        setHeatmapDisplayMonth(startOfMonth(new Date()));
+      }
+    }
+  }, [currentStudyPlanForAnalytics]);
+
 
   useEffect(() => {
     reloadDataForAnalytics();
@@ -140,7 +163,6 @@ function AnalyticsPageContent() {
     if (!plan.planDetails || !plan.tasks || plan.tasks.length === 0 ) return;
     if (isGeneratingReflection) return;
     
-    // Ensure tasks passed to AI have boolean 'completed' and 'quizAttempted'
     const tasksForReflection = ensureTaskStructure(plan.tasks, plan.id);
 
     setIsGeneratingReflection(true);
@@ -176,7 +198,7 @@ function AnalyticsPageContent() {
     } finally {
       setIsGeneratingReflection(false);
     }
-  }, [toast]); // Removed isGeneratingReflection from dependencies
+  }, [toast]);
 
   useEffect(() => {
     if (currentStudyPlanForAnalytics && currentStudyPlanForAnalytics.status === 'completed') {
@@ -196,7 +218,7 @@ function AnalyticsPageContent() {
     if(validTasks.length === 0) return [];
 
     const planStartDateRef = parseISO(validTasks.sort((a,b) => parseISO(a.date).getTime() - parseISO(b.date).getTime())[0].date);
-    const planStartDate = startOfWeek(planStartDateRef, { weekStartsOn: 1 }); // Assuming week starts on Monday
+    const planStartDate = startOfWeek(planStartDateRef, { weekStartsOn: 1 });
     const weeklyCompletion: { [week: string]: number } = {};
     
     completedTasks.forEach(task => {
@@ -230,20 +252,19 @@ function AnalyticsPageContent() {
 
     completedTasks.forEach(task => {
       if (task.date && isValid(parseISO(task.date))) {
-        const dayIndex = getDay(parseISO(task.date)); // 0 for Sunday, 1 for Monday, ...
+        const dayIndex = getDay(parseISO(task.date));
         const dayName = daysOfWeek[dayIndex];
         taskCountsByDay[dayName]++;
       }
     });
     
-    // Ensure all days are present, even if count is 0, for consistent chart rendering
     const data = daysOfWeek.map((day, index) => ({
       day,
       tasksCompleted: taskCountsByDay[day] || 0,
       fill: dayOfWeekColors[index % dayOfWeekColors.length],
     }));
     
-    if (data.every(d => d.tasksCompleted === 0)) return []; // if all days have 0, effectively no data for this chart
+    if (data.every(d => d.tasksCompleted === 0)) return [];
     return data;
 
   }, [currentStudyPlanForAnalytics]);
@@ -276,26 +297,11 @@ function AnalyticsPageContent() {
   };
 
   const monthlyActivityData = useMemo(() => {
-    if (!currentStudyPlanForAnalytics || !currentStudyPlanForAnalytics.tasks || currentStudyPlanForAnalytics.tasks.length === 0) {
-      return { monthName: format(new Date(), "MMMM yyyy"), days: [] };
+    if (!currentStudyPlanForAnalytics || !currentStudyPlanForAnalytics.tasks || !isValid(heatmapDisplayMonth)) {
+      return { monthName: format(heatmapDisplayMonth, "MMMM yyyy"), days: [] };
     }
   
-    let targetDate: Date;
-    if (currentStudyPlanForAnalytics.planDetails.startDate && isValid(parseISO(currentStudyPlanForAnalytics.planDetails.startDate))) {
-      targetDate = parseISO(currentStudyPlanForAnalytics.planDetails.startDate);
-    } else {
-      // Fallback: find the earliest task date in the plan
-      const sortedTasksByDate = [...currentStudyPlanForAnalytics.tasks]
-          .filter(task => task.date && isValid(parseISO(task.date)))
-          .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
-      if (sortedTasksByDate.length > 0) {
-          targetDate = parseISO(sortedTasksByDate[0].date);
-      } else {
-          targetDate = new Date(); // Ultimate fallback
-      }
-    }
-    if (!isValid(targetDate)) targetDate = new Date(); // Final fallback if parsing somehow failed
-  
+    const targetDate = heatmapDisplayMonth;
     const monthStart = startOfMonth(targetDate);
     const monthEnd = endOfMonth(targetDate);
     const displayStartDate = startOfWeek(monthStart);
@@ -313,14 +319,21 @@ function AnalyticsPageContent() {
     });
   
     return { monthName: format(monthStart, "MMMM yyyy"), days };
-  }, [currentStudyPlanForAnalytics]);
+  }, [currentStudyPlanForAnalytics, heatmapDisplayMonth]);
 
   const getHeatmapColor = (count: number): string => {
-    if (count === 0) return "bg-muted/30 hover:bg-muted/50"; // Very light gray for no tasks
-    if (count <= 1) return "bg-green-200 hover:bg-green-300 dark:bg-green-900 dark:hover:bg-green-800"; // Lightest green
-    if (count <= 3) return "bg-green-400 hover:bg-green-500 dark:bg-green-700 dark:hover:bg-green-600"; // Medium green
-    if (count <= 5) return "bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-400"; // Darker green
-    return "bg-green-800 hover:bg-green-900 dark:bg-green-300 dark:hover:bg-green-200"; // Darkest green
+    if (count === 0) return "bg-muted/30 hover:bg-muted/50";
+    if (count <= 1) return "bg-green-200 hover:bg-green-300 dark:bg-green-900 dark:hover:bg-green-800";
+    if (count <= 3) return "bg-green-400 hover:bg-green-500 dark:bg-green-700 dark:hover:bg-green-600";
+    if (count <= 5) return "bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-400";
+    return "bg-green-800 hover:bg-green-900 dark:bg-green-300 dark:hover:bg-green-200";
+  };
+
+  const handlePrevMonthHeatmap = () => {
+    setHeatmapDisplayMonth(prev => subMonths(prev, 1));
+  };
+  const handleNextMonthHeatmap = () => {
+    setHeatmapDisplayMonth(prev => addMonths(prev, 1));
   };
 
 
@@ -451,23 +464,37 @@ function AnalyticsPageContent() {
             </Card>
 
             <Card className="analytics-card md:col-span-2 shadow-md hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2"><CalendarDays className="text-primary h-5 w-5"/> Monthly Activity Heatmap</CardTitle>
-                <CardDescription>{monthlyActivityData.monthName}</CardDescription>
+               <CardHeader>
+                <div className="flex items-center justify-between mb-2">
+                  <CardTitle className="flex items-center gap-2 text-xl">
+                    <CalendarDays className="text-primary h-5 w-5"/> Monthly Activity Heatmap
+                  </CardTitle>
+                  <div className="flex items-center gap-1">
+                    <Button variant="outline" size="icon" className="h-7 w-7" onClick={handlePrevMonthHeatmap} aria-label="Previous month">
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <span className="text-base font-medium w-36 text-center tabular-nums">
+                      {monthlyActivityData.monthName}
+                    </span>
+                    <Button variant="outline" size="icon" className="h-7 w-7" onClick={handleNextMonthHeatmap} aria-label="Next month">
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent className="p-4">
                 {monthlyActivityData.days.length > 0 ? (
                   <TooltipProvider>
-                    <div className="grid grid-cols-7 gap-1 text-center text-xs">
+                    <div className="grid grid-cols-7 gap-0.5 text-center text-xs">
                       {daysOfWeekShort.map(day => (
-                        <div key={day} className="font-medium text-muted-foreground pb-1">{day}</div>
+                        <div key={day} className="font-medium text-muted-foreground pb-1 text-[10px]">{day}</div>
                       ))}
                       {monthlyActivityData.days.map(({ date, tasksCompleted, isCurrentMonth }) => (
                         <Tooltip key={date.toISOString()} delayDuration={100}>
                           <TooltipTrigger asChild>
                             <div
-                              className={`w-full aspect-square rounded flex items-center justify-center border transition-colors
-                                          ${isCurrentMonth ? getHeatmapColor(tasksCompleted) : 'bg-background/50 text-muted-foreground/50 cursor-default'}
+                              className={`w-full aspect-square rounded-sm flex items-center justify-center border border-transparent transition-colors text-[10px]
+                                          ${isCurrentMonth ? getHeatmapColor(tasksCompleted) : 'bg-background/30 text-muted-foreground/30 cursor-default'}
                                           ${isCurrentMonth && tasksCompleted > 0 ? 'text-primary-foreground dark:text-background font-semibold' : (isCurrentMonth ? 'text-muted-foreground' : '')}
                                         `}
                             >
@@ -482,7 +509,7 @@ function AnalyticsPageContent() {
                     </div>
                   </TooltipProvider>
                 ) : (
-                  <div className="flex items-center justify-center min-h-[150px]">
+                  <div className="flex items-center justify-center min-h-[100px]">
                      <p className="text-center text-muted-foreground">No activity data for this month in the current plan.</p>
                   </div>
                 )}
