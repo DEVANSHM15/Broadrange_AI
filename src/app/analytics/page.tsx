@@ -9,12 +9,12 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import { BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Legend, Cell } from "recharts"; // Added Cell for Bar colors
 import type { InsightDisplayData, ScheduleData, ScheduleTask, PlanInput, ParsedRawScheduleItem } from "@/types";
 import { useAuth } from "@/contexts/auth-context";
 import { useState, useEffect, useMemo, useCallback, Suspense } from "react";
 import { useSearchParams } from 'next/navigation';
-import { differenceInWeeks, parseISO, format, startOfWeek, addWeeks, isValid } from "date-fns";
+import { differenceInWeeks, parseISO, format, startOfWeek, addWeeks, isValid, getDay } from "date-fns"; // Added getDay
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { HelpCircle, Loader2, Lightbulb, AlertCircle as AlertCircleIcon, Target, MessageSquareText, Repeat, SparklesIcon } from "lucide-react";
 import { generatePlanReflection, type GeneratePlanReflectionInput, type GeneratePlanReflectionOutput } from "@/ai/flows/generate-plan-reflection";
@@ -47,6 +47,17 @@ const chartColors = [
   "hsl(var(--chart-4))",
   "hsl(var(--chart-5))",
 ];
+
+const dayOfWeekColors = [
+  "hsl(var(--chart-1))", // Sunday
+  "hsl(var(--chart-2))", // Monday
+  "hsl(var(--chart-3))", // Tuesday
+  "hsl(var(--chart-4))", // Wednesday
+  "hsl(var(--chart-5))", // Thursday
+  "hsl(260 70% 60%)",    // Friday (new color - closer to purple)
+  "hsl(320 70% 60%)",    // Saturday (new color - closer to pink/magenta)
+];
+
 
 function AnalyticsPageContent() {
   const { currentUser } = useAuth();
@@ -132,9 +143,9 @@ function AnalyticsPageContent() {
   }, [reloadDataForAnalytics, planIdFromQuery]);
 
   const fetchPlanReflection = useCallback(async (plan: ScheduleData) => {
-    if (!plan.planDetails || !plan.tasks || plan.tasks.length === 0 || isGeneratingReflection ) return;
+    if (!plan.planDetails || !plan.tasks || plan.tasks.length === 0 ) return;
+    if (isGeneratingReflection) return;
     
-    // Ensure tasks are properly structured with boolean 'completed' for the AI flow
     const tasksForReflection = ensureTaskStructure(plan.tasks, plan.id);
 
     setIsGeneratingReflection(true);
@@ -190,7 +201,7 @@ function AnalyticsPageContent() {
     if(validTasks.length === 0) return [];
 
     const planStartDateRef = parseISO(validTasks.sort((a,b) => parseISO(a.date).getTime() - parseISO(b.date).getTime())[0].date);
-    const planStartDate = startOfWeek(planStartDateRef, { weekStartsOn: 1 });
+    const planStartDate = startOfWeek(planStartDateRef, { weekStartsOn: 1 }); // Assuming week starts on Monday
     const weeklyCompletion: { [week: string]: number } = {};
     
     completedTasks.forEach(task => {
@@ -211,51 +222,37 @@ function AnalyticsPageContent() {
     tasksCompleted: { label: "Tasks Completed", color: "hsl(var(--chart-1))" },
   };
 
-  const subjectFocusData = useMemo(() => {
-    if (!currentStudyPlanForAnalytics?.planDetails || !currentStudyPlanForAnalytics.tasks || !currentStudyPlanForAnalytics.planDetails.subjects) return [];
-    
-    const { subjects } = currentStudyPlanForAnalytics.planDetails;
-    const subjectArray = subjects.split(',').map(s => s.trim().toLowerCase().replace(/\s*\(\d+\)\s*$/, '')).filter(s => s.length > 0);
-    if (subjectArray.length === 0) return [];
-
+  const productiveDaysData = useMemo(() => {
+    if (!currentStudyPlanForAnalytics || !currentStudyPlanForAnalytics.tasks) return [];
     const completedTasks = currentStudyPlanForAnalytics.tasks.filter(t => t.completed);
     if (completedTasks.length === 0) return [];
 
-    const subjectCounts: { [subject: string]: number } = {};
-    subjectArray.forEach(sub => subjectCounts[sub] = 0);
+    const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const taskCountsByDay: { [day: string]: number } = daysOfWeek.reduce((acc, day) => {
+      acc[day] = 0;
+      return acc;
+    }, {} as { [day: string]: number });
 
     completedTasks.forEach(task => {
-      const taskDescriptionLower = task.task.toLowerCase();
-      for (const subject of subjectArray) {
-        if (taskDescriptionLower.includes(subject)) {
-          subjectCounts[subject]++;
-          break; 
-        }
+      if (task.date && isValid(parseISO(task.date))) {
+        const dayIndex = getDay(parseISO(task.date)); // 0 for Sunday, 1 for Monday, ...
+        const dayName = daysOfWeek[dayIndex];
+        taskCountsByDay[dayName]++;
       }
     });
     
-    const subjectCountsArray = Object.entries(subjectCounts).map(([name, count], index) => ({
-        name: name.charAt(0).toUpperCase() + name.slice(1),
-        value: count,
-        fill: chartColors[index % chartColors.length],
-    }));
-
-    const anySubjectHasData = subjectCountsArray.some(s => s.value > 0);
-
-    if (!anySubjectHasData) {
-        return []; 
-    }
-
-    return subjectCountsArray.filter(item => item.value > 0); 
+    return daysOfWeek.map((day, index) => ({
+      day,
+      tasksCompleted: taskCountsByDay[day],
+      fill: dayOfWeekColors[index % dayOfWeekColors.length],
+    })).filter(d => d.tasksCompleted > 0); // Optionally filter out days with 0 tasks for cleaner chart
   }, [currentStudyPlanForAnalytics]);
-
-
-  const subjectChartConfig = useMemo(() =>
-    subjectFocusData.reduce((acc, subject) => {
-      acc[subject.name] = { label: subject.name, color: subject.fill };
+  
+  const productiveDaysChartConfig: ChartConfig = productiveDaysData.reduce((acc, item) => {
+      acc[item.day] = { label: item.day, color: item.fill };
       return acc;
-    }, {} as ChartConfig)
-  , [subjectFocusData]);
+  }, {} as ChartConfig);
+
 
   const dailyCompletionData = useMemo(() => {
     if (!currentStudyPlanForAnalytics || !currentStudyPlanForAnalytics.tasks) return [];
@@ -351,25 +348,28 @@ function AnalyticsPageContent() {
               </CardContent>
             </Card>
             <Card className="analytics-card shadow-md hover:shadow-lg transition-shadow">
-              <CardHeader><CardTitle>Subject Focus (Completed Tasks)</CardTitle></CardHeader>
+              <CardHeader><CardTitle>Productive Days of the Week</CardTitle></CardHeader>
               <CardContent className="h-[300px] p-2 relative">
-                {subjectFocusData.length > 0 ? (
-                  <ChartContainer config={subjectChartConfig} className="w-full h-full">
+                {productiveDaysData.length > 0 ? (
+                  <ChartContainer config={productiveDaysChartConfig} className="w-full h-full">
                     <ResponsiveContainer width="100%" height="100%">
-                      <RechartsPieChart>
-                        <ChartTooltip content={<ChartTooltipContent nameKey="value" hideLabel />} />
-                        <Pie data={subjectFocusData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
-                           {subjectFocusData.map((entry, index) => (
-                            <Cell key={`cell-${entry.name}-${index}`} fill={entry.fill} />
+                      <BarChart data={productiveDaysData} margin={{ top: 5, right: 20, left: -20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))"/>
+                        <XAxis dataKey="day" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false}/>
+                        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false}/>
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Legend />
+                        <Bar dataKey="tasksCompleted" radius={[4, 4, 0, 0]} barSize={25}>
+                           {productiveDaysData.map((entry, index) => (
+                            <Cell key={`cell-${entry.day}-${index}`} fill={entry.fill} />
                           ))}
-                        </Pie>
-                        <Legend verticalAlign="bottom" height={36} iconSize={10} />
-                      </RechartsPieChart>
+                        </Bar>
+                      </BarChart>
                     </ResponsiveContainer>
                   </ChartContainer>
                 ) : (
                    <div className="absolute inset-0 flex items-center justify-center">
-                    <p className="text-center text-muted-foreground p-4">No subject focus data to display. Complete tasks to see focus.</p>
+                    <p className="text-center text-muted-foreground p-4">No completed tasks to show productive days for this plan.</p>
                    </div>
                 )}
               </CardContent>
@@ -494,6 +494,5 @@ export default function AnalyticsPage() {
     </Suspense>
   );
 }
-
 
     
