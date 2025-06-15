@@ -152,7 +152,7 @@ function AnalyticsPageContent() {
         } else if (error.message.includes("Plan details and tasks are required")) {
           detailMessage = "Missing necessary plan data to generate the reflection.";
         } else if (error.message.toLowerCase().includes("schema validation failed") || error.message.toLowerCase().includes("parse errors")) {
-          detailMessage = `Data sent to AI for reflection was not in the expected format. Details: ${error.message.substring(0,200)}`;
+          detailMessage = `Data sent to AI for reflection was not in the expected format. Ensure tasks have boolean 'completed' status. Details: ${error.message.substring(0,200)}`;
         } else if (error.message.length < 150) { 
           detailMessage = error.message;
         }
@@ -166,7 +166,7 @@ function AnalyticsPageContent() {
     } finally {
       setIsGeneratingReflection(false);
     }
-  }, [toast]); 
+  }, [toast]); // Removed isGeneratingReflection from dependencies
 
   useEffect(() => {
     if (currentStudyPlanForAnalytics && currentStudyPlanForAnalytics.status === 'completed') {
@@ -210,7 +210,7 @@ function AnalyticsPageContent() {
   const subjectFocusData = useMemo(() => {
     if (!currentStudyPlanForAnalytics?.planDetails || !currentStudyPlanForAnalytics.tasks) return [];
     const { subjects } = currentStudyPlanForAnalytics.planDetails;
-    const subjectArray = subjects.split(',').map(s => s.trim().toLowerCase()).filter(s => s.length > 0);
+    const subjectArray = subjects.split(',').map(s => s.trim().toLowerCase().replace(/\s*\(\d+\)\s*$/, '')).filter(s => s.length > 0); // Remove priority indication for display
     if (subjectArray.length === 0) return [];
 
     const completedTasks = currentStudyPlanForAnalytics.tasks.filter(t => t.completed);
@@ -319,8 +319,8 @@ function AnalyticsPageContent() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
-            <Card className="analytics-card">
-              <CardHeader><CardTitle>Performance Trends (Tasks Completed per Week)</CardTitle></CardHeader>
+            <Card className="analytics-card shadow-md hover:shadow-lg transition-shadow">
+              <CardHeader><CardTitle>Performance Trends (Tasks/Week)</CardTitle></CardHeader>
               <CardContent className="h-[300px] p-2">
                 {performanceData.length > 0 ? (
                   <ChartContainer config={performanceChartConfig} className="w-full h-full">
@@ -330,24 +330,27 @@ function AnalyticsPageContent() {
                         <XAxis dataKey="week" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false}/>
                         <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
                         <ChartTooltip content={<ChartTooltipContent />} />
-                        <Line type="monotone" dataKey="tasksCompleted" stroke="hsl(var(--chart-1))" strokeWidth={2} dot={{ r: 4 }} />
+                        <Legend />
+                        <Line type="monotone" dataKey="tasksCompleted" stroke="hsl(var(--chart-1))" strokeWidth={2} dot={{ r: 4, fill: "hsl(var(--chart-1))" }} activeDot={{r: 6}} />
                       </LineChart>
                     </ResponsiveContainer>
                   </ChartContainer>
                 ) : (
-                  <p className="text-center text-muted-foreground pt-10">No task completion data yet to show trends for this plan.</p>
+                  <div className="flex items-center justify-center h-full">
+                    <p className="text-center text-muted-foreground">No task completion data yet to show trends for this plan.</p>
+                  </div>
                 )}
               </CardContent>
             </Card>
-            <Card className="analytics-card">
-              <CardHeader><CardTitle>Subject Focus (Based on Completed Tasks)</CardTitle></CardHeader>
+            <Card className="analytics-card shadow-md hover:shadow-lg transition-shadow">
+              <CardHeader><CardTitle>Subject Focus (Completed Tasks)</CardTitle></CardHeader>
               <CardContent className="h-[300px] p-2">
                 {subjectFocusData.length > 0 ? (
                   <ChartContainer config={subjectChartConfig} className="w-full h-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <RechartsPieChart>
                         <ChartTooltip content={<ChartTooltipContent nameKey="value" hideLabel />} />
-                        <Pie data={subjectFocusData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label >
+                        <Pie data={subjectFocusData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
                            {subjectFocusData.map((entry, index) => (
                             <Cell key={`cell-${entry.name}-${index}`} fill={entry.fill} />
                           ))}
@@ -357,11 +360,13 @@ function AnalyticsPageContent() {
                     </ResponsiveContainer>
                   </ChartContainer>
                 ) : (
-                   <p className="text-center text-muted-foreground pt-10">No subject focus data to display. Complete tasks to see focus.</p>
+                   <div className="flex items-center justify-center h-full">
+                    <p className="text-center text-muted-foreground">No subject focus data to display. Complete tasks to see focus.</p>
+                   </div>
                 )}
               </CardContent>
             </Card>
-            <Card className="analytics-card md:col-span-2">
+            <Card className="analytics-card md:col-span-2 shadow-md hover:shadow-lg transition-shadow">
               <CardHeader><CardTitle>Daily Task Completion</CardTitle></CardHeader>
               <CardContent className="h-[300px] p-2">
                 {dailyCompletionData.length > 0 ? (
@@ -372,12 +377,15 @@ function AnalyticsPageContent() {
                           <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false}/>
                           <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
                           <ChartTooltip content={<ChartTooltipContent />} />
-                          <Bar dataKey="tasks" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} />
+                           <Legend />
+                          <Bar dataKey="tasks" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} barSize={20} />
                         </BarChart>
                       </ResponsiveContainer>
                     </ChartContainer>
                 ) : (
-                  <p className="text-center text-muted-foreground pt-10">No tasks completed yet for daily tracking in this plan.</p>
+                  <div className="flex items-center justify-center h-full">
+                    <p className="text-center text-muted-foreground">No tasks completed yet for daily tracking in this plan.</p>
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -394,34 +402,34 @@ function AnalyticsPageContent() {
               <CardContent>
                 {currentStudyPlanForAnalytics?.status === 'completed' ? (
                   isGeneratingReflection ? (
-                    <div className="flex flex-col items-center justify-center p-8 min-h-[200px]">
+                    <div className="flex flex-col items-center justify-center p-8 min-h-[200px] bg-muted/30 rounded-lg">
                       <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
                       <p className="text-muted-foreground text-lg">ReflectionAI is thinking...</p>
                     </div>
                   ) : planReflection ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <Card className="bg-background/50">
+                      <Card className="bg-background/50 shadow-sm hover:shadow-md transition-shadow">
                         <CardHeader className="flex flex-row items-center space-x-3 pb-2">
                             <Target className="h-6 w-6 text-primary" />
                             <CardTitle className="text-md font-medium">Overall Completion</CardTitle>
                         </CardHeader>
                         <CardContent><p className="text-4xl font-bold text-primary pl-9">{(planReflection.overallCompletionRate * 100).toFixed(0)}%</p></CardContent>
                       </Card>
-                      <Card className="bg-background/50">
+                      <Card className="bg-background/50 shadow-sm hover:shadow-md transition-shadow">
                         <CardHeader className="flex flex-row items-center space-x-3 pb-2">
                             <MessageSquareText className="h-6 w-6 text-primary" />
                             <CardTitle className="text-md font-medium">Main Reflection</CardTitle>
                         </CardHeader>
                         <CardContent><p className="text-sm text-foreground/90 pl-9">{planReflection.mainReflection}</p></CardContent>
                       </Card>
-                      <Card className="bg-background/50">
+                      <Card className="bg-background/50 shadow-sm hover:shadow-md transition-shadow">
                         <CardHeader className="flex flex-row items-center space-x-3 pb-2">
                             <Repeat className="h-6 w-6 text-primary" />
                             <CardTitle className="text-md font-medium">Study Consistency</CardTitle>
                         </CardHeader>
                         <CardContent><p className="text-sm text-foreground/90 pl-9">{planReflection.consistencyObservation}</p></CardContent>
                       </Card>
-                      <Card className="bg-background/50">
+                      <Card className="bg-background/50 shadow-sm hover:shadow-md transition-shadow">
                         <CardHeader className="flex flex-row items-center space-x-3 pb-2">
                              <SparklesIcon className="h-6 w-6 text-primary" />
                             <CardTitle className="text-md font-medium">Suggestion for Next Plan</CardTitle>
@@ -430,7 +438,7 @@ function AnalyticsPageContent() {
                       </Card>
                     </div>
                   ) : (
-                    <Alert variant="destructive" className="min-h-[200px] flex flex-col justify-center items-center text-center">
+                    <Alert variant="destructive" className="min-h-[200px] flex flex-col justify-center items-center text-center bg-destructive/10">
                       <AlertCircleIcon className="h-8 w-8 mb-3" />
                       <AlertTitle className="text-lg">Reflection Not Available</AlertTitle>
                       <AlertDescription className="mt-1">
@@ -478,3 +486,6 @@ export default function AnalyticsPage() {
     </Suspense>
   );
 }
+
+
+    
