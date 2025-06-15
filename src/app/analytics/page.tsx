@@ -198,7 +198,7 @@ function AnalyticsPageContent() {
     } finally {
       setIsGeneratingReflection(false);
     }
-  }, [toast]); // Removed isGeneratingReflection from dependencies
+  }, [toast]);
 
   useEffect(() => {
     if (currentStudyPlanForAnalytics && currentStudyPlanForAnalytics.status === 'completed') {
@@ -482,10 +482,10 @@ function AnalyticsPageContent() {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="p-4">
+              <CardContent className="p-2"> {/* Reduced padding */}
                 {monthlyActivityData.days.length > 0 ? (
                   <TooltipProvider>
-                    <div className="grid grid-cols-7 gap-0.5 text-center text-xs">
+                    <div className="grid grid-cols-7 gap-0.5 text-center text-xs"> {/* Reduced gap */}
                       {daysOfWeekShort.map(day => (
                         <div key={day} className="font-medium text-muted-foreground pb-1 text-[10px]">{day}</div>
                       ))}
