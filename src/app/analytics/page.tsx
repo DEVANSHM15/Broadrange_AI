@@ -14,7 +14,7 @@ import type { InsightDisplayData, ScheduleData, ScheduleTask, PlanInput, ParsedR
 import { useAuth } from "@/contexts/auth-context";
 import { useState, useEffect, useMemo, useCallback, Suspense } from "react";
 import { useSearchParams } from 'next/navigation';
-import { differenceInWeeks, parseISO, format, startOfWeek, addWeeks, isValid, getDay, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, getDate } from "date-fns";
+import { differenceInWeeks, parseISO, format, startOfWeek, endOfWeek, addWeeks, isValid, getDay, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, getDate } from "date-fns"; // Added endOfWeek
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { HelpCircle, Loader2, Lightbulb, AlertCircle as AlertCircleIcon, Target, MessageSquareText, Repeat, SparklesIcon, CalendarDays } from "lucide-react";
 import { generatePlanReflection, type GeneratePlanReflectionInput, type GeneratePlanReflectionOutput } from "@/ai/flows/generate-plan-reflection";
@@ -42,14 +42,14 @@ const staticExampleRecommendations: InsightDisplayData[] = [
 ];
 
 
-const dayOfWeekColors = [ // More distinct colors
-  "hsl(var(--chart-1))", // Sun - Primary Blue
-  "hsl(140 70% 50%)",   // Mon - Green
-  "hsl(190 70% 50%)",   // Tue - Cyan
-  "hsl(30 90% 55%)",    // Wed - Orange
-  "hsl(var(--chart-5))",// Thu - Purple
-  "hsl(330 70% 60%)",   // Fri - Pink
-  "hsl(60 80% 50%)",    // Sat - Yellow
+const dayOfWeekColors = [
+    "hsl(var(--chart-1))",   // Sun - Blue
+    "hsl(140 70% 50%)",      // Mon - Green
+    "hsl(190 70% 50%)",      // Tue - Cyan
+    "hsl(30 90% 55%)",       // Wed - Orange
+    "hsl(260 70% 60%)",      // Thu - Purple (changed from chart-5)
+    "hsl(330 70% 60%)",      // Fri - Pink
+    "hsl(60 80% 50%)",       // Sat - Yellow
 ];
 
 
@@ -136,10 +136,11 @@ function AnalyticsPageContent() {
     return () => window.removeEventListener('studyPlanUpdated', handleStudyPlanUpdate);
   }, [reloadDataForAnalytics, planIdFromQuery]);
 
-  const fetchPlanReflection = useCallback(async (plan: ScheduleData) => {
+ const fetchPlanReflection = useCallback(async (plan: ScheduleData) => {
     if (!plan.planDetails || !plan.tasks || plan.tasks.length === 0 ) return;
     if (isGeneratingReflection) return;
     
+    // Ensure tasks passed to AI have boolean 'completed' and 'quizAttempted'
     const tasksForReflection = ensureTaskStructure(plan.tasks, plan.id);
 
     setIsGeneratingReflection(true);
@@ -175,7 +176,7 @@ function AnalyticsPageContent() {
     } finally {
       setIsGeneratingReflection(false);
     }
-  }, [toast]);
+  }, [toast]); // Removed isGeneratingReflection from dependencies
 
   useEffect(() => {
     if (currentStudyPlanForAnalytics && currentStudyPlanForAnalytics.status === 'completed') {
@@ -217,7 +218,7 @@ function AnalyticsPageContent() {
   };
 
   const productiveDaysData = useMemo(() => {
-    if (!currentStudyPlanForAnalytics || !currentStudyPlanForAnalytics.tasks) return [];
+    if (!currentStudyPlanForAnalytics || !currentStudyPlanForAnalytics.tasks || currentStudyPlanForAnalytics.tasks.length === 0) return [];
     const completedTasks = currentStudyPlanForAnalytics.tasks.filter(t => t.completed);
     if (completedTasks.length === 0) return [];
 
@@ -235,11 +236,16 @@ function AnalyticsPageContent() {
       }
     });
     
-    return daysOfWeek.map((day, index) => ({
+    // Ensure all days are present, even if count is 0, for consistent chart rendering
+    const data = daysOfWeek.map((day, index) => ({
       day,
-      tasksCompleted: taskCountsByDay[day],
+      tasksCompleted: taskCountsByDay[day] || 0,
       fill: dayOfWeekColors[index % dayOfWeekColors.length],
     }));
+    
+    if (data.every(d => d.tasksCompleted === 0)) return []; // if all days have 0, effectively no data for this chart
+    return data;
+
   }, [currentStudyPlanForAnalytics]);
   
   const productiveDaysChartConfig: ChartConfig = productiveDaysData.reduce((acc, item) => {
@@ -249,13 +255,14 @@ function AnalyticsPageContent() {
 
 
   const dailyCompletionData = useMemo(() => {
-    if (!currentStudyPlanForAnalytics || !currentStudyPlanForAnalytics.tasks) return [];
+    if (!currentStudyPlanForAnalytics || !currentStudyPlanForAnalytics.tasks || currentStudyPlanForAnalytics.tasks.length === 0) return [];
     const dailyMap: { [date: string]: number } = {};
     
     currentStudyPlanForAnalytics.tasks.filter(t => t.completed && t.date && isValid(parseISO(t.date))).forEach(task => {
       const formattedDate = format(parseISO(task.date), 'MMM d');
       dailyMap[formattedDate] = (dailyMap[formattedDate] || 0) + 1;
     });
+    if (Object.keys(dailyMap).length === 0) return [];
 
     return Object.entries(dailyMap).map(([date, tasks]) => {
         const originalTask = currentStudyPlanForAnalytics.tasks.find(t => t.date && isValid(parseISO(t.date)) && format(parseISO(t.date), 'MMM d') === date && t.completed);
@@ -277,10 +284,17 @@ function AnalyticsPageContent() {
     if (currentStudyPlanForAnalytics.planDetails.startDate && isValid(parseISO(currentStudyPlanForAnalytics.planDetails.startDate))) {
       targetDate = parseISO(currentStudyPlanForAnalytics.planDetails.startDate);
     } else {
-      const sortedTasks = [...currentStudyPlanForAnalytics.tasks].sort((a,b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
-      targetDate = parseISO(sortedTasks[0].date);
+      // Fallback: find the earliest task date in the plan
+      const sortedTasksByDate = [...currentStudyPlanForAnalytics.tasks]
+          .filter(task => task.date && isValid(parseISO(task.date)))
+          .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
+      if (sortedTasksByDate.length > 0) {
+          targetDate = parseISO(sortedTasksByDate[0].date);
+      } else {
+          targetDate = new Date(); // Ultimate fallback
+      }
     }
-    if (!isValid(targetDate)) targetDate = new Date(); // Fallback if no valid date found
+    if (!isValid(targetDate)) targetDate = new Date(); // Final fallback if parsing somehow failed
   
     const monthStart = startOfMonth(targetDate);
     const monthEnd = endOfMonth(targetDate);
@@ -364,7 +378,7 @@ function AnalyticsPageContent() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
             <Card className="analytics-card shadow-md hover:shadow-lg transition-shadow">
               <CardHeader><CardTitle>Performance Trends (Tasks/Week)</CardTitle></CardHeader>
-              <CardContent className="h-[300px] p-4 relative"> {/* Adjusted padding */}
+              <CardContent className="h-[300px] p-4 relative">
                 {performanceData.length > 0 ? (
                   <ChartContainer config={performanceChartConfig} className="w-full h-full">
                     <ResponsiveContainer width="100%" height="100%">
@@ -387,7 +401,7 @@ function AnalyticsPageContent() {
             </Card>
             <Card className="analytics-card shadow-md hover:shadow-lg transition-shadow">
               <CardHeader><CardTitle>Productive Days of the Week</CardTitle></CardHeader>
-              <CardContent className="h-[300px] p-4 relative"> {/* Adjusted padding */}
+              <CardContent className="h-[300px] p-4 relative">
                 {productiveDaysData.length > 0 ? (
                   <ChartContainer config={productiveDaysChartConfig} className="w-full h-full">
                     <ResponsiveContainer width="100%" height="100%">
@@ -414,7 +428,7 @@ function AnalyticsPageContent() {
             </Card>
             <Card className="analytics-card md:col-span-2 shadow-md hover:shadow-lg transition-shadow">
               <CardHeader><CardTitle>Daily Task Completion</CardTitle></CardHeader>
-              <CardContent className="h-[300px] p-4 relative"> {/* Adjusted padding */}
+              <CardContent className="h-[300px] p-4 relative">
                 {dailyCompletionData.length > 0 ? (
                    <ChartContainer config={dailyCompletionChartConfig} className="w-full h-full">
                       <ResponsiveContainer width="100%" height="100%">
