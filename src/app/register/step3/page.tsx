@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormField, FormItem, FormControl, FormMessage } from "@/components/ui/form"; // Added Form import
+import { Form, FormField, FormItem, FormControl, FormMessage } from "@/components/ui/form"; 
 
 const step3Schema = z.object({
   plannerBotEnabled: z.boolean().default(true),
@@ -30,7 +30,7 @@ export default function RegisterStep3Page() {
   const { register: registerUser, isLoading: authLoading, currentUser } = useAuth();
   const [isSubmittingForm, setIsSubmittingForm] = useState(false);
 
-  const form = useForm<Step3FormData>({ // Changed to form
+  const form = useForm<Step3FormData>({ 
     resolver: zodResolver(step3Schema),
     defaultValues: {
       plannerBotEnabled: true,
@@ -76,11 +76,11 @@ export default function RegisterStep3Page() {
       const finalRegistrationData: RegisterData = {
         name: step1Data.name,
         email: step1Data.email,
-        password: step1Data.password,
+        password_unsafe: step1Data.password,
         studyLevel: step2Data.studyLevel,
         preferredStudyTime: step2Data.preferredStudyTime,
-        securityQuestion: step2Data.securityQuestion, // Ensure this is passed
-        securityAnswer: step2Data.securityAnswer,   // Ensure this is passed
+        securityQuestion: step2Data.securityQuestion,
+        securityAnswer: step2Data.securityAnswer,
         aiSettings: {
           plannerBotEnabled: dataStep3.plannerBotEnabled,
           reflectionAiEnabled: dataStep3.reflectionAiEnabled,
@@ -88,9 +88,9 @@ export default function RegisterStep3Page() {
         }
       };
       
-      const success = await registerUser(finalRegistrationData);
+      const result = await registerUser(finalRegistrationData);
 
-      if (success) {
+      if (result.success) {
         toast({
           title: "Registration Successful!",
           description: "Welcome to Broadrange AI! Your study assistant is ready.",
@@ -99,12 +99,12 @@ export default function RegisterStep3Page() {
         sessionStorage.removeItem("registrationStep1Data");
         sessionStorage.removeItem("registrationStep2Data");
         sessionStorage.removeItem("registrationStep3Data");
-        router.push("/dashboard");
+        // Router push to dashboard is handled by useEffect watching currentUser
       } else {
         toast({
           variant: "destructive",
           title: "Registration Failed",
-          description: "An account with this email might already exist or another error occurred.",
+          description: result.message || "An unexpected error occurred.",
         });
       }
     } catch (error) {
@@ -140,7 +140,6 @@ export default function RegisterStep3Page() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
       <div className="flex items-center gap-2 mb-8 text-2xl font-semibold text-primary">
-        {/* Logo Placeholder: Replace with your actual logo image component */}
         <span className="flex items-center justify-center h-8 w-8 bg-primary text-primary-foreground rounded-full font-bold text-xl">B</span>
         <span>Broadrange AI</span>
       </div>

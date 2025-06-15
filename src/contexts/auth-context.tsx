@@ -3,31 +3,33 @@
 
 import type { ReactNode } from 'react';
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import type { UserCredentials, StoredUser, AISettings } from '@/types'; // PlanInput removed as it's not directly used here
+import type { StoredUser, AISettings } from '@/types';
 import { useRouter } from 'next/navigation';
 
-// Key for storing the current logged-in user's full object (excluding password)
-const LOCAL_STORAGE_FULL_USER_KEY = "studyMindAiFullCurrentUser_v2"; 
-// Key for just the email as a quick check, might be redundant if full user is always stored/cleared.
+const LOCAL_STORAGE_FULL_USER_KEY = "studyMindAiFullCurrentUser_v2";
 const LOCAL_STORAGE_CURRENT_USER_EMAIL_KEY = "studyMindAiCurrentUserEmail_v2";
 
-
-// RegisterData now directly reflects what the API expects (no password_unsafe)
 export interface RegisterData {
   name: string;
   email: string;
-  password_unsafe: string; // Keep _unsafe here as frontend collects plain password
+  password_unsafe: string;
   studyLevel?: string;
   preferredStudyTime?: string;
   aiSettings?: AISettings;
   securityQuestion?: string;
-  securityAnswer?: string; // Keep _unsafe here as frontend collects plain answer
+  securityAnswer?: string;
+}
+
+interface AuthResponse {
+  success: boolean;
+  message?: string;
+  user?: StoredUser; // Optional: return user data on successful login/register
 }
 
 interface AuthContextType {
   currentUser: StoredUser | null;
-  login: (email: string, password_unsafe: string) => Promise<boolean>;
-  register: (data: RegisterData) => Promise<boolean>;
+  login: (email: string, password_unsafe: string) => Promise<AuthResponse>;
+  register: (data: RegisterData) => Promise<AuthResponse>;
   logout: () => void;
   updateUser: (updatedData: Partial<Omit<StoredUser, 'id' | 'email' | 'password_unsafe'>>) => Promise<boolean>;
   isLoading: boolean;
@@ -50,7 +52,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const storedUserJson = localStorage.getItem(LOCAL_STORAGE_FULL_USER_KEY);
           if (storedUserJson) {
             const user = JSON.parse(storedUserJson) as StoredUser;
-            // Optional: could verify with a /api/auth/me endpoint here if we had one
             if (isMounted) {
               setCurrentUser(user);
             }
@@ -78,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => { isMounted = false; };
   }, []);
 
-  const login = useCallback(async (email: string, password_unsafe: string): Promise<boolean> => {
+  const login = useCallback(async (email: string, password_unsafe: string): Promise<AuthResponse> => {
     setIsLoading(true);
     try {
       const response = await fetch('/api/auth/login', {
@@ -87,24 +88,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ email, password_unsafe }),
       });
 
+      const responseData = await response.json();
+
       if (response.ok) {
-        const userData: StoredUser = await response.json();
+        const userData: StoredUser = responseData;
         setCurrentUser(userData);
         if (typeof window !== 'undefined') {
           localStorage.setItem(LOCAL_STORAGE_FULL_USER_KEY, JSON.stringify(userData));
           localStorage.setItem(LOCAL_STORAGE_CURRENT_USER_EMAIL_KEY, userData.email);
         }
         setIsLoading(false);
-        return true;
+        return { success: true, user: userData };
       } else {
-        // const errorData = await response.json(); // For more specific error messages
         setCurrentUser(null);
         if (typeof window !== 'undefined') {
           localStorage.removeItem(LOCAL_STORAGE_FULL_USER_KEY);
           localStorage.removeItem(LOCAL_STORAGE_CURRENT_USER_EMAIL_KEY);
         }
         setIsLoading(false);
-        return false;
+        return { success: false, message: responseData.error || "Login failed" };
       }
     } catch (error) {
       console.error("Login API error:", error);
@@ -114,27 +116,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           localStorage.removeItem(LOCAL_STORAGE_CURRENT_USER_EMAIL_KEY);
         }
       setIsLoading(false);
-      return false;
+      return { success: false, message: "A network error occurred during login." };
     }
   }, [setCurrentUser, setIsLoading]);
 
-  const register = useCallback(async (data: RegisterData): Promise<boolean> => {
+  const register = useCallback(async (data: RegisterData): Promise<AuthResponse> => {
     setIsLoading(true);
+    let errorMessage = "An unknown error occurred during registration.";
     try {
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data), // API expects password_unsafe and securityAnswer
+        body: JSON.stringify(data),
       });
 
+      const responseData = await response.json();
+
       if (response.status === 201) {
-        const newUser: StoredUser = await response.json();
-        // The API should return the user object without password_hash or securityAnswer_hash for security.
-        // We construct the StoredUser object for client-side from what API returns + what we already have (like password_unsafe for storage, though this is less ideal long-term)
+        const newUser: StoredUser = responseData;
         const clientSideUser: StoredUser = {
-          ...newUser, // This comes from the API (id, name, email, studyLevel, etc.)
-          password_unsafe: data.password_unsafe, // Keep plain password for mock localStorage if needed, or remove if API session is king
-          securityAnswer: data.securityAnswer, // Same for security answer
+          ...newUser,
+          password_unsafe: data.password_unsafe,
+          securityAnswer: data.securityAnswer,
         };
 
         setCurrentUser(clientSideUser);
@@ -143,27 +146,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           localStorage.setItem(LOCAL_STORAGE_CURRENT_USER_EMAIL_KEY, clientSideUser.email);
         }
         setIsLoading(false);
-        return true;
+        return { success: true, user: clientSideUser };
       } else {
-        // const errorData = await response.json();
+        if (responseData && responseData.error) {
+          errorMessage = responseData.error;
+        } else {
+          errorMessage = response.statusText || "Failed to register due to a server error.";
+        }
         setIsLoading(false);
-        return false;
+        return { success: false, message: errorMessage };
       }
     } catch (error) {
-      console.error("Register API error:", error);
+      console.error("Register API call error:", error);
+      errorMessage = "A network error occurred. Please try again.";
       setIsLoading(false);
-      return false;
+      return { success: false, message: errorMessage };
     }
   }, [setCurrentUser, setIsLoading]);
 
   const updateUser = useCallback(async (updatedData: Partial<Omit<StoredUser, 'id' | 'email' | 'password_unsafe' | 'securityAnswer_hash' >>): Promise<boolean> => {
     if (!currentUser) return false;
     
-    // Optimistic update for UI responsiveness
     const newClientUser: StoredUser = {
       ...currentUser,
       ...updatedData,
-      // Ensure aiSettings are merged, not overwritten if only one part is updated
       aiSettings: {
         ...currentUser.aiSettings,
         ...updatedData.aiSettings,
@@ -173,39 +179,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (typeof window !== 'undefined') {
       localStorage.setItem(LOCAL_STORAGE_FULL_USER_KEY, JSON.stringify(newClientUser));
     }
-
-    // TODO: Implement backend API call to /api/users/update (or similar)
-    // For now, we'll simulate a successful backend update after a short delay
-    // try {
-    //   const response = await fetch('/api/users/update', { // This endpoint doesn't exist yet
-    //     method: 'PUT', // or POST
-    //     headers: { 'Content-Type': 'application/json', /* 'Authorization': 'Bearer YOUR_TOKEN_HERE' */ },
-    //     body: JSON.stringify({ email: currentUser.email, ...updatedData }),
-    //   });
-    //   if (!response.ok) {
-    //     // Revert optimistic update if backend fails
-    //     setCurrentUser(currentUser); 
-    //      if (typeof window !== 'undefined') {
-    //        localStorage.setItem(LOCAL_STORAGE_FULL_USER_KEY, JSON.stringify(currentUser));
-    //     }
-    //     return false;
-    //   }
-    //   const confirmedUserData = await response.json();
-    //   setCurrentUser(confirmedUserData); // Update with data from backend if it differs
-    //   if (typeof window !== 'undefined') {
-    //      localStorage.setItem(LOCAL_STORAGE_FULL_USER_KEY, JSON.stringify(confirmedUserData));
-    //   }
-    //   return true;
-    // } catch (error) {
-    //   console.error("Update user API error:", error);
-    //   // Revert optimistic update
-    //   setCurrentUser(currentUser);
-    //   if (typeof window !== 'undefined') {
-    //      localStorage.setItem(LOCAL_STORAGE_FULL_USER_KEY, JSON.stringify(currentUser));
-    //   }
-    //   return false;
-    // }
-    return true; // Placeholder for successful "backend" update
+    // Placeholder for backend update
+    return true;
   }, [currentUser, setCurrentUser]);
 
 
@@ -218,8 +193,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       sessionStorage.removeItem("registrationStep2Data");
       sessionStorage.removeItem("registrationStep3Data");
     }
-    // No need to explicitly call router.push here if AppLayout handles redirection
-    // However, it's fine to keep for explicitness if desired.
     router.push('/login'); 
   }, [router, setCurrentUser]);
 
