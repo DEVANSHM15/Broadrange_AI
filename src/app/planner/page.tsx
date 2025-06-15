@@ -680,7 +680,7 @@ export default function PlannerPage() {
                                                   <p className="text-sm text-muted-foreground truncate" title={task.task}>{task.task.substring(0,50)}{task.task.length > 50 ? '...' : ''}</p>
                                                 </div>
                                                 <div className="grid gap-2">
-                                                  <Textarea id={`notes-${task.id}`} value={currentNoteText} onChange={(e) => setCurrentNoteText(e.target.value)} placeholder="Type your short notes here..." rows={3} className="break-words w-full" />
+                                                  <Textarea id={`notes-${task.id}`} value={currentNoteText} onChange={(e) => setCurrentNoteText(e.target.value)} placeholder="Task notes..." rows={3} className="break-words w-full" />
                                                 </div>
                                                 <Button onClick={handleSaveNote} disabled={isAnalyzing}>Save Notes</Button>
                                               </div>
