@@ -72,54 +72,58 @@ function AnalyticsPageContent() {
       setIsLoadingPlan(false);
       return;
     }
-    setIsLoadingPlan(false); // Set to false initially, then true if fetching
     setIsLoadingPlan(true);
     let planToAnalyze: ScheduleData | null = null;
 
     try {
       if (planIdFromQuery) {
         const response = await fetch(`/api/plans/${planIdFromQuery}?userId=${currentUser.id}`);
-        if (!response.ok) {
+        if (response.ok) {
+          const fetchedPlan = await response.json();
+          if (fetchedPlan) {
+            planToAnalyze = {
+              ...fetchedPlan,
+              tasks: ensureTaskStructure(fetchedPlan.tasks, fetchedPlan.id)
+            };
+          }
+        } else {
           if (response.status === 404) {
             toast({ title: "Plan Not Found", description: `Could not find plan with ID: ${planIdFromQuery}`, variant: "destructive" });
           } else {
-            throw new Error(`Failed to fetch specific plan: ${response.statusText}`);
+            const errorData = await response.json().catch(() => ({ error: `Failed to fetch specific plan: ${response.statusText}` }));
+            throw new Error(errorData.error || `Failed to fetch specific plan: ${response.statusText}`);
           }
-        } else {
-          const fetchedPlan = await response.json();
-           if (fetchedPlan) {
-             planToAnalyze = {
-                ...fetchedPlan,
-                tasks: ensureTaskStructure(fetchedPlan.tasks, fetchedPlan.id)
-             };
-           }
+          planToAnalyze = null; // Ensure it's null if specific plan fetch failed
         }
-      }
-      
-      if (!planToAnalyze) { 
+      } else { // No planIdFromQuery, so fetch all plans and determine which to display
         const response = await fetch(`/api/plans?userId=${currentUser.id}`);
         if (!response.ok) {
-          throw new Error(`Failed to fetch plans: ${response.statusText}`);
+          const errorData = await response.json().catch(() => ({ error: `Failed to fetch plans: ${response.statusText}` }));
+          throw new Error(errorData.error || `Failed to fetch plans: ${response.statusText}`);
         }
         const allPlans: ScheduleData[] = await response.json();
 
         if (allPlans && allPlans.length > 0) {
-          const completedPlans = allPlans.filter(p => p.status === 'completed').sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-          if (completedPlans.length > 0) {
-            planToAnalyze = completedPlans[0];
+          // Ensure all fetched plans have structured tasks before sorting or filtering
+          const processedAllPlans = allPlans.map(p => ({
+            ...p,
+            tasks: ensureTaskStructure(p.tasks, p.id)
+          }));
+
+          const activePlans = processedAllPlans.filter(p => p.status === 'active').sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+          if (activePlans.length > 0) {
+            planToAnalyze = activePlans[0];
           } else {
-            const activePlans = allPlans.filter(p => p.status === 'active').sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-            if (activePlans.length > 0) planToAnalyze = activePlans[0];
-          }
-          if (!planToAnalyze && allPlans.length > 0) {
-              planToAnalyze = allPlans.sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
+            const completedPlans = processedAllPlans.filter(p => p.status === 'completed').sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+            if (completedPlans.length > 0) {
+              planToAnalyze = completedPlans[0];
+            } else { // Fallback to the most recently updated plan of any status
+              planToAnalyze = processedAllPlans.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
+            }
           }
         }
       }
       
-      if (planToAnalyze) {
-          planToAnalyze.tasks = ensureTaskStructure(planToAnalyze.tasks, planToAnalyze.id);
-      }
       setCurrentStudyPlanForAnalytics(planToAnalyze);
 
     } catch (error) {
@@ -161,17 +165,16 @@ function AnalyticsPageContent() {
   }, [reloadDataForAnalytics, planIdFromQuery]);
 
  const fetchPlanReflection = useCallback(async (plan: ScheduleData) => {
+    // Ensure tasks here are already structured, as planToAnalyze.tasks is now structured
     if (!plan.planDetails || !plan.tasks || plan.tasks.length === 0) return;
     if (isGeneratingReflection) return; 
     
-    const tasksForReflection = ensureTaskStructure(plan.tasks, plan.id);
-
     setIsGeneratingReflection(true);
     setPlanReflection(null);
     try {
       const input: GeneratePlanReflectionInput = {
         planDetails: plan.planDetails,
-        tasks: tasksForReflection, 
+        tasks: plan.tasks, // Already ensured by reloadDataForAnalytics
         completionDate: plan.completionDate,
       };
       const reflection = await generatePlanReflection(input);
@@ -185,7 +188,7 @@ function AnalyticsPageContent() {
         } else if (error.message.includes("Plan details and tasks are required")) {
           detailMessage = "Missing necessary plan data to generate the reflection.";
         } else if (error.message.toLowerCase().includes("schema validation failed") || error.message.toLowerCase().includes("parse errors")) {
-           detailMessage = `Data sent to AI for reflection was not in the expected format. Ensure tasks have boolean 'completed' status. Details: ${error.message.substring(0,200)}`;
+           detailMessage = `Data sent to AI for reflection was not in the expected format. Details: ${error.message.substring(0,200)}`;
         } else if (error.message.length < 150) { 
           detailMessage = error.message;
         }
@@ -199,13 +202,13 @@ function AnalyticsPageContent() {
     } finally {
       setIsGeneratingReflection(false);
     }
-  }, [toast]); 
+  }, [toast]); // Removed isGeneratingReflection from dependencies
 
   useEffect(() => {
     if (currentStudyPlanForAnalytics && currentStudyPlanForAnalytics.status === 'completed') {
       fetchPlanReflection(currentStudyPlanForAnalytics);
     } else {
-      setPlanReflection(null); 
+      setPlanReflection(null); // Explicitly clear if not completed or no plan
     }
   }, [currentStudyPlanForAnalytics, fetchPlanReflection]);
 
@@ -384,11 +387,11 @@ function AnalyticsPageContent() {
           <div className="container mx-auto text-center">
              <Alert className="max-w-md mx-auto">
                 <HelpCircle className="h-4 w-4" />
-                <AlertTitle>{planIdFromQuery ? "Specific Plan Not Found" : "No Study Plan Found"}</AlertTitle>
+                <AlertTitle>{planIdFromQuery ? "Specified Plan Not Found" : "No Study Plan Found"}</AlertTitle>
                 <AlertDescription>
                   {planIdFromQuery 
                     ? `Could not load analytics for the specified plan. It might have been deleted or there was an issue fetching it.`
-                    : "Complete a study plan to see your analytics and reflections here. Create a new one on the AI Planner page."
+                    : "Complete a study plan, or have an active one, to see your analytics here. Create a new one on the AI Planner page."
                   }
                 </AlertDescription>
               </Alert>
@@ -414,7 +417,7 @@ function AnalyticsPageContent() {
                 Displaying analytics for: <span className="font-semibold text-primary">{currentStudyPlanForAnalytics.planDetails.subjects}</span> 
                 {currentStudyPlanForAnalytics.status === 'completed' && currentStudyPlanForAnalytics.completionDate && isValid(parseISO(currentStudyPlanForAnalytics.completionDate))
                     ? ` (Completed: ${format(parseISO(currentStudyPlanForAnalytics.completionDate), 'PP')})`
-                    : ` (Updated: ${planUpdatedAt})`}
+                    : ` (Status: ${currentStudyPlanForAnalytics.status.charAt(0).toUpperCase() + currentStudyPlanForAnalytics.status.slice(1)}, Updated: ${planUpdatedAt})`}
             </p>
           </div>
 
@@ -512,9 +515,9 @@ function AnalyticsPageContent() {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="p-4 flex flex-col md:flex-row gap-6 items-start">
+              <CardContent className="p-2 flex flex-col md:flex-row gap-6 items-start">
                 <div className="md:w-1/2 lg:w-2/5 flex-shrink-0 mx-auto md:mx-0">
-                  <div className="max-w-xs mx-auto">
+                  <div className="max-w-sm mx-auto">
                     {monthlyActivityData.days.length > 0 ? (
                       <TooltipProvider>
                         <div className="grid grid-cols-7 gap-0.5 text-center text-xs">
@@ -580,7 +583,7 @@ function AnalyticsPageContent() {
                    <Lightbulb className="h-7 w-7 text-yellow-400" />
                    AI Plan Reflection
                 </CardTitle>
-                <CardDescription>Insights from your completed study journey.</CardDescription>
+                <CardDescription>Insights from your study journey. Reflections are generated for completed plans.</CardDescription>
               </CardHeader>
               <CardContent>
                 {currentStudyPlanForAnalytics?.status === 'completed' ? (
@@ -625,14 +628,14 @@ function AnalyticsPageContent() {
                       <AlertCircleIcon className="h-8 w-8 mb-3" />
                       <AlertTitle className="text-lg">Reflection Not Available</AlertTitle>
                       <AlertDescription className="mt-1">
-                          We couldn't generate a reflection for this completed plan. This might be due to a lack of task data or an AI processing error.
+                          We couldn't generate a reflection for this completed plan. This might be due to insufficient task data or an AI processing error.
                       </AlertDescription>
                     </Alert>
                   )
                 ) : (
                   <>
                     <p className="text-sm text-muted-foreground mb-4">
-                        Complete your study plan to receive personalized AI reflections. Example insights you might see:
+                        AI reflections are generated once a plan is marked as 'completed'. Example insights you might see:
                     </p>
                     <div className="space-y-3">
                       {staticExampleRecommendations.map((rec, idx) => (
@@ -671,4 +674,3 @@ export default function AnalyticsPage() {
 }
 
     
-
