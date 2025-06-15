@@ -36,15 +36,14 @@ import { AdaptiveReplanModal } from '@/components/adaptive-replan-modal';
 import { LogScorePopover } from '@/components/log-score-popover';
 import { QuizModal } from '@/components/quiz-modal';
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { useSearchParams } from 'next/navigation'; // Import useSearchParams
 
-// Removed getPlannerStorageKey as we're moving to API
 
 function parseTasksFromString(scheduleString: string, planId: string, existingTasks?: ScheduleTask[]): ScheduleTask[] {
   try {
     const parsed = JSON.parse(scheduleString) as ParsedRawScheduleItem[];
     if (Array.isArray(parsed) && parsed.every(item => typeof item.date === 'string' && typeof item.task === 'string')) {
       return parsed.map((item, index) => {
-        // Try to find an existing task by index (if old plan structure) or by a more robust ID if available in future
         const existingTask = existingTasks?.find(et => et.id && et.id.startsWith(`task-${planId}-${index}`));
         return {
           ...item,
@@ -72,19 +71,21 @@ const initialPlannerData: PlanInput = {
   studyDurationDays: 30,
   dailyStudyHours: 3,
   subjectDetails: '',
-  startDate: format(new Date(), 'yyyy-MM-dd'), // Default to today
+  startDate: format(new Date(), 'yyyy-MM-dd'), 
 };
 
 export default function PlannerPage() {
   const { currentUser } = useAuth();
   const { toast } = useToast();
+  const searchParams = useSearchParams();
+  const planIdFromQuery = searchParams.get('planId');
   
-  const [currentStep, setCurrentStep] = useState(1); // 1: Input, 2: Analyzing, 3: Display/Manage
+  const [currentStep, setCurrentStep] = useState(1); 
   const [plannerFormInput, setPlannerFormInput] = useState<PlanInput>(initialPlannerData);
-  const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date | undefined>(new Date()); // For input form
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date | undefined>(new Date()); 
   
-  const [isAnalyzing, setIsAnalyzing] = useState(false); // For AI generation
-  const [isLoadingPlans, setIsLoadingPlans] = useState(true); // For fetching plans
+  const [isAnalyzing, setIsAnalyzing] = useState(false); 
+  const [isLoadingPlans, setIsLoadingPlans] = useState(true); 
 
   const [allUserPlans, setAllUserPlans] = useState<ScheduleData[]>([]);
   const [activePlan, setActivePlan] = useState<ScheduleData | null>(null);
@@ -106,74 +107,119 @@ export default function PlannerPage() {
       return;
     }
     setIsLoadingPlans(true);
-    try {
-      const response = await fetch(`/api/plans?userId=${currentUser.id}`);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch plans: ${response.statusText}`);
-      }
-      const plans: ScheduleData[] = await response.json();
-      
-      // Ensure tasks and subTasks are properly initialized
-      const processedPlans = plans.map(p => ({
-          ...p,
-          tasks: (p.tasks || []).map(t => ({
-              ...t,
-              subTasks: t.subTasks || [],
-              quizAttempted: t.quizAttempted || false,
-              // quizScore might be null/undefined from DB, handle appropriately
-          }))
-      }));
 
-      setAllUserPlans(processedPlans);
-
-      if (processedPlans.length > 0) {
-        const active = processedPlans.find(p => p.status === 'active') || 
-                       processedPlans.find(p => p.status === 'completed') || // Fallback to last completed
-                       processedPlans.sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0]; // Fallback to most recent
-        
-        setActivePlan(active || null);
-        if (active) {
-          setPlannerFormInput(active.planDetails);
-          const startDate = active.planDetails.startDate ? parseISO(active.planDetails.startDate) : new Date();
-          if (isValid(startDate)) {
-            setSelectedCalendarDate(startDate); // For form
-            setCalendarSelectedDateForDisplay(startDate); // For calendar view
-            setCalendarDisplayMonth(startDate);
+    if (planIdFromQuery) { // If a specific plan ID is in the URL
+      try {
+        const response = await fetch(`/api/plans/${planIdFromQuery}?userId=${currentUser.id}`);
+        if (!response.ok) {
+          if (response.status === 404) {
+            toast({ title: "Plan Not Found", description: `The requested plan was not found or you're not authorized.`, variant: "destructive" });
+          } else {
+            const errorData = await response.json().catch(() => ({error: "Unknown error fetching specific plan"}));
+            throw new Error(errorData.error || `Failed to fetch plan ${planIdFromQuery}: ${response.statusText}`);
           }
-          setCurrentStep(3);
-        } else {
-          setCurrentStep(1); // No plans, go to creation
+          // Fallback to creation view if specific plan not found or error
+          setActivePlan(null);
           setPlannerFormInput(initialPlannerData);
-           setSelectedCalendarDate(new Date());
+          setCurrentStep(1);
+          setIsLoadingPlans(false);
+          return;
         }
-      } else {
+        const plan: ScheduleData = await response.json();
+        const processedPlan = {
+          ...plan,
+          tasks: (plan.tasks || []).map(t => ({
+            ...t,
+            subTasks: t.subTasks || [],
+            quizAttempted: t.quizAttempted || false,
+          }))
+        };
+        setActivePlan(processedPlan);
+        setAllUserPlans([processedPlan]); 
+        setPlannerFormInput(processedPlan.planDetails);
+        const startDate = processedPlan.planDetails.startDate ? parseISO(processedPlan.planDetails.startDate) : new Date();
+        if (isValid(startDate)) {
+          setSelectedCalendarDate(startDate);
+          setCalendarSelectedDateForDisplay(startDate);
+          setCalendarDisplayMonth(startDate);
+        }
+        setCurrentStep(3);
+      } catch (error) {
+        console.error(`Failed to fetch plan ${planIdFromQuery}:`, error);
+        toast({ title: "Error Loading Plan", description: (error as Error).message, variant: "destructive" });
         setActivePlan(null);
         setPlannerFormInput(initialPlannerData);
-        setSelectedCalendarDate(new Date());
         setCurrentStep(1);
+      } finally {
+        setIsLoadingPlans(false);
       }
-    } catch (error) {
-      console.error("Failed to fetch user plans:", error);
-      toast({ title: "Error Loading Plans", description: (error as Error).message, variant: "destructive" });
-      setAllUserPlans([]);
-      setActivePlan(null);
-      setCurrentStep(1);
-    } finally {
-      setIsLoadingPlans(false);
+    } else { // No specific planId in URL, load default (active or most recent)
+      try {
+        const response = await fetch(`/api/plans?userId=${currentUser.id}`);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch plans: ${response.statusText}`);
+        }
+        const plans: ScheduleData[] = await response.json();
+        
+        const processedPlans = plans.map(p => ({
+            ...p,
+            tasks: (p.tasks || []).map(t => ({
+                ...t,
+                subTasks: t.subTasks || [],
+                quizAttempted: t.quizAttempted || false,
+            }))
+        }));
+        setAllUserPlans(processedPlans);
+
+        if (processedPlans.length > 0) {
+          const currentActivePlan = processedPlans.find(p => p.status === 'active') || 
+                         processedPlans.find(p => p.status === 'completed') || 
+                         processedPlans.sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
+          
+          setActivePlan(currentActivePlan || null);
+          if (currentActivePlan) {
+            setPlannerFormInput(currentActivePlan.planDetails);
+            const startDate = currentActivePlan.planDetails.startDate ? parseISO(currentActivePlan.planDetails.startDate) : new Date();
+            if (isValid(startDate)) {
+              setSelectedCalendarDate(startDate);
+              setCalendarSelectedDateForDisplay(startDate);
+              setCalendarDisplayMonth(startDate);
+            }
+            setCurrentStep(3);
+          } else {
+            setCurrentStep(1); 
+            setPlannerFormInput(initialPlannerData);
+            setSelectedCalendarDate(new Date());
+          }
+        } else {
+          setActivePlan(null);
+          setPlannerFormInput(initialPlannerData);
+          setSelectedCalendarDate(new Date());
+          setCurrentStep(1);
+        }
+      } catch (error) {
+        console.error("Failed to fetch user plans:", error);
+        toast({ title: "Error Loading Plans", description: (error as Error).message, variant: "destructive" });
+        setAllUserPlans([]);
+        setActivePlan(null);
+        setCurrentStep(1);
+      } finally {
+        setIsLoadingPlans(false);
+      }
     }
-  }, [currentUser, toast]);
+  }, [currentUser, toast, planIdFromQuery]); // Add planIdFromQuery as a dependency
 
   useEffect(() => {
     fetchUserPlans();
   }, [fetchUserPlans]);
 
-  // Function to save changes to the active plan (tasks, status, etc.)
+
   const saveActivePlanChanges = useCallback(async (planToSave: ScheduleData | null = activePlan) => {
     if (!planToSave || !currentUser?.id) {
       toast({ title: "Error", description: "No active plan or user to save changes for.", variant: "destructive" });
       return false;
     }
-    setIsAnalyzing(true); // Use isAnalyzing for general loading state for plan operations
+    setIsAnalyzing(true); 
     try {
       const response = await fetch(`/api/plans/${planToSave.id}`, {
         method: 'PUT',
@@ -186,7 +232,6 @@ export default function PlannerPage() {
       }
       const updatedPlanFromServer: ScheduleData = await response.json();
       
-      // Ensure tasks and subTasks are properly initialized after update from server
       const processedUpdatedPlan = {
           ...updatedPlanFromServer,
           tasks: (updatedPlanFromServer.tasks || []).map(t => ({
@@ -198,7 +243,7 @@ export default function PlannerPage() {
 
       setActivePlan(processedUpdatedPlan);
       setAllUserPlans(prevPlans => prevPlans.map(p => p.id === processedUpdatedPlan.id ? processedUpdatedPlan : p));
-      window.dispatchEvent(new CustomEvent('studyPlanUpdated')); // Notify other components
+      window.dispatchEvent(new CustomEvent('studyPlanUpdated')); 
       setIsAnalyzing(false);
       return true;
     } catch (error) {
@@ -219,7 +264,7 @@ export default function PlannerPage() {
   };
 
   const handleDateSelect = (date: Date | undefined) => {
-    setSelectedCalendarDate(date); // For the input form
+    setSelectedCalendarDate(date); 
     setPlannerFormInput(prev => ({
       ...prev,
       startDate: date ? format(date, 'yyyy-MM-dd') : undefined,
@@ -267,7 +312,7 @@ export default function PlannerPage() {
           createdAt: now,
           updatedAt: now,
           scheduleString: result.schedule,
-          tasks: parseTasksFromString(result.schedule, planId), // Parse AI string into tasks
+          tasks: parseTasksFromString(result.schedule, planId), 
           planDetails: { ...plannerFormInput, startDate: plannerFormInput.startDate! },
           status: 'active',
         };
@@ -284,8 +329,8 @@ export default function PlannerPage() {
         }
         
         toast({ title: "Study Plan Generated!", description: "Your new study plan is ready.", variant: "default", action: <CheckCircle className="text-green-500"/> });
-        await fetchUserPlans(); // Re-fetch all plans to update the list and active plan
-        setCurrentStep(3); // Should be set by fetchUserPlans based on new active plan
+        await fetchUserPlans(); 
+        // setCurrentStep(3) will be handled by fetchUserPlans due to activePlan update
 
       } else {
         throw new Error("AI did not return a schedule.");
@@ -305,10 +350,10 @@ export default function PlannerPage() {
       t.id === updatedTaskFromModal.id ? updatedTaskFromModal : t
     );
     const updatedPlan = {...activePlan, tasks: updatedTasks, updatedAt: new Date().toISOString()};
-    setActivePlan(updatedPlan); // Optimistic update for UI
+    setActivePlan(updatedPlan); 
     saveActivePlanChanges(updatedPlan).then(success => {
         if(success) toast({ title: "Sub-tasks updated", description: `Changes saved for task "${updatedTaskFromModal.task.substring(0,30)}...".`});
-        else fetchUserPlans(); // Re-fetch if save failed
+        else fetchUserPlans(); 
     });
     setIsBreakdownModalOpen(false);
     setSelectedTaskForBreakdown(null);
@@ -320,9 +365,9 @@ export default function PlannerPage() {
         t.id === taskId ? { ...t, quizScore: score, quizAttempted: attempted } : t
       );
       const updatedPlan = {...activePlan, tasks: updatedTasks, updatedAt: new Date().toISOString()};
-      setActivePlan(updatedPlan); // Optimistic update
+      setActivePlan(updatedPlan); 
       saveActivePlanChanges(updatedPlan).then(success => {
-         if (!success) fetchUserPlans(); // Re-fetch on failure
+         if (!success) fetchUserPlans(); 
       });
   };
 
@@ -344,21 +389,21 @@ export default function PlannerPage() {
         status: 'active',
       };
       
-      setActivePlan(replannedActivePlan); // Optimistic update
+      setActivePlan(replannedActivePlan); 
       const success = await saveActivePlanChanges(replannedActivePlan);
       if (success) {
         toast({ title: "Plan Revised", description: revisedData.summary || "Your study plan has been updated." });
       } else {
-        fetchUserPlans(); // Revert/refresh if save failed
+        fetchUserPlans(); 
       }
     }
   };
 
   const startNewPlanCreation = () => {
-    setActivePlan(null); // This will trigger UI to show "No active plan" or creation form
+    setActivePlan(null); 
     setPlannerFormInput(initialPlannerData);
-    setSelectedCalendarDate(new Date()); // Reset form date picker
-    setCalendarSelectedDateForDisplay(new Date()); // Reset calendar view date
+    setSelectedCalendarDate(new Date()); 
+    setCalendarSelectedDateForDisplay(new Date()); 
     setCalendarDisplayMonth(new Date());
     setCurrentStep(1);
   };
@@ -375,8 +420,7 @@ export default function PlannerPage() {
             throw new Error(errorData.error || "Failed to delete plan.");
         }
         toast({ title: "Plan Deleted", description: "The study plan has been removed.", variant: "default" });
-        await fetchUserPlans(); // This will update allUserPlans and potentially set activePlan to null or another plan
-        // setCurrentStep will be handled by fetchUserPlans effect
+        await fetchUserPlans(); 
     } catch (error) {
         console.error("Error deleting plan:", error);
         toast({ title: "Error Deleting Plan", description: (error as Error).message, variant: "destructive" });
@@ -394,12 +438,12 @@ export default function PlannerPage() {
         completionDate: now,
         updatedAt: now,
       };
-      setActivePlan(completedPlan); // Optimistic update
+      setActivePlan(completedPlan); 
       const success = await saveActivePlanChanges(completedPlan);
       if (success) {
         toast({ title: "Plan Marked as Completed!", description: "Congratulations!", variant: "default" });
       } else {
-        fetchUserPlans(); // Revert/refresh if save failed
+        fetchUserPlans(); 
       }
     }
   };
@@ -424,14 +468,14 @@ export default function PlannerPage() {
     }
     const updatedTasks = activePlan.tasks.map((task) => task.id === taskId ? { ...task, completed: !task.completed } : task );
     const updatedPlan = {...activePlan, tasks: updatedTasks, updatedAt: new Date().toISOString()};
-    setActivePlan(updatedPlan); // Optimistic update
+    setActivePlan(updatedPlan); 
     
     saveActivePlanChanges(updatedPlan).then(success => {
         if (success) {
             const changedTask = updatedTasks.find(t => t.id === taskId);
             toast({ title: `Task ${changedTask?.completed ? 'Completed' : 'Marked Incomplete'}`, description: `"${changedTask?.task.substring(0,30)}..." status updated.`, variant: "default" });
         } else {
-            fetchUserPlans(); // Revert/refresh
+            fetchUserPlans(); 
         }
     });
   };
@@ -439,7 +483,7 @@ export default function PlannerPage() {
   const handleOpenBreakdownModal = (task: ScheduleTask) => { setSelectedTaskForBreakdown(task); setIsBreakdownModalOpen(true); };
   const handleOpenQuizModal = (task: ScheduleTask) => { setSelectedTaskForQuiz(task); setIsQuizModalOpen(true); };
 
-  if (isLoadingPlans && !activePlan) { // Show full page loader only if no plan is visible yet
+  if (isLoadingPlans && !activePlan) { 
     return (
       <AppLayout>
         <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
@@ -493,14 +537,14 @@ export default function PlannerPage() {
               {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
               Generate New Plan
             </Button>
-             {activePlan && ( // If there's an existing active plan, allow going back to view it
+             {activePlan && ( 
                 <Button onClick={() => {
                     if (activePlan) {
                         setPlannerFormInput(activePlan.planDetails);
                         const sDate = activePlan.planDetails.startDate ? parseISO(activePlan.planDetails.startDate) : new Date();
                         if(isValid(sDate)){
-                            setSelectedCalendarDate(sDate); // form date
-                            setCalendarSelectedDateForDisplay(sDate); // calendar view date
+                            setSelectedCalendarDate(sDate); 
+                            setCalendarSelectedDateForDisplay(sDate); 
                             setCalendarDisplayMonth(sDate);
                         }
                         setCurrentStep(3);
@@ -537,15 +581,17 @@ export default function PlannerPage() {
             let planStartDate: Date | null = null;
             let planEndDate: Date | null = null;
             if (activePlan.tasks.length > 0) {
-                const firstTaskDate = parseISO(activePlan.tasks[0].date);
-                const lastTaskDate = parseISO(activePlan.tasks[activePlan.tasks.length - 1].date);
+                const sortedTasksByDate = [...activePlan.tasks].sort((a,b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
+                const firstTaskDate = parseISO(sortedTasksByDate[0].date);
+                const lastTaskDate = parseISO(sortedTasksByDate[sortedTasksByDate.length - 1].date);
+
                 if (isValid(firstTaskDate)) planStartDate = firstTaskDate;
                 if (isValid(lastTaskDate)) planEndDate = lastTaskDate;
             }
              if (!planStartDate && activePlan.planDetails.startDate && isValid(parseISO(activePlan.planDetails.startDate))) {
                  planStartDate = parseISO(activePlan.planDetails.startDate);
              }
-             if (!planStartDate) planStartDate = new Date();
+             if (!planStartDate) planStartDate = new Date(); 
              if (!planEndDate) planEndDate = addDays(planStartDate, activePlan.planDetails.studyDurationDays || 30);
 
           return (
