@@ -60,8 +60,8 @@ export async function POST(req: Request) {
     // Insert tasks into schedule_tasks table
     if (typedPlanData.tasks && typedPlanData.tasks.length > 0) {
       const taskInsertStmt = await db.prepare(
-        `INSERT INTO schedule_tasks (id, planId, date, task, completed, youtubeSearchQuery, referenceSearchQuery, quizScore, quizAttempted)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO schedule_tasks (id, planId, date, task, completed, youtubeSearchQuery, referenceSearchQuery, quizScore, quizAttempted, notes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       );
       for (const task of typedPlanData.tasks) {
         await taskInsertStmt.run(
@@ -73,7 +73,8 @@ export async function POST(req: Request) {
           task.youtubeSearchQuery,
           task.referenceSearchQuery,
           task.quizScore,
-          task.quizAttempted // Stored as 0 or 1 by SQLite driver if boolean
+          task.quizAttempted, // Stored as 0 or 1 by SQLite driver if boolean
+          task.notes // Added notes field
         );
         // Note: Sub-tasks are not handled in this POST, they would be part of PUT or a separate endpoint
       }
@@ -123,7 +124,7 @@ export async function GET(req: Request) {
     const plans: ScheduleData[] = [];
     for (const planRow of plansFromDb) {
       const tasksFromDb = await db.all<any[]>( // Use any[] and then cast inside map for clarity
-        `SELECT id, date, task, completed, youtubeSearchQuery, referenceSearchQuery, quizScore, quizAttempted 
+        `SELECT id, date, task, completed, youtubeSearchQuery, referenceSearchQuery, quizScore, quizAttempted, notes
          FROM schedule_tasks 
          WHERE planId = ? 
          ORDER BY date ASC, id ASC`, // Ensure tasks are ordered
@@ -135,6 +136,7 @@ export async function GET(req: Request) {
         completed: Boolean(t.completed), // Explicitly cast to boolean
         quizAttempted: Boolean(t.quizAttempted), // Explicitly cast to boolean
         subTasks: t.subTasks || [], // Initialize subTasks if not present
+        notes: t.notes, // Include notes
       }));
 
       const plan: ScheduleData = {

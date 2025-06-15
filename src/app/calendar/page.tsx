@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import AppLayout from "@/components/AppLayout";
 import { Button } from '@/components/ui/button';
-import { Loader2, ListTree, Search, HelpCircle, FileQuestion } from 'lucide-react';
+import { Loader2, ListTree, Search, HelpCircle, FileQuestion, FileText } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import type { ScheduleData, ScheduleTask, ParsedRawScheduleItem, PlanInput } from "@/types";
 import { useAuth } from '@/contexts/auth-context';
@@ -11,11 +11,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar as ShadCalendar } from "@/components/ui/calendar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { addDays, subDays, format, parseISO, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, addMonths, subMonths, isValid } from "date-fns";
 import { TaskBreakdownModal } from '@/components/task-breakdown-modal';
 import { LogScorePopover } from '@/components/log-score-popover';
 import { QuizModal } from '@/components/quiz-modal';
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 // Helper function to ensure tasks have necessary fields, especially after fetching from API or parsing
 function ensureTaskStructure(tasks: ScheduleTask[] | undefined, planId: string): ScheduleTask[] {
@@ -27,6 +29,7 @@ function ensureTaskStructure(tasks: ScheduleTask[] | undefined, planId: string):
     subTasks: task.subTasks || [],
     quizScore: task.quizScore,
     quizAttempted: Boolean(task.quizAttempted), // Ensure boolean
+    notes: task.notes || undefined,
   }));
 }
 
@@ -48,6 +51,7 @@ function parseTasksFromString(scheduleString: string, planId: string, existingTa
           subTasks: existingTask?.subTasks || [],
           quizScore: existingTask?.quizScore,
           quizAttempted: existingTask ? Boolean(existingTask.quizAttempted) : false,
+          notes: existingTask?.notes || undefined,
         };
       });
     }
@@ -72,6 +76,10 @@ export default function CalendarPage() {
   const [selectedTaskForBreakdown, setSelectedTaskForBreakdown] = useState<ScheduleTask | null>(null);
   const [isQuizModalOpen, setIsQuizModalOpen] = useState(false);
   const [selectedTaskForQuiz, setSelectedTaskForQuiz] = useState<ScheduleTask | null>(null);
+
+  const [editingNoteTask, setEditingNoteTask] = useState<ScheduleTask | null>(null);
+  const [currentNoteText, setCurrentNoteText] = useState<string>("");
+
 
   const fetchAndSetPlans = useCallback(async () => {
     if (!currentUser?.id) {
@@ -227,6 +235,22 @@ export default function CalendarPage() {
   const handleOpenQuizModal = (task: ScheduleTask) => {
     setSelectedTaskForQuiz(task);
     setIsQuizModalOpen(true);
+  };
+
+  const handleOpenNotesPopover = (task: ScheduleTask) => {
+    setEditingNoteTask(task);
+    setCurrentNoteText(task.notes || "");
+  };
+
+  const handleSaveNote = () => {
+    if (!activeStudyPlan || !editingNoteTask) return;
+    const updatedTasks = activeStudyPlan.tasks.map(t =>
+      t.id === editingNoteTask.id ? { ...t, notes: currentNoteText.trim() === "" ? undefined : currentNoteText.trim() } : t
+    );
+    handleProgressUpdate(updatedTasks);
+    toast({ title: "Note Saved" });
+    setEditingNoteTask(null);
+    setCurrentNoteText("");
   };
   
   const getTasksForDate = (date: Date): ScheduleTask[] => {
@@ -389,6 +413,25 @@ export default function CalendarPage() {
                                         onTakeQuiz={handleOpenQuizModal}
                                         disabled={activeStudyPlan?.status === 'completed' || activeStudyPlan?.status === 'archived' || isSavingPlan}
                                       />
+                                      <Popover open={editingNoteTask?.id === task.id} onOpenChange={(isOpen) => { if (!isOpen) { setEditingNoteTask(null); setCurrentNoteText(""); }}}>
+                                        <PopoverTrigger asChild>
+                                          <Button variant="ghost" size="sm" className="h-auto p-0 text-xs text-blue-500 hover:text-blue-600" title="Add/Edit Notes" onClick={() => handleOpenNotesPopover(task)} disabled={isSavingPlan || activeStudyPlan?.status === 'completed' || activeStudyPlan?.status === 'archived'}>
+                                            <FileText className="mr-1 h-3 w-3" /> Notes
+                                          </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-80 z-50">
+                                          <div className="grid gap-4">
+                                            <div className="space-y-2">
+                                              <h4 className="font-medium leading-none">Notes for task:</h4>
+                                              <p className="text-sm text-muted-foreground truncate" title={task.task}>{task.task.substring(0,50)}{task.task.length > 50 ? '...' : ''}</p>
+                                            </div>
+                                            <div className="grid gap-2">
+                                              <Textarea id={`notes-${task.id}`} value={currentNoteText} onChange={(e) => setCurrentNoteText(e.target.value)} placeholder="Type your short notes here..." rows={4} />
+                                            </div>
+                                            <Button onClick={handleSaveNote} disabled={isSavingPlan}>Save Notes</Button>
+                                          </div>
+                                        </PopoverContent>
+                                      </Popover>
                                     </>
                                   )}
                               </div>

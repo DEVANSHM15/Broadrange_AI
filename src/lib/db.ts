@@ -72,6 +72,7 @@ export async function getDb(): Promise<Database> {
       referenceSearchQuery TEXT,
       quizScore INTEGER,
       quizAttempted BOOLEAN DEFAULT FALSE,
+      notes TEXT, -- Added for short task notes
       FOREIGN KEY (planId) REFERENCES study_plans (id) ON DELETE CASCADE
     );
 
@@ -87,4 +88,3 @@ export async function getDb(): Promise<Database> {
   dbInstance = db;
   return db;
 }
-

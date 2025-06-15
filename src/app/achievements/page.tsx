@@ -43,6 +43,7 @@ function ensureTaskStructure(tasks: ScheduleTask[] | undefined, planId: string):
     subTasks: task.subTasks || [],
     quizScore: task.quizScore,
     quizAttempted: Boolean(task.quizAttempted), // Ensure boolean
+    notes: task.notes || undefined,
   }));
 }
 

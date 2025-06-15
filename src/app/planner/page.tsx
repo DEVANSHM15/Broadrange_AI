@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from "@/components/ui/label";
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, CheckCircle, Trash2, Edit3, CalendarIcon as CalendarDaysIcon, Search, ChevronLeft, ChevronRight, ListTree, FileQuestion, PlusCircle, Info } from 'lucide-react';
+import { Loader2, CheckCircle, Trash2, Edit3, CalendarIcon as CalendarDaysIcon, Search, ChevronLeft, ChevronRight, ListTree, FileQuestion, PlusCircle, Info, FileText } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { generateStudySchedule, type GenerateStudyScheduleInput, type GenerateStudyScheduleOutput } from "@/ai/flows/generate-study-schedule";
 import type { PlanInput, ScheduleData, ScheduleTask, ParsedRawScheduleItem, SubTask } from "@/types";
@@ -49,12 +49,13 @@ function parseTasksFromString(scheduleString: string, planId: string, existingTa
           ...item,
           date: item.date,
           id: existingTask?.id || `task-${planId}-${index}-${new Date(item.date).getTime()}-${Math.random().toString(36).substring(2,9)}`,
-          completed: existingTask?.completed || false,
+          completed: existingTask ? Boolean(existingTask.completed) : false,
           youtubeSearchQuery: item.youtubeSearchQuery,
           referenceSearchQuery: item.referenceSearchQuery,
           subTasks: existingTask?.subTasks || [],
           quizScore: existingTask?.quizScore,
-          quizAttempted: existingTask?.quizAttempted || false,
+          quizAttempted: existingTask ? Boolean(existingTask.quizAttempted) : false,
+          notes: existingTask?.notes || undefined,
         };
       });
     }
@@ -97,6 +98,9 @@ export default function PlannerPage() {
   const [isQuizModalOpen, setIsQuizModalOpen] = useState(false);
   const [selectedTaskForQuiz, setSelectedTaskForQuiz] = useState<ScheduleTask | null>(null);
 
+  const [editingNoteTask, setEditingNoteTask] = useState<ScheduleTask | null>(null);
+  const [currentNoteText, setCurrentNoteText] = useState<string>("");
+
 
   const fetchUserPlans = useCallback(async () => {
     if (!currentUser?.id) {
@@ -132,6 +136,7 @@ export default function PlannerPage() {
             ...t,
             subTasks: t.subTasks || [],
             quizAttempted: t.quizAttempted || false,
+            notes: t.notes || undefined,
           }))
         };
         setActivePlan(processedPlan);
@@ -167,6 +172,7 @@ export default function PlannerPage() {
                 ...t,
                 subTasks: t.subTasks || [],
                 quizAttempted: t.quizAttempted || false,
+                notes: t.notes || undefined,
             }))
         }));
         setAllUserPlans(processedPlans);
@@ -238,6 +244,7 @@ export default function PlannerPage() {
               ...t,
               subTasks: t.subTasks || [],
               quizAttempted: t.quizAttempted || false,
+              notes: t.notes || undefined,
           }))
       };
 
@@ -483,6 +490,27 @@ export default function PlannerPage() {
   const handleOpenBreakdownModal = (task: ScheduleTask) => { setSelectedTaskForBreakdown(task); setIsBreakdownModalOpen(true); };
   const handleOpenQuizModal = (task: ScheduleTask) => { setSelectedTaskForQuiz(task); setIsQuizModalOpen(true); };
 
+  const handleOpenNotesPopover = (task: ScheduleTask) => {
+    setEditingNoteTask(task);
+    setCurrentNoteText(task.notes || "");
+  };
+
+  const handleSaveNote = () => {
+    if (!activePlan || !editingNoteTask) return;
+    const updatedTasks = activePlan.tasks.map(t =>
+      t.id === editingNoteTask.id ? { ...t, notes: currentNoteText.trim() === "" ? undefined : currentNoteText.trim() } : t
+    );
+    const updatedPlan = { ...activePlan, tasks: updatedTasks, updatedAt: new Date().toISOString() };
+    setActivePlan(updatedPlan);
+    saveActivePlanChanges(updatedPlan).then(success => {
+      if (success) toast({ title: "Note Saved" });
+      else fetchUserPlans(); 
+    });
+    setEditingNoteTask(null); 
+    setCurrentNoteText("");
+  };
+
+
   if (isLoadingPlans && !activePlan) { 
     return (
       <AppLayout>
@@ -639,6 +667,25 @@ export default function PlannerPage() {
                                           <Button variant="ghost" size="sm" onClick={() => handleOpenBreakdownModal(task)} className="h-auto p-0 text-xs text-primary/70 hover:text-primary" title="Break down task"><ListTree className="mr-1 h-3 w-3"/> Sub-tasks ({(task.subTasks || []).length})</Button>
                                            <Button variant="ghost" size="sm" onClick={() => handleOpenQuizModal(task)} className="h-auto p-0 text-xs text-purple-500 hover:text-purple-600" title="Take quiz"><FileQuestion className="mr-1 h-3 w-3"/> Take AI Quiz</Button>
                                           <LogScorePopover task={task} onSave={handleSaveQuizScore} onTakeQuiz={handleOpenQuizModal} disabled={activePlan?.status === 'completed' || activePlan?.status === 'archived'}/>
+                                           <Popover open={editingNoteTask?.id === task.id} onOpenChange={(isOpen) => { if (!isOpen) { setEditingNoteTask(null); setCurrentNoteText(""); }}}>
+                                            <PopoverTrigger asChild>
+                                              <Button variant="ghost" size="sm" className="h-auto p-0 text-xs text-blue-500 hover:text-blue-600" title="Add/Edit Notes" onClick={() => handleOpenNotesPopover(task)} disabled={isAnalyzing || activePlan?.status === 'completed' || activePlan?.status === 'archived'}>
+                                                <FileText className="mr-1 h-3 w-3" /> Notes
+                                              </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-80 z-50">
+                                              <div className="grid gap-4">
+                                                <div className="space-y-2">
+                                                  <h4 className="font-medium leading-none">Notes for task:</h4>
+                                                  <p className="text-sm text-muted-foreground truncate" title={task.task}>{task.task.substring(0,50)}{task.task.length > 50 ? '...' : ''}</p>
+                                                </div>
+                                                <div className="grid gap-2">
+                                                  <Textarea id={`notes-${task.id}`} value={currentNoteText} onChange={(e) => setCurrentNoteText(e.target.value)} placeholder="Type your short notes here..." rows={4} />
+                                                </div>
+                                                <Button onClick={handleSaveNote} disabled={isAnalyzing}>Save Notes</Button>
+                                              </div>
+                                            </PopoverContent>
+                                          </Popover>
                                         </>)}</div></div></li>))}</ul></ScrollArea>) 
                         : (<p className="text-center text-muted-foreground pt-12">No tasks scheduled for this day.</p>)}
                     </>) 
@@ -692,7 +739,7 @@ export default function PlannerPage() {
                 </Button>
                 {(activePlan.status === 'active') && (
                     <AdaptiveReplanModal
-                        originalScheduleJSON={JSON.stringify(activePlan.tasks.map(({id, completed, youtubeSearchQuery, referenceSearchQuery, subTasks, quizScore, quizAttempted, ...rest}) => rest))}
+                        originalScheduleJSON={JSON.stringify(activePlan.tasks.map(({id, completed, youtubeSearchQuery, referenceSearchQuery, subTasks, quizScore, quizAttempted, notes, ...rest}) => rest))}
                         planDetails={activePlan.planDetails}
                         onReplanSuccess={handleReplanSuccess}
                     />)}
@@ -724,5 +771,3 @@ export default function PlannerPage() {
 const ScrollArea = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className, children, ...props }, ref) => (
   <div ref={ref} className={cn("relative overflow-y-auto", className)} {...props}>{children}</div>));
 ScrollArea.displayName = "ScrollArea";
-
-    

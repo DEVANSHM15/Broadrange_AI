@@ -45,7 +45,7 @@ export async function GET(
     }
 
     const tasksFromDb = await db.all<any[]>( // Use any[] for raw DB results
-      `SELECT id, date, task, completed, youtubeSearchQuery, referenceSearchQuery, quizScore, quizAttempted
+      `SELECT id, date, task, completed, youtubeSearchQuery, referenceSearchQuery, quizScore, quizAttempted, notes
        FROM schedule_tasks
        WHERE planId = ?
        ORDER BY date ASC, id ASC`,
@@ -62,7 +62,8 @@ export async function GET(
             ...t,
             completed: Boolean(t.completed), // Explicitly cast to boolean
             quizAttempted: Boolean(t.quizAttempted), // Explicitly cast to boolean
-            subTasks: subTasksFromDb.map(st => ({...st, completed: Boolean(st.completed)})) || []
+            subTasks: subTasksFromDb.map(st => ({...st, completed: Boolean(st.completed)})) || [],
+            notes: t.notes, // Include notes
         });
     }
 
@@ -151,8 +152,8 @@ export async function PUT(
 
     if (typedPlanData.tasks && typedPlanData.tasks.length > 0) {
       const taskInsertStmt = await db.prepare(
-        `INSERT INTO schedule_tasks (id, planId, date, task, completed, youtubeSearchQuery, referenceSearchQuery, quizScore, quizAttempted)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO schedule_tasks (id, planId, date, task, completed, youtubeSearchQuery, referenceSearchQuery, quizScore, quizAttempted, notes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       );
       const subTaskInsertStmt = await db.prepare(
         `INSERT INTO sub_tasks (id, taskId, text, completed) VALUES (?, ?, ?, ?)`
@@ -168,7 +169,8 @@ export async function PUT(
           task.youtubeSearchQuery,
           task.referenceSearchQuery,
           task.quizScore,
-          Boolean(task.quizAttempted) // Ensure boolean is stored as 0/1
+          Boolean(task.quizAttempted), // Ensure boolean is stored as 0/1
+          task.notes // Added notes field
         );
         if (task.subTasks && task.subTasks.length > 0) {
             for (const subTask of task.subTasks) {
@@ -197,7 +199,7 @@ export async function PUT(
         return NextResponse.json({ error: 'Failed to retrieve updated plan after saving.' }, { status: 500 });
     }
      const updatedTasksFromDb = await db.all<any[]>( // Use any[] for raw DB results
-        `SELECT id, date, task, completed, youtubeSearchQuery, referenceSearchQuery, quizScore, quizAttempted
+        `SELECT id, date, task, completed, youtubeSearchQuery, referenceSearchQuery, quizScore, quizAttempted, notes
          FROM schedule_tasks WHERE planId = ? ORDER BY date ASC, id ASC`, planId
     );
     
@@ -211,7 +213,8 @@ export async function PUT(
             ...t,
             completed: Boolean(t.completed), // Explicitly cast to boolean
             quizAttempted: Boolean(t.quizAttempted), // Explicitly cast to boolean
-            subTasks: subTasksFromDb.map(st => ({...st, completed: Boolean(st.completed)})) || []
+            subTasks: subTasksFromDb.map(st => ({...st, completed: Boolean(st.completed)})) || [],
+            notes: t.notes, // Include notes
         });
     }
 

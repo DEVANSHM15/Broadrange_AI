@@ -33,6 +33,7 @@ function ensureTaskStructure(tasks: ScheduleTask[] | undefined, planId: string):
     quizAttempted: Boolean(task.quizAttempted),
     subTasks: task.subTasks || [],
     quizScore: task.quizScore,
+    notes: task.notes || undefined,
   }));
 }
 
@@ -672,5 +673,3 @@ export default function AnalyticsPage() {
     </Suspense>
   );
 }
-
-    

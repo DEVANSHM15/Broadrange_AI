@@ -23,6 +23,7 @@ export interface ScheduleTask {
   subTasks?: SubTask[];
   quizScore?: number;
   quizAttempted?: boolean;
+  notes?: string; // Added for short task notes
 }
 
 export interface ParsedRawScheduleItem {
@@ -30,6 +31,7 @@ export interface ParsedRawScheduleItem {
   task: string;
   youtubeSearchQuery?: string;
   referenceSearchQuery?: string;
+  // Notes are not typically part of AI-generated raw schedule
 }
 
 export interface ScheduleData {
