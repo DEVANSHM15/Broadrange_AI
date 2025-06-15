@@ -2,7 +2,7 @@
 "use client";
 import AppLayout from "@/components/AppLayout";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
   ChartContainer,
   ChartTooltip,
@@ -16,7 +16,7 @@ import { useState, useEffect, useMemo, useCallback, Suspense } from "react";
 import { useSearchParams } from 'next/navigation';
 import { differenceInWeeks, parseISO, format, startOfWeek, addWeeks, isValid } from "date-fns";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { HelpCircle, Loader2, Lightbulb, AlertCircle as AlertCircleIcon } from "lucide-react";
+import { HelpCircle, Loader2, Lightbulb, AlertCircle as AlertCircleIcon, Target, MessageSquareText, Repeat, SparklesIcon } from "lucide-react";
 import { generatePlanReflection, type GeneratePlanReflectionInput, type GeneratePlanReflectionOutput } from "@/ai/flows/generate-plan-reflection";
 import { useToast } from "@/hooks/use-toast";
 
@@ -138,7 +138,7 @@ function AnalyticsPageContent() {
     try {
       const input: GeneratePlanReflectionInput = {
         planDetails: plan.planDetails,
-        tasks: ensureTaskStructure(plan.tasks, plan.id), // Ensure boolean conversion before sending to AI
+        tasks: ensureTaskStructure(plan.tasks, plan.id), 
         completionDate: plan.completionDate,
       };
       const reflection = await generatePlanReflection(input);
@@ -166,7 +166,7 @@ function AnalyticsPageContent() {
     } finally {
       setIsGeneratingReflection(false);
     }
-  }, [toast]); // Removed isGeneratingReflection from dependency array
+  }, [toast]); 
 
   useEffect(() => {
     if (currentStudyPlanForAnalytics && currentStudyPlanForAnalytics.status === 'completed') {
@@ -383,44 +383,57 @@ function AnalyticsPageContent() {
             </Card>
           </div>
 
-          <Card className="analytics-card">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                   <Lightbulb className="h-6 w-6 text-yellow-400" />
-                   AI-Generated Plan Reflection
+          <Card className="analytics-card bg-card shadow-xl">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-2xl font-semibold flex items-center gap-3">
+                   <Lightbulb className="h-7 w-7 text-yellow-400" />
+                   AI Plan Reflection
                 </CardTitle>
+                <CardDescription>Insights from your completed study journey.</CardDescription>
               </CardHeader>
               <CardContent>
                 {currentStudyPlanForAnalytics?.status === 'completed' ? (
                   isGeneratingReflection ? (
-                    <div className="flex flex-col items-center justify-center p-6">
-                      <Loader2 className="h-10 w-10 animate-spin text-primary mb-3" />
-                      <p className="text-muted-foreground">ReflectionAI is analyzing your performance...</p>
+                    <div className="flex flex-col items-center justify-center p-8 min-h-[200px]">
+                      <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
+                      <p className="text-muted-foreground text-lg">ReflectionAI is thinking...</p>
                     </div>
                   ) : planReflection ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <Card>
-                        <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Overall Completion</CardTitle></CardHeader>
-                        <CardContent><p className="text-2xl font-bold text-primary">{(planReflection.overallCompletionRate * 100).toFixed(0)}%</p></CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <Card className="bg-background/50">
+                        <CardHeader className="flex flex-row items-center space-x-3 pb-2">
+                            <Target className="h-6 w-6 text-primary" />
+                            <CardTitle className="text-md font-medium">Overall Completion</CardTitle>
+                        </CardHeader>
+                        <CardContent><p className="text-4xl font-bold text-primary pl-9">{(planReflection.overallCompletionRate * 100).toFixed(0)}%</p></CardContent>
                       </Card>
-                      <Card>
-                        <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Main Reflection</CardTitle></CardHeader>
-                        <CardContent><p className="text-xs">{planReflection.mainReflection}</p></CardContent>
+                      <Card className="bg-background/50">
+                        <CardHeader className="flex flex-row items-center space-x-3 pb-2">
+                            <MessageSquareText className="h-6 w-6 text-primary" />
+                            <CardTitle className="text-md font-medium">Main Reflection</CardTitle>
+                        </CardHeader>
+                        <CardContent><p className="text-sm text-foreground/90 pl-9">{planReflection.mainReflection}</p></CardContent>
                       </Card>
-                      <Card>
-                        <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Study Consistency</CardTitle></CardHeader>
-                        <CardContent><p className="text-xs">{planReflection.consistencyObservation}</p></CardContent>
+                      <Card className="bg-background/50">
+                        <CardHeader className="flex flex-row items-center space-x-3 pb-2">
+                            <Repeat className="h-6 w-6 text-primary" />
+                            <CardTitle className="text-md font-medium">Study Consistency</CardTitle>
+                        </CardHeader>
+                        <CardContent><p className="text-sm text-foreground/90 pl-9">{planReflection.consistencyObservation}</p></CardContent>
                       </Card>
-                      <Card>
-                        <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Next Plan Suggestion</CardTitle></CardHeader>
-                        <CardContent><p className="text-xs">{planReflection.suggestionForNextPlan}</p></CardContent>
+                      <Card className="bg-background/50">
+                        <CardHeader className="flex flex-row items-center space-x-3 pb-2">
+                             <SparklesIcon className="h-6 w-6 text-primary" />
+                            <CardTitle className="text-md font-medium">Suggestion for Next Plan</CardTitle>
+                        </CardHeader>
+                        <CardContent><p className="text-sm text-foreground/90 pl-9">{planReflection.suggestionForNextPlan}</p></CardContent>
                       </Card>
                     </div>
                   ) : (
-                    <Alert variant="destructive">
-                      <AlertCircleIcon className="h-4 w-4" />
-                      <AlertTitle>Reflection Not Available</AlertTitle>
-                      <AlertDescription>
+                    <Alert variant="destructive" className="min-h-[200px] flex flex-col justify-center items-center text-center">
+                      <AlertCircleIcon className="h-8 w-8 mb-3" />
+                      <AlertTitle className="text-lg">Reflection Not Available</AlertTitle>
+                      <AlertDescription className="mt-1">
                           We couldn't generate a reflection for this completed plan. This might be due to a lack of task data or an AI processing error.
                       </AlertDescription>
                     </Alert>
@@ -428,12 +441,12 @@ function AnalyticsPageContent() {
                 ) : (
                   <>
                     <p className="text-sm text-muted-foreground mb-4">
-                        Complete your study plan to receive personalized AI reflections. Example insights:
+                        Complete your study plan to receive personalized AI reflections. Example insights you might see:
                     </p>
                     <div className="space-y-3">
                       {staticExampleRecommendations.map((rec, idx) => (
-                        <div key={idx} className="flex items-start gap-3 p-3 border rounded-md bg-muted/30">
-                          <div className="rec-icon text-xl pt-0.5">{rec.agent.split(' ')[0]}</div>
+                        <div key={idx} className="flex items-start gap-3 p-3 border rounded-md bg-muted/50 shadow-sm">
+                          <div className="rec-icon text-xl pt-0.5 text-primary">{rec.agent.split(' ')[0]}</div>
                           <div className="flex-grow">
                             <div className="rec-text text-sm font-medium">{rec.text}</div>
                             {rec.confidence && <div className="text-xs text-muted-foreground">{rec.confidence}</div>}
