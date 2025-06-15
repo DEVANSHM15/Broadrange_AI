@@ -72,7 +72,7 @@ export async function getDb(): Promise<Database> {
       referenceSearchQuery TEXT,
       quizScore INTEGER,
       quizAttempted BOOLEAN DEFAULT FALSE,
-      notes TEXT, -- Added for short task notes
+      -- 'notes' column might be missing if table was created before this field was added to the CREATE statement
       FOREIGN KEY (planId) REFERENCES study_plans (id) ON DELETE CASCADE
     );
 
@@ -85,6 +85,23 @@ export async function getDb(): Promise<Database> {
     );
   `);
   
+  // Schema migration check for 'notes' column in 'schedule_tasks'
+  try {
+    const scheduleTasksInfo = await db.all("PRAGMA table_info(schedule_tasks);");
+    const notesColumnExists = scheduleTasksInfo.some(col => col.name === 'notes');
+
+    if (!notesColumnExists) {
+      console.log("Attempting to add 'notes' column to 'schedule_tasks' table.");
+      await db.exec("ALTER TABLE schedule_tasks ADD COLUMN notes TEXT;");
+      console.log("'notes' column added successfully to 'schedule_tasks'.");
+    }
+  } catch (migrationError) {
+    console.error("Error during 'notes' column migration for 'schedule_tasks':", migrationError);
+    // Depending on the severity, you might want to throw this error or handle it.
+    // For now, we'll log it and proceed. The app might still face issues if the column is critical.
+  }
+  
   dbInstance = db;
   return db;
 }
+
