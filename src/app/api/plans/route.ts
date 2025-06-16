@@ -88,7 +88,7 @@ export async function POST(req: Request) {
     return NextResponse.json(typedPlanData, { status: 201 });
 
   } catch (error) {
-    const db = await getDb();
+    const db = await getDb(); // Ensure DB instance is available for rollback
     await db.run('ROLLBACK'); // Rollback transaction on error
     console.error('POST /api/plans - Failed to create study plan:', error);
     
@@ -199,31 +199,34 @@ export async function GET(req: Request) {
     return NextResponse.json(plans, { status: 200 });
 
   } catch (error) {
-    // Enhanced defensive error handling for the GET request
-    let rawErrorString = 'Could not stringify raw error object for logging.';
-    try {
-      rawErrorString = String(error); // Basic string conversion for logging
-    } catch (strErr) { /* ignore if String() itself fails */ }
-    console.error(`RAW ERROR in GET /api/plans for userId ${userId}:`, rawErrorString, error); // Log both simple string and original error
+    // More robust error logging and response
+    let errorType = 'UnknownError';
+    let errorMessage = 'An unexpected error occurred while fetching plans.';
+    let errorStack = '';
 
-    let detailMessage = 'An unknown server error occurred while fetching plans.';
     if (error instanceof Error) {
-      detailMessage = error.message;
+      errorType = error.name;
+      errorMessage = error.message;
+      errorStack = error.stack || '';
     } else if (typeof error === 'string') {
-      detailMessage = error;
+      errorMessage = error;
     } else {
-      // For non-Error objects, provide a generic detail to avoid serialization issues with NextResponse.json
-      try {
-        // Try to get a type, but don't stringify the whole object if it's complex
-        detailMessage = `An unexpected error type occurred: ${Object.prototype.toString.call(error)}. Check server logs for the raw error.`;
-      } catch (e) {
-        detailMessage = 'The error object could not be processed or stringified.';
-      }
+        try {
+            errorMessage = `Non-Error object thrown: ${JSON.stringify(error)}`;
+        } catch (stringifyError) {
+            errorMessage = 'A non-serializable, non-Error object was thrown.';
+        }
     }
+
+    console.error(`GET /api/plans ERROR for userId ${userId}:
+      Type: ${errorType}
+      Message: ${errorMessage}
+      Stack: ${errorStack}
+      Raw Error Object:`, error);
     
     return NextResponse.json({
       error: 'Failed to fetch study plans from server.',
-      details: detailMessage // detailMessage is now more carefully constructed as a string
+      details: `Server error: ${errorMessage.substring(0, 300)} (Check server logs for more details and userId: ${userId})`
     }, { status: 500 });
   }
 }
