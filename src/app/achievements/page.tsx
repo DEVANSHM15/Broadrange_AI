@@ -14,7 +14,6 @@ import type { ScheduleData, ScheduleTask, Achievement } from "@/types"; // Updat
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { parseISO, isValid, formatDistanceToNowStrict } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
-// Removed useSearchParams as it was only for chatbot interaction here
 
 const sampleAchievements: Achievement[] = [
   { id: "first_plan", title: "Planner Pioneer", description: "Successfully created your first study plan.", icon: PlusCircle, achieved: false, color: "bg-blue-500" },
@@ -130,7 +129,6 @@ const PlanDisplayCard: React.FC<PlanDisplayCardProps> = ({ plan, cardType, isFoc
 export default function AchievementsPage() {
   const { currentUser } = useAuth();
   const { toast } = useToast();
-  // Removed searchParams and related focus IDs as they were for chatbot interaction
 
   const [allStudyPlans, setAllStudyPlans] = useState<ScheduleData[]>([]);
   const [isLoadingPlans, setIsLoadingPlans] = useState(true);
@@ -145,27 +143,19 @@ export default function AchievementsPage() {
     try {
         const response = await fetch(`/api/plans?userId=${currentUser.id}`);
         if (!response.ok) {
-            let errorMessage = `Failed to fetch plans. Status: ${response.status}`;
-            let errorDetailMessage = "";
+            let apiErrorMessage = "Failed to fetch plans from server.";
+            let apiErrorDetails = `Server responded with status: ${response.status}.`;
             try {
-              const errorData = await response.json();
-              if (errorData.error) {
-                errorMessage = String(errorData.error);
-                if (errorData.details) {
-                  errorDetailMessage = String(errorData.details);
-                }
-              } else if (response.statusText) {
-                errorMessage = `Failed to fetch plans: ${response.statusText} (Status: ${response.status})`;
-              }
-            } catch (e) {
-              if (response.statusText) {
-                 errorMessage = `Failed to fetch plans: ${response.statusText} (Status: ${response.status})`;
-              }
+                const errorData = await response.json();
+                apiErrorMessage = String(errorData.error || apiErrorMessage);
+                apiErrorDetails = String(errorData.details || apiErrorDetails);
+            } catch (parseError) {
+                apiErrorDetails = `Server returned status ${response.status} but the error message was not in the expected JSON format. Please check server logs. (${response.statusText})`;
             }
-            const finalMessage = errorDetailMessage
-                ? `${errorMessage} (Details: ${errorDetailMessage})`
-                : errorMessage;
-            throw new Error(finalMessage);
+            toast({ title: "Error Loading Plans", description: `${apiErrorMessage} ${apiErrorDetails}`, variant: "destructive" });
+            setAllStudyPlans([]);
+            setIsLoadingPlans(false);
+            return;
         }
         const loadedPlans: ScheduleData[] = await response.json();
         const processedPlans = loadedPlans.map(p => ({
@@ -190,7 +180,6 @@ export default function AchievementsPage() {
     return () => window.removeEventListener('studyPlanUpdated', handleStudyPlanUpdate);
   }, [reloadDataFromApi]);
 
-  // Removed useEffect related to focusPlanId and focusAchievementId
 
   const hasCompletedAnyPlan = useMemo(() => allStudyPlans.some(plan => plan.status === 'completed'), [allStudyPlans]);
 
@@ -337,3 +326,4 @@ export default function AchievementsPage() {
     </AppLayout>
   );
 }
+

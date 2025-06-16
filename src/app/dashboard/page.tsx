@@ -83,22 +83,24 @@ export default function DashboardPage() {
     setIsLoadingPlanData(true);
     try {
       const response = await fetch(`/api/plans?userId=${currentUser.id}`);
+      
       if (!response.ok) {
-        let apiErrorMessage = "Failed to fetch plans.";
-        let apiErrorDetails = `Status: ${response.status}. ${response.statusText}`;
+        let apiErrorMessage = "Failed to fetch plans from server.";
+        let apiErrorDetails = `Server responded with status: ${response.status}.`;
         try {
           const errorData = await response.json(); // Try to parse error as JSON
-          apiErrorMessage = errorData.error || apiErrorMessage;
-          apiErrorDetails = errorData.details || apiErrorDetails;
+          apiErrorMessage = String(errorData.error || apiErrorMessage);
+          apiErrorDetails = String(errorData.details || apiErrorDetails);
         } catch (parseError) {
           // This means the error response was not JSON
           console.warn("Dashboard: API error response was not JSON.", parseError);
-          apiErrorDetails = `Server returned status ${response.status} but the error message was not in the expected JSON format. Check server logs for more details. (${response.statusText})`;
+          apiErrorDetails = `Server returned status ${response.status} but the error message was not in the expected JSON format. Please check server logs for more details. (${response.statusText})`;
         }
         toast({ title: "Error Loading Plan Data", description: `${apiErrorMessage} ${apiErrorDetails}`, variant: "destructive" });
         setActiveStudyPlan(null);
         setParsedTasksForActivePlan([]);
         setPlanReflection(null);
+        setIsLoadingPlanData(false); // Ensure loading state is cleared
         return; 
       }
       
@@ -129,7 +131,7 @@ export default function DashboardPage() {
       }
       setPlanReflection(null); 
 
-    } catch (error) { // This catch handles network errors or other unexpected issues before/during fetch
+    } catch (error) { 
       console.error("Dashboard: Critical error fetching plans from API:", error);
       toast({ title: "Network Error", description: `Could not connect to fetch plans. ${(error as Error).message}`, variant: "destructive" });
       setActiveStudyPlan(null);
@@ -145,7 +147,6 @@ export default function DashboardPage() {
     reloadDataFromApi(); 
 
     const handleStudyPlanUpdate = () => {
-      console.log('studyPlanUpdated event received by dashboard, reloading data from API.');
       reloadDataFromApi();
     };
     window.addEventListener('studyPlanUpdated', handleStudyPlanUpdate);

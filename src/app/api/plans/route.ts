@@ -123,7 +123,7 @@ export async function GET(req: Request) {
   }
 
   try {
-    const db = await getDb();
+    const db = await getDb(); // Moved getDb() inside try
     const plansFromDb = await db.all(
       `SELECT id, createdAt, updatedAt, scheduleString, subjects, dailyStudyHours, studyDurationDays, subjectDetails, startDate, status, completionDate 
        FROM study_plans 
@@ -200,24 +200,23 @@ export async function GET(req: Request) {
     return NextResponse.json(plans, { status: 200 });
 
   } catch (error: unknown) {
-    let errorMessage = 'An unknown error occurred while fetching plans.';
-    let errorDetailsForClient = 'The server encountered an issue. Please check server logs for specifics.';
+    // Log the detailed error to the server console
+    console.error(`API GET /api/plans Error for userId ${userId}:`, error);
+    
+    // Construct a simple, safe error message for the client
+    let clientErrorMessage = 'Server Error: Failed to fetch study plans.';
+    let clientErrorDetails = 'An unexpected error occurred on the server. Please check server logs for more information.';
 
     if (error instanceof Error) {
-        errorMessage = error.message; // More specific error for server log
-        // Keep client message generic unless it's a very specific, safe-to-share DB error
-        if (error.message.includes("SQLITE_ERROR")) {
-            errorDetailsForClient = "There was a problem querying the database.";
-        }
+        // You can customize this further if you have specific DB error codes to check
+        clientErrorDetails = `Details: ${error.message.substring(0, 200)}${error.message.length > 200 ? '...' : ''}`;
     } else if (typeof error === 'string') {
-        errorMessage = error;
+        clientErrorDetails = `Details: ${error.substring(0, 200)}${error.length > 200 ? '...' : ''}`;
     }
-
-    console.error(`API GET /api/plans Error for userId ${userId}: ${errorMessage}`, error); // Log the detailed error
     
     return NextResponse.json({
-      error: 'Server Error: Failed to fetch study plans.',
-      details: errorDetailsForClient 
+      error: clientErrorMessage,
+      details: clientErrorDetails 
     }, { status: 500 });
   }
 }

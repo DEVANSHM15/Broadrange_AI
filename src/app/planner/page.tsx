@@ -80,10 +80,9 @@ export default function PlannerPage() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const planIdFromQuery = searchParams.get('planId');
-  // Removed autoFocusSubjectsQuery as it was for chatbot interaction
   
   const [currentStep, setCurrentStep] = useState(1); 
-  const [plannerFormInput, setPlannerFormInput] = useState<PlanInput>({...initialPlannerData}); // Removed autoFocusSubjectsQuery from initial state
+  const [plannerFormInput, setPlannerFormInput] = useState<PlanInput>({...initialPlannerData});
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date | undefined>(new Date()); 
   
   const [isAnalyzing, setIsAnalyzing] = useState(false); 
@@ -117,12 +116,18 @@ export default function PlannerPage() {
       try {
         const response = await fetch(`/api/plans/${planIdFromQuery}?userId=${currentUser.id}`);
         if (!response.ok) {
-          if (response.status === 404) {
-            toast({ title: "Plan Not Found", description: `The requested plan was not found or you're not authorized. Starting new plan creation.`, variant: "destructive" });
-          } else {
-            const errorData = await response.json().catch(() => ({error: "Unknown error fetching specific plan"}));
-            throw new Error(errorData.error || `Failed to fetch plan ${planIdFromQuery}: ${response.statusText}`);
+          let errorTitle = "Error Loading Plan";
+          let errorDesc = `Failed to fetch plan ${planIdFromQuery}. Server responded with status: ${response.status}.`;
+           if (response.status === 404) {
+             errorTitle = "Plan Not Found";
+             errorDesc = `The requested plan was not found or you're not authorized. Starting new plan creation.`;
+           } else {
+            try {
+              const errorData = await response.json().catch(() => ({error: "Unknown error fetching specific plan"}));
+              errorDesc = String(errorData.error || errorDesc);
+            } catch (e) { /* Ignore if error response is not JSON */ }
           }
+          toast({ title: errorTitle, description: errorDesc, variant: "destructive" });
           setActivePlan(null);
           setPlannerFormInput({...initialPlannerData}); 
           setCurrentStep(1);
@@ -165,7 +170,17 @@ export default function PlannerPage() {
       try {
         const response = await fetch(`/api/plans?userId=${currentUser.id}`);
         if (!response.ok) {
-          throw new Error(`Failed to fetch plans: ${response.statusText}`);
+            let apiErrorMessage = "Failed to fetch plans from server.";
+            let apiErrorDetails = `Server responded with status: ${response.status}.`;
+            try {
+              const errorData = await response.json();
+              apiErrorMessage = String(errorData.error || apiErrorMessage);
+              apiErrorDetails = String(errorData.details || apiErrorDetails);
+            } catch (parseError) {
+              apiErrorDetails = `Server returned status ${response.status} but the error message was not in the expected JSON format. Please check server logs. (${response.statusText})`;
+            }
+            toast({ title: "Error Loading Plans", description: `${apiErrorMessage} ${apiErrorDetails}`, variant: "destructive" });
+            throw new Error("Failed to fetch plans");
         }
         const plans: ScheduleData[] = await response.json();
         
@@ -208,7 +223,9 @@ export default function PlannerPage() {
         }
       } catch (error) {
         console.error("Failed to fetch user plans:", error);
-        toast({ title: "Error Loading Plans", description: (error as Error).message, variant: "destructive" });
+        if (!(error instanceof Error && error.message.includes("Failed to fetch plans"))) { // Avoid double toast
+            toast({ title: "Error Loading Plans", description: (error as Error).message, variant: "destructive" });
+        }
         setAllUserPlans([]);
         setActivePlan(null);
         setCurrentStep(1);
@@ -774,3 +791,4 @@ export default function PlannerPage() {
 const ScrollArea = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className, children, ...props }, ref) => (
   <div ref={ref} className={cn("relative overflow-y-auto", className)} {...props}>{children}</div>));
 ScrollArea.displayName = "ScrollArea";
+

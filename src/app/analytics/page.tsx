@@ -60,7 +60,6 @@ function AnalyticsPageContent() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const planIdFromQuery = searchParams.get('planId');
-  // Removed autoShowReflectionParam as it was for chatbot interaction
 
   const [currentStudyPlanForAnalytics, setCurrentStudyPlanForAnalytics] = useState<ScheduleData | null>(null);
   const [isLoadingPlan, setIsLoadingPlan] = useState(true);
@@ -90,19 +89,34 @@ function AnalyticsPageContent() {
             };
           }
         } else {
-          if (response.status === 404) {
-            toast({ title: "Plan Not Found", description: `Could not find plan with ID: ${idToFetch}`, variant: "destructive" });
-          } else {
-            const errorData = await response.json().catch(() => ({ error: `Failed to fetch specific plan: ${response.statusText}` }));
-            throw new Error(errorData.error || `Failed to fetch specific plan: ${response.statusText}`);
-          }
-          planToAnalyze = null; 
+            let errorTitle = "Error Loading Specific Plan";
+            let errorDesc = `Failed to fetch plan ${idToFetch}. Server status: ${response.status}.`;
+            if (response.status === 404) {
+                errorTitle = "Plan Not Found";
+                errorDesc = `Could not find plan with ID: ${idToFetch}`;
+            } else {
+                try {
+                    const errorData = await response.json().catch(() => ({ error: `Failed to fetch specific plan: ${response.statusText}` }));
+                    errorDesc = String(errorData.error || errorDesc);
+                } catch (e) { /* Ignore if error response is not JSON */ }
+            }
+            toast({ title: errorTitle, description: errorDesc, variant: "destructive" });
+            planToAnalyze = null; 
         }
       } else { 
         const response = await fetch(`/api/plans?userId=${currentUser.id}`);
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ error: `Failed to fetch plans: ${response.statusText}` }));
-          throw new Error(errorData.error || `Failed to fetch plans: ${response.statusText}`);
+            let apiErrorMessage = "Failed to fetch plans from server.";
+            let apiErrorDetails = `Server responded with status: ${response.status}.`;
+            try {
+              const errorData = await response.json();
+              apiErrorMessage = String(errorData.error || apiErrorMessage);
+              apiErrorDetails = String(errorData.details || apiErrorDetails);
+            } catch (parseError) {
+              apiErrorDetails = `Server returned status ${response.status} but the error message was not in the expected JSON format. Please check server logs. (${response.statusText})`;
+            }
+            toast({ title: "Error Loading Plans", description: `${apiErrorMessage} ${apiErrorDetails}`, variant: "destructive" });
+            throw new Error("Failed to fetch plans");
         }
         const allPlans: ScheduleData[] = await response.json();
 
@@ -130,7 +144,9 @@ function AnalyticsPageContent() {
 
     } catch (error) {
       console.error("Analytics: Failed to fetch or process plans:", error);
-      toast({ title: "Error Loading Data", description: (error as Error).message, variant: "destructive" });
+      if (!(error instanceof Error && error.message.includes("Failed to fetch plans"))) { // Avoid double toast
+        toast({ title: "Error Loading Data", description: (error as Error).message, variant: "destructive" });
+      }
       setCurrentStudyPlanForAnalytics(null);
     } finally {
       setIsLoadingPlan(false);
@@ -208,7 +224,6 @@ function AnalyticsPageContent() {
 
   useEffect(() => {
     if (currentStudyPlanForAnalytics && currentStudyPlanForAnalytics.status === 'completed') {
-      // The autoShowReflectionParam related logic removed here
       fetchPlanReflection(currentStudyPlanForAnalytics, false); // Fetch normally
     } else {
       setPlanReflection(null); 
@@ -602,7 +617,7 @@ function AnalyticsPageContent() {
                             <Target className="h-6 w-6 text-primary" />
                             <CardTitle className="text-md font-medium">Overall Completion</CardTitle>
                         </CardHeader>
-                        <CardContent><p className="text-4xl font-bold text-primary pl-9">{(planReflection.overallCompletionRate * 100).toFixed(0)}%</p></CardContent>
+                        <CardContent><p className="text-4xl font-bold text-primary">{(planReflection.overallCompletionRate * 100).toFixed(0)}%</p></CardContent>
                       </Card>
                       <Card className="bg-background/50 shadow-sm hover:shadow-md transition-shadow">
                         <CardHeader className="flex flex-row items-center space-x-3 pb-2">
@@ -675,3 +690,4 @@ export default function AnalyticsPage() {
     </Suspense>
   );
 }
+

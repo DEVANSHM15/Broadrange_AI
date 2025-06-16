@@ -91,7 +91,19 @@ export default function CalendarPage() {
     try {
       const response = await fetch(`/api/plans?userId=${currentUser.id}`);
       if (!response.ok) {
-        throw new Error(`Failed to fetch plans: ${response.statusText}`);
+        let apiErrorMessage = "Failed to fetch plans from server.";
+        let apiErrorDetails = `Server responded with status: ${response.status}.`;
+        try {
+            const errorData = await response.json();
+            apiErrorMessage = String(errorData.error || apiErrorMessage);
+            apiErrorDetails = String(errorData.details || apiErrorDetails);
+        } catch (parseError) {
+            apiErrorDetails = `Server returned status ${response.status} but the error message was not in the expected JSON format. Please check server logs. (${response.statusText})`;
+        }
+        toast({ title: "Error Loading Plan", description: `${apiErrorMessage} ${apiErrorDetails}`, variant: "destructive" });
+        setActiveStudyPlan(null);
+        setIsLoadingPlan(false);
+        return;
       }
       const allPlans: ScheduleData[] = await response.json();
       let planToDisplay: ScheduleData | null = null;
@@ -471,3 +483,4 @@ export default function CalendarPage() {
     </AppLayout>
   );
 }
+
