@@ -75,6 +75,16 @@ export interface StoredUser extends Required<Omit<UserCredentials, 'password'>> 
   securityAnswer?: string;
 }
 
+// Achievement type reverted
+export interface Achievement {
+  id: string;
+  title: string;
+  icon: React.ElementType;
+  description: string;
+  achieved: boolean;
+  color?: string; 
+}
+
 
 // For dashboard display
 export interface AgentDisplayData {
@@ -123,3 +133,5 @@ export interface GenerateTaskQuizInput {
 export interface GenerateTaskQuizOutput {
   quizJson: string; // A JSON string that parses into Quiz
 }
+
+    

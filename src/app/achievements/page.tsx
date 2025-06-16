@@ -10,33 +10,18 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import type { ScheduleData, ScheduleTask } from "@/types";
+import type { ScheduleData, ScheduleTask, Achievement } from "@/types"; // Updated to import Achievement
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { parseISO, isValid, formatDistanceToNowStrict } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 
-interface Achievement {
-  id: string;
-  title: string;
-  icon: React.ElementType;
-  description: string; // Kept for potential future use (e.g., tooltips)
-  achieved: boolean;
-  value?: number; // For displaying numbers like "14"
-  unit?: string;  // For units like "DAYS"
-  // color prop is no longer used for direct styling of the new badge, 
-  // but kept in case of future logic that might reference it.
-  color?: string; 
-}
-
 const sampleAchievements: Achievement[] = [
-  { id: "first_plan", title: "Planner Pioneer", description: "Successfully created your first study plan.", icon: PlusCircle, achieved: false },
-  { id: "task_initiate", title: "Task Starter", description: "Completed your first task in a study plan.", icon: CheckCircle2, achieved: false },
-  { id: "streak_beginner", title: "Study Dabbler", value: 3, unit: "DAYS", description: "Maintained a 3-day study streak.", icon: Flame, achieved: false }, 
-  { id: "quiz_taker", title: "Quiz Challenger", description: "Attempted your first AI-generated quiz.", icon: Brain, achieved: false },
-  { id: "reflection_reader", title: "Insight Seeker", description: "Viewed your first plan reflection.", icon: Lightbulb, achieved: false},
-  { id: "plan_completer", title: "Finisher", description: "Successfully completed a full study plan.", icon: Trophy, achieved: false },
-  // Example of how a more advanced streak could be structured:
-  // { id: "super_streak", title: "Super Streak", value: 14, unit: "DAYS", description: "Kept a 14-day study habit!", icon: Mountain, achieved: false },
+  { id: "first_plan", title: "Planner Pioneer", description: "Successfully created your first study plan.", icon: PlusCircle, achieved: false, color: "bg-blue-500" },
+  { id: "task_initiate", title: "Task Starter", description: "Completed your first task in a study plan.", icon: CheckCircle2, achieved: false, color: "bg-green-500" },
+  { id: "streak_beginner", title: "Study Dabbler", description: "Maintained a 3-day study streak.", icon: Flame, achieved: false, color: "bg-orange-500" },
+  { id: "quiz_taker", title: "Quiz Challenger", description: "Attempted your first AI-generated quiz.", icon: Brain, achieved: false, color: "bg-purple-500" },
+  { id: "reflection_reader", title: "Insight Seeker", description: "Viewed your first plan reflection.", icon: Lightbulb, achieved: false, color: "bg-yellow-500"},
+  { id: "plan_completer", title: "Finisher", description: "Successfully completed a full study plan.", icon: Trophy, achieved: false, color: "bg-teal-500" },
 ];
 
 // Helper function to ensure tasks have necessary fields, especially after fetching from API
@@ -87,14 +72,14 @@ const PlanDisplayCard: React.FC<PlanDisplayCardProps> = ({ plan, cardType }) => 
       <CardHeader>
         <CardTitle className="text-xl flex items-center justify-between">
           <span className="flex items-center gap-2">{titleIcon} {titleText}</span>
-          <Badge variant={plan.status === 'completed' ? 'default' : (plan.status === 'active' ? 'secondary' : 'outline')} 
+          <Badge variant={plan.status === 'completed' ? 'default' : (plan.status === 'active' ? 'secondary' : 'outline')}
                  className={plan.status === 'completed' ? 'bg-green-600' : (plan.status === 'active' ? 'bg-blue-500 text-white' : '')}>
             {plan.status.charAt(0).toUpperCase() + plan.status.slice(1)}
           </Badge>
         </CardTitle>
         <CardDescription>
           {plan.planDetails.subjects || "N/A"}
-          {plan.status === 'completed' && plan.completionDate && isValid(parseISO(plan.completionDate)) 
+          {plan.status === 'completed' && plan.completionDate && isValid(parseISO(plan.completionDate))
             ? ` - Completed on ${new Date(plan.completionDate).toLocaleDateString()}`
             : (plan.updatedAt && isValid(parseISO(plan.updatedAt)) ? ` - Last updated ${formatDistanceToNowStrict(parseISO(plan.updatedAt), { addSuffix: true })}` : ' - Date N/A')}
         </CardDescription>
@@ -122,7 +107,7 @@ const PlanDisplayCard: React.FC<PlanDisplayCardProps> = ({ plan, cardType }) => 
       </CardContent>
       <CardFooter className="flex flex-col sm:flex-row gap-2">
         <Button asChild className="w-full sm:flex-grow" variant="outline">
-          <Link href={`/planner?planId=${plan.id}`}> 
+          <Link href={`/planner?planId=${plan.id}`}>
             <Edit className="mr-2 h-4 w-4"/>
             {plan.status === 'completed' || plan.status === 'archived' ? "Review Plan Details" : "View or Edit Plan"}
           </Link>
@@ -174,8 +159,8 @@ export default function AchievementsPage() {
                  errorMessage = `Failed to fetch plans: ${response.statusText} (Status: ${response.status})`;
               }
             }
-            const finalMessage = errorDetailMessage 
-                ? `${errorMessage} (Details: ${errorDetailMessage})` 
+            const finalMessage = errorDetailMessage
+                ? `${errorMessage} (Details: ${errorDetailMessage})`
                 : errorMessage;
             throw new Error(finalMessage);
         }
@@ -183,7 +168,7 @@ export default function AchievementsPage() {
         const processedPlans = loadedPlans.map(p => ({
             ...p,
             tasks: ensureTaskStructure(p.tasks, p.id)
-        })).sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()); 
+        })).sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
         setAllStudyPlans(processedPlans);
 
     } catch (error) {
@@ -220,7 +205,7 @@ export default function AchievementsPage() {
             achieved = false; // Placeholder: Actual streak logic needed here.
             // For demo, let's assume 'Study Dabbler' for 3 days is achieved if any plan has >=3 completed tasks
             // This is a very loose interpretation for demo purposes.
-            if (allStudyPlans.some(plan => (plan.tasks || []).filter(t => t.completed).length >= (ach.value || 3) )) {
+            if (allStudyPlans.some(plan => (plan.tasks || []).filter(t => t.completed).length >= 3 )) { // Value hardcoded here for simplicity
                  // achieved = true; // Temporarily enable for visual testing if needed.
             }
             break;
@@ -229,13 +214,13 @@ export default function AchievementsPage() {
             break;
           case 'reflection_reader':
             // True if any plan is completed AND the user has likely seen analytics (implicitly by plan being completed)
-            achieved = hasCompletedAnyPlan; 
+            achieved = hasCompletedAnyPlan;
             break;
           case 'plan_completer':
             achieved = hasCompletedAnyPlan;
             break;
           default:
-            achieved = ach.achieved; 
+            achieved = ach.achieved;
         }
         return { ...ach, achieved };
       });
@@ -246,7 +231,7 @@ export default function AchievementsPage() {
   const archivedPlans = useMemo(() => allStudyPlans.filter(p => p.status === 'archived'), [allStudyPlans]);
 
 
-  if (isLoadingPlans && allStudyPlans.length === 0) { 
+  if (isLoadingPlans && allStudyPlans.length === 0) {
     return (
       <AppLayout>
         <div className="flex items-center justify-center min-h-[calc(100vh-100px)]">
@@ -267,36 +252,24 @@ export default function AchievementsPage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {dynamicAchievements.map((ach) => (
-              <div
-                key={ach.id}
-                className={`rounded-xl shadow-lg flex flex-col items-center justify-center text-center p-4 space-y-2 min-h-[14rem] h-full w-full transition-all duration-300 ease-in-out transform hover:shadow-2xl hover:-translate-y-1
-                            ${ach.achieved 
-                              ? 'bg-primary text-primary-foreground' 
-                              : 'bg-card border border-dashed opacity-75 hover:opacity-100'
-                            }`}
-                title={ach.description} // Show description on hover
-              >
-                <div className="relative mt-2 mb-1"> {/* Adjusted margins */}
-                  <ach.icon className={`h-16 w-16 ${ach.achieved ? 'text-primary-foreground/90 opacity-90' : 'text-muted-foreground/60'}`} />
-                  {ach.value !== undefined && (
-                    <span className={`absolute inset-0 flex items-center justify-center text-2xl font-bold pointer-events-none ${ach.achieved ? 'text-primary-foreground' : 'text-card-foreground'}`}>
-                      {ach.value}
-                    </span>
-                  )}
-                </div>
-                {ach.unit && (
-                  <p className={`text-xs uppercase font-semibold tracking-wider ${ach.achieved ? 'text-primary-foreground/80' : 'text-muted-foreground/70'}`}>
-                    {ach.unit}
-                  </p>
+              <Card key={ach.id} className={`shadow-lg transition-all hover:shadow-xl ${ach.achieved ? 'border-green-500' : 'opacity-70'}`}>
+                <CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-2">
+                    <ach.icon className={`h-10 w-10 ${ach.achieved ? 'text-green-500' : 'text-muted-foreground'}`} />
+                    <CardTitle className={`text-lg ${ach.achieved ? 'text-green-600' : ''}`}>{ach.title}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-sm text-muted-foreground">{ach.description}</p>
+                </CardContent>
+                {ach.achieved && (
+                    <CardFooter>
+                        <Badge className="bg-green-600 text-white">Achieved!</Badge>
+                    </CardFooter>
                 )}
-                <h3 className={`text-lg font-medium ${ach.achieved ? 'text-primary-foreground' : 'text-card-foreground'}`}>
-                  {ach.title}
-                </h3>
-              </div>
+              </Card>
             ))}
           </div>
         </section>
-        
+
         <section>
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
                 <h2 className="text-2xl font-semibold">Your Study Plans</h2>
@@ -364,3 +337,5 @@ export default function AchievementsPage() {
     </AppLayout>
   );
 }
+
+    
