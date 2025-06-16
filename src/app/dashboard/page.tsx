@@ -97,12 +97,18 @@ export default function DashboardPage() {
             errorMessage = `Failed to fetch plans: ${response.statusText} (Status: ${response.status})`;
           }
         } catch (e) {
-           errorMessage = `Failed to parse error response. Status: ${response.status}${response.statusText ? `: ${response.statusText}` : ''}`;
+           errorMessage = `Error: Server returned status ${response.status}, but the error message was not in the expected JSON format. Please check server logs.`;
         }
         const finalMessage = errorDetailMessage
             ? `${errorMessage} (Details: ${errorDetailMessage})`
             : errorMessage;
-        throw new Error(finalMessage);
+        
+        toast({ title: "Error Loading Plan Data", description: finalMessage, variant: "destructive" });
+        setActiveStudyPlan(null);
+        setParsedTasksForActivePlan([]);
+        setPlanReflection(null);
+        setIsLoadingPlanData(false); // Ensure loading state is reset
+        return; // Exit after handling the error
       }
       const allPlans: ScheduleData[] = await response.json();
       let currentPlanToDisplay: ScheduleData | null = null;
@@ -131,11 +137,12 @@ export default function DashboardPage() {
       }
       setPlanReflection(null); 
 
-    } catch (error) {
-      console.error("Dashboard: Failed to fetch plans from API:", error);
+    } catch (error) { // This catch handles network errors or other unexpected issues before a response is received
+      console.error("Dashboard: Critical error fetching plans from API:", error);
       toast({ title: "Error Loading Plan Data", description: (error as Error).message, variant: "destructive" });
       setActiveStudyPlan(null);
       setParsedTasksForActivePlan([]);
+      setPlanReflection(null);
     } finally {
       setIsLoadingPlanData(false);
     }
@@ -494,3 +501,4 @@ export default function DashboardPage() {
     </AppLayout>
   );
 }
+
