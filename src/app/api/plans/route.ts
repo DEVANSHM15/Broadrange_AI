@@ -91,10 +91,23 @@ export async function POST(req: Request) {
     const db = await getDb();
     await db.run('ROLLBACK'); // Rollback transaction on error
     console.error('POST /api/plans - Failed to create study plan:', error);
-    const err = error as Error;
+    
+    let detailMessage = 'An unknown server error occurred during plan creation.';
+    if (error instanceof Error) {
+      detailMessage = error.message;
+    } else if (typeof error === 'string') {
+      detailMessage = error;
+    } else {
+      try {
+        detailMessage = JSON.stringify(error);
+      } catch (e) {
+        detailMessage = 'Error object during plan creation could not be stringified.';
+      }
+    }
+
     return NextResponse.json({
       error: 'Failed to create study plan on server.',
-      details: err.message || 'An unknown error occurred on the server during plan creation.'
+      details: detailMessage
     }, { status: 500 });
   }
 }
@@ -109,7 +122,7 @@ export async function GET(req: Request) {
   }
 
   try {
-    const db = await getDb(); // Moved getDb() call inside the try block
+    const db = await getDb();
     const plansFromDb = await db.all(
       `SELECT id, createdAt, updatedAt, scheduleString, subjects, dailyStudyHours, studyDurationDays, subjectDetails, startDate, status, completionDate 
        FROM study_plans 
@@ -118,9 +131,8 @@ export async function GET(req: Request) {
       userId
     );
 
-    if (!plansFromDb) {
-      return NextResponse.json([], { status: 200 }); 
-    }
+    // `db.all` returns an empty array if no rows match, not null or undefined.
+    // So, if plansFromDb is an empty array, the loop below won't run, and an empty plans array will be returned, which is correct.
 
     const plans: ScheduleData[] = [];
     for (const planRow of plansFromDb) {
@@ -163,7 +175,7 @@ export async function GET(req: Request) {
               referenceSearchQuery: t.referenceSearchQuery,
               quizScore: t.quizScore,
               quizAttempted: Boolean(t.quizAttempted),
-              notes: t.notes !== undefined ? t.notes : undefined, // Handle if notes column was not selected
+              notes: t.notes !== undefined ? t.notes : undefined,
               subTasks: subTasksFromDb.map(st => ({...st, completed: Boolean(st.completed)})) || [],
           });
       }
@@ -190,13 +202,27 @@ export async function GET(req: Request) {
     return NextResponse.json(plans, { status: 200 });
 
   } catch (error) {
-    console.error(`GET /api/plans - Error fetching plans for userId ${userId}:`, error);
-    const err = error as Error;
-    // Ensure a JSON response is always sent on error
-    const errorResponse = {
+    // Defensive error handling for the GET request
+    console.error(`RAW ERROR in GET /api/plans for userId ${userId}:`, error);
+
+    let detailMessage = 'An unknown server error occurred while fetching plans.';
+    if (error instanceof Error) {
+      detailMessage = error.message;
+    } else if (typeof error === 'string') {
+      detailMessage = error;
+    } else {
+      // Attempt to stringify if it's an object, otherwise provide a generic message
+      try {
+        detailMessage = JSON.stringify(error);
+      } catch (e) {
+        detailMessage = 'The error object could not be stringified.';
+      }
+    }
+    
+    return NextResponse.json({
       error: 'Failed to fetch study plans from server.',
-      details: err.message || 'An unknown error occurred on the server.'
-    };
-    return NextResponse.json(errorResponse, { status: 500 });
+      details: detailMessage
+    }, { status: 500 });
   }
 }
+
