@@ -84,32 +84,24 @@ export default function DashboardPage() {
     try {
       const response = await fetch(`/api/plans?userId=${currentUser.id}`);
       if (!response.ok) {
-        let errorMessage = `Failed to fetch plans. Status: ${response.status}`;
-        let errorDetailMessage = "";
+        let apiErrorMessage = "Failed to fetch plans.";
+        let apiErrorDetails = `Status: ${response.status}. ${response.statusText}`;
         try {
-          const errorData = await response.json();
-          if (errorData.details) { 
-            errorDetailMessage = String(errorData.details);
-            errorMessage = errorData.error || errorMessage; 
-          } else if (errorData.error) {
-            errorMessage = String(errorData.error);
-          } else if (response.statusText) {
-            errorMessage = `Failed to fetch plans: ${response.statusText} (Status: ${response.status})`;
-          }
-        } catch (e) {
-           errorMessage = `Error: Server returned status ${response.status}, but the error message was not in the expected JSON format. Please check server logs.`;
+          const errorData = await response.json(); // Try to parse error as JSON
+          apiErrorMessage = errorData.error || apiErrorMessage;
+          apiErrorDetails = errorData.details || apiErrorDetails;
+        } catch (parseError) {
+          // This means the error response was not JSON
+          console.warn("Dashboard: API error response was not JSON.", parseError);
+          apiErrorDetails = `Server returned status ${response.status} but the error message was not in the expected JSON format. Check server logs for more details. (${response.statusText})`;
         }
-        const finalMessage = errorDetailMessage
-            ? `${errorMessage} (Details: ${errorDetailMessage})`
-            : errorMessage;
-        
-        toast({ title: "Error Loading Plan Data", description: finalMessage, variant: "destructive" });
+        toast({ title: "Error Loading Plan Data", description: `${apiErrorMessage} ${apiErrorDetails}`, variant: "destructive" });
         setActiveStudyPlan(null);
         setParsedTasksForActivePlan([]);
         setPlanReflection(null);
-        setIsLoadingPlanData(false); // Ensure loading state is reset
-        return; // Exit after handling the error
+        return; 
       }
+      
       const allPlans: ScheduleData[] = await response.json();
       let currentPlanToDisplay: ScheduleData | null = null;
 
@@ -137,9 +129,9 @@ export default function DashboardPage() {
       }
       setPlanReflection(null); 
 
-    } catch (error) { // This catch handles network errors or other unexpected issues before a response is received
+    } catch (error) { // This catch handles network errors or other unexpected issues before/during fetch
       console.error("Dashboard: Critical error fetching plans from API:", error);
-      toast({ title: "Error Loading Plan Data", description: (error as Error).message, variant: "destructive" });
+      toast({ title: "Network Error", description: `Could not connect to fetch plans. ${(error as Error).message}`, variant: "destructive" });
       setActiveStudyPlan(null);
       setParsedTasksForActivePlan([]);
       setPlanReflection(null);
@@ -307,7 +299,7 @@ export default function DashboardPage() {
               </CardContent>
               <CardFooter>
                 <Button asChild className="w-full">
-                  <Link href="/planner"><span><Edit className="mr-2 h-4 w-4"/> {isPlanCompleted || activeStudyPlan.status === 'archived' ? "Review Plan Details" : "View or Edit Full Plan"}</span></Link>
+                  <Link href={`/planner?planId=${activeStudyPlan.id}`}><span><Edit className="mr-2 h-4 w-4"/> {isPlanCompleted || activeStudyPlan.status === 'archived' ? "Review Plan Details" : "View or Edit Full Plan"}</span></Link>
                 </Button>
               </CardFooter>
             </Card>
@@ -502,3 +494,4 @@ export default function DashboardPage() {
   );
 }
 
+    

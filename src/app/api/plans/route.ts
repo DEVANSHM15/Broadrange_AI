@@ -87,10 +87,15 @@ export async function POST(req: Request) {
     // For simplicity, we'll just return the input data for now
     return NextResponse.json(typedPlanData, { status: 201 });
 
-  } catch (error) {
-    const db = await getDb(); // Ensure DB instance is available for rollback
-    await db.run('ROLLBACK'); // Rollback transaction on error
-    console.error('POST /api/plans - Failed to create study plan:', error);
+  } catch (error: unknown) {
+    console.error('API POST /api/plans - Failed to create study plan:', error);
+    let db;
+    try {
+        db = await getDb();
+        await db.run('ROLLBACK');
+    } catch (rollbackError) {
+        console.error('API POST /api/plans - Failed to rollback transaction:', rollbackError);
+    }
     
     let detailMessage = 'An unknown server error occurred during plan creation.';
     if (error instanceof Error) {
@@ -98,9 +103,8 @@ export async function POST(req: Request) {
     } else if (typeof error === 'string') {
       detailMessage = error;
     }
-    // Ensure detailMessage is a simple string for JSON serialization
+    
     detailMessage = String(detailMessage).substring(0, 500); 
-
 
     return NextResponse.json({
       error: 'Failed to create study plan on server.',
@@ -150,7 +154,7 @@ export async function GET(req: Request) {
             planRow.id
           );
         } else {
-          throw selectError; 
+          throw selectError; // Re-throw other select errors to be caught by the main catch block
         }
       }
       
@@ -169,7 +173,7 @@ export async function GET(req: Request) {
               referenceSearchQuery: t.referenceSearchQuery,
               quizScore: t.quizScore,
               quizAttempted: Boolean(t.quizAttempted),
-              notes: t.notes !== undefined ? t.notes : undefined,
+              notes: t.notes !== undefined ? t.notes : undefined, // Handle potentially missing notes
               subTasks: subTasksFromDb.map(st => ({...st, completed: Boolean(st.completed)})) || [],
           });
       }
@@ -195,20 +199,26 @@ export async function GET(req: Request) {
 
     return NextResponse.json(plans, { status: 200 });
 
-  } catch (error: unknown) { // Outer catch for any unexpected errors
-    console.error(`FATAL API ERROR in GET /api/plans for userId ${userId}:`, error); 
-    
-    let errorDetail = "An critical server error occurred while fetching plans. Please check server logs for specific details.";
+  } catch (error: unknown) {
+    let errorMessage = 'An unknown error occurred while fetching plans.';
+    let errorDetailsForClient = 'The server encountered an issue. Please check server logs for specifics.';
+
     if (error instanceof Error) {
-        errorDetail = error.message;
+        errorMessage = error.message; // More specific error for server log
+        // Keep client message generic unless it's a very specific, safe-to-share DB error
+        if (error.message.includes("SQLITE_ERROR")) {
+            errorDetailsForClient = "There was a problem querying the database.";
+        }
     } else if (typeof error === 'string') {
-        errorDetail = error;
+        errorMessage = error;
     }
+
+    console.error(`API GET /api/plans Error for userId ${userId}: ${errorMessage}`, error); // Log the detailed error
     
     return NextResponse.json({
-      error: 'Server Error: Failed to fetch study plans due to an internal issue.',
-      details: `Server-side error: ${String(errorDetail).substring(0,300)} (Full details in server logs)`
+      error: 'Server Error: Failed to fetch study plans.',
+      details: errorDetailsForClient 
     }, { status: 500 });
   }
 }
-
+    
