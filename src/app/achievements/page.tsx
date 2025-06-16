@@ -276,7 +276,10 @@ export default function AchievementsPage() {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
                 <h2 className="text-2xl font-semibold">Your Study Plans</h2>
                 <Button asChild variant="default" className="mt-3 md:mt-0">
-                    <Link href="/planner"><PlusCircle className="mr-2 h-4 w-4"/> Create New Plan</Link>
+                    <Link href="/planner" className="flex items-center">
+                        <PlusCircle className="mr-2 h-4 w-4"/> Create New Plan
+                        <Badge variant="destructive" className="ml-2">NEW!</Badge>
+                    </Link>
                 </Button>
             </div>
 
