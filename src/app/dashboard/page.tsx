@@ -34,6 +34,7 @@ function ensureTaskStructure(tasks: ScheduleTask[] | undefined, planId: string):
     subTasks: task.subTasks || [],
     quizScore: task.quizScore,
     quizAttempted: Boolean(task.quizAttempted), // Ensure boolean
+    notes: task.notes || undefined, // Ensure notes field, even if undefined
   }));
 }
 
@@ -87,19 +88,16 @@ export default function DashboardPage() {
         let errorDetailMessage = "";
         try {
           const errorData = await response.json();
-          if (errorData.error) {
+          if (errorData.details) { 
+            errorDetailMessage = String(errorData.details);
+            errorMessage = errorData.error || errorMessage; 
+          } else if (errorData.error) {
             errorMessage = String(errorData.error);
-            if (errorData.details) {
-              errorDetailMessage = String(errorData.details);
-            }
           } else if (response.statusText) {
             errorMessage = `Failed to fetch plans: ${response.statusText} (Status: ${response.status})`;
           }
         } catch (e) {
-          // If response.json() fails (e.g., HTML error page)
-          if (response.statusText) {
-            errorMessage = `Failed to fetch plans: ${response.statusText} (Status: ${response.status})`;
-          }
+           errorMessage = `Failed to parse error response. Status: ${response.status}${response.statusText ? `: ${response.statusText}` : ''}`;
         }
         const finalMessage = errorDetailMessage
             ? `${errorMessage} (Details: ${errorDetailMessage})`
@@ -110,7 +108,6 @@ export default function DashboardPage() {
       let currentPlanToDisplay: ScheduleData | null = null;
 
       if (allPlans && allPlans.length > 0) {
-        // Prioritize active plan, then most recent completed, then most recent overall
         const activePlans = allPlans.filter(p => p.status === 'active').sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
         if (activePlans.length > 0) {
           currentPlanToDisplay = activePlans[0];
@@ -119,7 +116,6 @@ export default function DashboardPage() {
           if (completedPlans.length > 0) {
             currentPlanToDisplay = completedPlans[0];
           } else {
-            // Fallback to the most recently updated plan of any status
             currentPlanToDisplay = allPlans.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
           }
         }
@@ -133,7 +129,7 @@ export default function DashboardPage() {
         setActiveStudyPlan(null);
         setParsedTasksForActivePlan([]);
       }
-      setPlanReflection(null); // Reset reflection, will be fetched if conditions are met
+      setPlanReflection(null); 
 
     } catch (error) {
       console.error("Dashboard: Failed to fetch plans from API:", error);
@@ -160,7 +156,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetchPlanReflection = async () => {
         if (activeStudyPlan && activeStudyPlan.status === 'completed' && parsedTasksForActivePlan.length > 0 && activeStudyPlan.planDetails) {
-            if (isGeneratingReflection) return; // Prevent multiple simultaneous calls
+            if (isGeneratingReflection) return; 
             setIsGeneratingReflection(true);
             try {
                 const input: GeneratePlanReflectionInput = {
@@ -183,7 +179,7 @@ export default function DashboardPage() {
     };
     fetchPlanReflection();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeStudyPlan, parsedTasksForActivePlan, toast]); // Added toast to dependencies
+  }, [activeStudyPlan, parsedTasksForActivePlan, toast]); 
 
 
   useEffect(() => {
@@ -498,4 +494,3 @@ export default function DashboardPage() {
     </AppLayout>
   );
 }
-

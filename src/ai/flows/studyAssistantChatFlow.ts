@@ -51,15 +51,15 @@ const getPlanHistoryTool = ai.defineTool(
   async ({ userId }) => {
     try {
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-      console.log('[ChatbotTool:getPlanHistoryTool] Using baseUrl:', baseUrl); 
+      console.log('[ChatbotTool:getPlanHistoryTool] Using baseUrl:', baseUrl);
       const response = await fetch(`${baseUrl}/api/plans?userId=${userId}`);
 
       if (!response.ok) {
         let errorDetail = `API Error (${response.status}): ${response.statusText}`;
         try {
           const text = await response.text();
-          console.error('[ChatbotTool:getPlanHistoryTool] Error response text:', text.substring(0, 500)); 
-          const errorData = JSON.parse(text); 
+          console.error('[ChatbotTool:getPlanHistoryTool] Error response text:', text.substring(0, 500));
+          const errorData = JSON.parse(text);
           if (errorData.error) {
             errorDetail = `API Error (${response.status}): ${errorData.error}${errorData.details ? ' - ' + errorData.details : ''}`;
           }
@@ -75,7 +75,7 @@ const getPlanHistoryTool = ai.defineTool(
         console.error('[ChatbotTool:getPlanHistoryTool] Expected JSON, got:', contentType, 'Response snippet:', responseText.substring(0, 200));
         throw new Error(`Expected JSON response from /api/plans, but got ${contentType}.`);
       }
-      
+
       const plans: ScheduleData[] = await response.json();
       return plans.map(p => ({
         id: p.id,
@@ -88,7 +88,7 @@ const getPlanHistoryTool = ai.defineTool(
       }));
     } catch (e) {
       console.error('[ChatbotTool:getPlanHistoryTool] Tool execution error:', e);
-      throw e; 
+      throw e;
     }
   }
 );
@@ -144,7 +144,7 @@ const getSpecificPlanDataTool = ai.defineTool(
       const response = await fetch(`${baseUrl}/api/plans/${planId}?userId=${userId}`);
 
       if (!response.ok) {
-        if (response.status === 404) return null; 
+        if (response.status === 404) return null;
         let errorDetail = `API Error (${response.status}): ${response.statusText}`;
         try {
           const text = await response.text();
@@ -158,7 +158,7 @@ const getSpecificPlanDataTool = ai.defineTool(
         }
         throw new Error(errorDetail);
       }
-      
+
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
         const responseText = await response.text().catch(() => "Could not get response text.");
@@ -168,14 +168,14 @@ const getSpecificPlanDataTool = ai.defineTool(
       return await response.json() as ScheduleData;
     } catch (e) {
       console.error('[ChatbotTool:getSpecificPlanDataTool] Tool execution error:', e);
-      throw e; 
+      throw e;
     }
   }
 );
 
 
 // Tool: Get Achievement Data
-const AchievementSchema = z.object({ 
+const AchievementSchema = z.object({
     id: z.string(),
     title: z.string(),
     description: z.string(),
@@ -202,8 +202,8 @@ const getAchievementDataTool = ai.defineTool(
 );
 
 // Tool: Analyze Plan (using generatePlanReflection)
-const AnalyzePlanInputSchema = GeneratePlanReflectionInput; 
-const AnalyzePlanOutputSchema = z.object({ 
+const AnalyzePlanInputSchema = GeneratePlanReflectionInput;
+const AnalyzePlanOutputSchema = z.object({
   overallCompletionRate: z.number().min(0).max(1),
   mainReflection: z.string(),
   consistencyObservation: z.string(),
@@ -263,7 +263,7 @@ Interaction Guidelines:
 3.  **Output Structure**:
     *   \\\`responseText\\\`: Always provide a clear, concise, and friendly text response.
     *   \\\`navigationPath\\\` (optional): Valid paths include "/dashboard", "/planner", "/planner?planId=PLAN_ID_HERE", "/calendar", "/analytics", "/analytics?planId=PLAN_ID_HERE", "/achievements", "/settings".
-    *   \\\`navigationState\\\` (optional): Use for query parameters. Examples: 
+    *   \\\`navigationState\\\` (optional): Use for query parameters. Examples:
         - For analytics: \\\`navigationPath: "/analytics", navigationState: { planId: "THE_PLAN_ID", autoShowReflection: "true" }\\\`
         - For planner: \\\`navigationPath: "/planner", navigationState: { planId: "THE_PLAN_ID" }\\\` or \\\`navigationState: { autoFocusSubjects: "Math" }\\\`
         - For achievements: \\\`navigationPath: "/achievements", navigationState: { focusAchievementId: "first_plan", focusPlanId: "plan_xyz" }\\\` (use these sparingly)
@@ -311,19 +311,19 @@ const studyAssistantChatFlow = ai.defineFlow(
         console.warn("[studyAssistantChatFlow] AI indicated an error in its output:", output.error, "for input:", input);
       }
       return output;
-    } catch (e) { 
+    } catch (e) {
       // This catches errors from tools that weren't caught and handled by the AI model,
       // or errors in the flow logic itself (e.g., if chatPrompt() call itself fails).
       console.error("[studyAssistantChatFlow] Unhandled error during flow execution:", e, "for input:", input);
       let errorMessage = "An internal error occurred while processing your request.";
       if (e instanceof Error) {
-        errorMessage = e.message.includes("API Error") || e.message.includes("Expected JSON") 
-          ? `There was a problem fetching data internally: ${e.message.substring(0, 200)}` 
+        errorMessage = e.message.includes("API Error") || e.message.includes("Expected JSON")
+          ? `There was a problem fetching data internally: ${e.message.substring(0, 200)}`
           : `An internal error occurred: ${e.message.substring(0, 200)}`;
       }
       return {
         responseText: "I'm sorry, but I encountered an unexpected issue and couldn't complete your request. Please try again later.",
-        error: errorMessage 
+        error: errorMessage
       };
     }
   }
@@ -332,4 +332,3 @@ const studyAssistantChatFlow = ai.defineFlow(
 export async function studyAssistantChat(input: StudyAssistantChatInput): Promise<StudyAssistantChatOutput> {
   return studyAssistantChatFlow(input);
 }
-

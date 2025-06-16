@@ -90,11 +90,12 @@ export async function POST(req: Request) {
   } catch (error) {
     const db = await getDb();
     await db.run('ROLLBACK'); // Rollback transaction on error
-    console.error('Failed to create study plan:', error);
-    if (error instanceof SyntaxError) {
-        return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
-    }
-    return NextResponse.json({ error: 'Failed to create study plan', details: (error as Error).message }, { status: 500 });
+    console.error('POST /api/plans - Failed to create study plan:', error);
+    const err = error as Error;
+    return NextResponse.json({
+      error: 'Failed to create study plan on server.',
+      details: err.message || 'An unknown error occurred on the server during plan creation.'
+    }, { status: 500 });
   }
 }
 
@@ -113,37 +114,65 @@ export async function GET(req: Request) {
       `SELECT id, createdAt, updatedAt, scheduleString, subjects, dailyStudyHours, studyDurationDays, subjectDetails, startDate, status, completionDate 
        FROM study_plans 
        WHERE userId = ? 
-       ORDER BY updatedAt DESC`, // Get newest first
+       ORDER BY updatedAt DESC`, 
       userId
     );
 
     if (!plansFromDb) {
-      return NextResponse.json([], { status: 200 }); // No plans found, return empty array
+      return NextResponse.json([], { status: 200 }); 
     }
 
     const plans: ScheduleData[] = [];
     for (const planRow of plansFromDb) {
-      const tasksFromDb = await db.all<any[]>( // Use any[] and then cast inside map for clarity
-        `SELECT id, date, task, completed, youtubeSearchQuery, referenceSearchQuery, quizScore, quizAttempted, notes
-         FROM schedule_tasks 
-         WHERE planId = ? 
-         ORDER BY date ASC, id ASC`, // Ensure tasks are ordered
-        planRow.id
-      );
+      let tasksFromDbRaw: any[];
+      try {
+        tasksFromDbRaw = await db.all<any[]>(
+          `SELECT id, date, task, completed, youtubeSearchQuery, referenceSearchQuery, quizScore, quizAttempted, notes
+           FROM schedule_tasks 
+           WHERE planId = ? 
+           ORDER BY date ASC, id ASC`,
+          planRow.id
+        );
+      } catch (selectError) {
+        if (String(selectError).includes("no such column: notes")) {
+          console.warn(`GET /api/plans - Column 'notes' not found for planId ${planRow.id}, fetching tasks without it.`);
+          tasksFromDbRaw = await db.all<any[]>(
+            `SELECT id, date, task, completed, youtubeSearchQuery, referenceSearchQuery, quizScore, quizAttempted
+             FROM schedule_tasks 
+             WHERE planId = ? 
+             ORDER BY date ASC, id ASC`,
+            planRow.id
+          );
+        } else {
+          throw selectError; 
+        }
+      }
       
-      const processedTasks: ScheduleTask[] = tasksFromDb.map(t => ({
-        ...t,
-        completed: Boolean(t.completed), // Explicitly cast to boolean
-        quizAttempted: Boolean(t.quizAttempted), // Explicitly cast to boolean
-        subTasks: t.subTasks || [], // Initialize subTasks if not present
-        notes: t.notes, // Include notes
-      }));
+      const processedTasks: ScheduleTask[] = [];
+      for (const t of tasksFromDbRaw) {
+          const subTasksFromDb = await db.all<any[]>(
+              `SELECT id, text, completed FROM sub_tasks WHERE taskId = ?`,
+              t.id
+          );
+          processedTasks.push({
+              id: t.id,
+              date: t.date,
+              task: t.task,
+              completed: Boolean(t.completed),
+              youtubeSearchQuery: t.youtubeSearchQuery,
+              referenceSearchQuery: t.referenceSearchQuery,
+              quizScore: t.quizScore,
+              quizAttempted: Boolean(t.quizAttempted),
+              notes: t.notes !== undefined ? t.notes : undefined, // Handle if notes column was not selected
+              subTasks: subTasksFromDb.map(st => ({...st, completed: Boolean(st.completed)})) || [],
+          });
+      }
 
       const plan: ScheduleData = {
         id: planRow.id,
         createdAt: planRow.createdAt,
         updatedAt: planRow.updatedAt,
-        scheduleString: planRow.scheduleString || "", // Ensure scheduleString is not null
+        scheduleString: planRow.scheduleString || "", 
         planDetails: {
           subjects: planRow.subjects,
           dailyStudyHours: planRow.dailyStudyHours,
@@ -161,7 +190,11 @@ export async function GET(req: Request) {
     return NextResponse.json(plans, { status: 200 });
 
   } catch (error) {
-    console.error('Failed to fetch study plans:', error);
-    return NextResponse.json({ error: 'Failed to fetch study plans', details: (error as Error).message }, { status: 500 });
+    console.error(`GET /api/plans - Error fetching plans for userId ${userId}:`, error);
+    const err = error as Error;
+    return NextResponse.json({
+      error: 'Failed to fetch study plans from server.',
+      details: err.message || 'An unknown error occurred on the server.'
+    }, { status: 500 });
   }
 }
