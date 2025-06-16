@@ -60,6 +60,7 @@ function AnalyticsPageContent() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const planIdFromQuery = searchParams.get('planId');
+  const autoShowReflectionParam = searchParams.get('autoShowReflection'); // For chatbot interaction
 
   const [currentStudyPlanForAnalytics, setCurrentStudyPlanForAnalytics] = useState<ScheduleData | null>(null);
   const [isLoadingPlan, setIsLoadingPlan] = useState(true);
@@ -67,7 +68,7 @@ function AnalyticsPageContent() {
   const [isGeneratingReflection, setIsGeneratingReflection] = useState(false);
   const [heatmapDisplayMonth, setHeatmapDisplayMonth] = useState<Date>(startOfMonth(new Date()));
 
-  const reloadDataForAnalytics = useCallback(async () => {
+  const reloadDataForAnalytics = useCallback(async (targetPlanId?: string) => {
     if (!currentUser?.id) {
       setCurrentStudyPlanForAnalytics(null);
       setIsLoadingPlan(false);
@@ -75,10 +76,11 @@ function AnalyticsPageContent() {
     }
     setIsLoadingPlan(true);
     let planToAnalyze: ScheduleData | null = null;
+    const idToFetch = targetPlanId || planIdFromQuery;
 
     try {
-      if (planIdFromQuery) {
-        const response = await fetch(`/api/plans/${planIdFromQuery}?userId=${currentUser.id}`);
+      if (idToFetch) {
+        const response = await fetch(`/api/plans/${idToFetch}?userId=${currentUser.id}`);
         if (response.ok) {
           const fetchedPlan = await response.json();
           if (fetchedPlan) {
@@ -89,14 +91,14 @@ function AnalyticsPageContent() {
           }
         } else {
           if (response.status === 404) {
-            toast({ title: "Plan Not Found", description: `Could not find plan with ID: ${planIdFromQuery}`, variant: "destructive" });
+            toast({ title: "Plan Not Found", description: `Could not find plan with ID: ${idToFetch}`, variant: "destructive" });
           } else {
             const errorData = await response.json().catch(() => ({ error: `Failed to fetch specific plan: ${response.statusText}` }));
             throw new Error(errorData.error || `Failed to fetch specific plan: ${response.statusText}`);
           }
-          planToAnalyze = null; // Ensure it's null if specific plan fetch failed
+          planToAnalyze = null; 
         }
-      } else { // No planIdFromQuery, so fetch all plans and determine which to display
+      } else { 
         const response = await fetch(`/api/plans?userId=${currentUser.id}`);
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({ error: `Failed to fetch plans: ${response.statusText}` }));
@@ -105,7 +107,6 @@ function AnalyticsPageContent() {
         const allPlans: ScheduleData[] = await response.json();
 
         if (allPlans && allPlans.length > 0) {
-          // Ensure all fetched plans have structured tasks before sorting or filtering
           const processedAllPlans = allPlans.map(p => ({
             ...p,
             tasks: ensureTaskStructure(p.tasks, p.id)
@@ -118,7 +119,7 @@ function AnalyticsPageContent() {
             const completedPlans = processedAllPlans.filter(p => p.status === 'completed').sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
             if (completedPlans.length > 0) {
               planToAnalyze = completedPlans[0];
-            } else { // Fallback to the most recently updated plan of any status
+            } else { 
               planToAnalyze = processedAllPlans.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
             }
           }
@@ -134,7 +135,7 @@ function AnalyticsPageContent() {
     } finally {
       setIsLoadingPlan(false);
     }
-  }, [currentUser, toast, planIdFromQuery]);
+  }, [currentUser, toast, planIdFromQuery]); // Removed autoShowReflectionParam from deps
 
   useEffect(() => {
     if (currentStudyPlanForAnalytics) {
@@ -159,23 +160,23 @@ function AnalyticsPageContent() {
 
 
   useEffect(() => {
-    reloadDataForAnalytics();
+    reloadDataForAnalytics(); // Will use planIdFromQuery if present
     const handleStudyPlanUpdate = () => reloadDataForAnalytics();
     window.addEventListener('studyPlanUpdated', handleStudyPlanUpdate);
     return () => window.removeEventListener('studyPlanUpdated', handleStudyPlanUpdate);
-  }, [reloadDataForAnalytics, planIdFromQuery]);
+  }, [reloadDataForAnalytics]); // reloadDataForAnalytics itself now depends on planIdFromQuery
 
- const fetchPlanReflection = useCallback(async (plan: ScheduleData) => {
-    // Ensure tasks here are already structured, as planToAnalyze.tasks is now structured
+ const fetchPlanReflection = useCallback(async (plan: ScheduleData, forceFetch: boolean = false) => {
     if (!plan.planDetails || !plan.tasks || plan.tasks.length === 0) return;
-    if (isGeneratingReflection) return; 
+    if (isGeneratingReflection && !forceFetch) return; 
     
     setIsGeneratingReflection(true);
-    setPlanReflection(null);
+    if (forceFetch) setPlanReflection(null); // Clear old reflection if forcing
+    
     try {
       const input: GeneratePlanReflectionInput = {
         planDetails: plan.planDetails,
-        tasks: plan.tasks, // Already ensured by reloadDataForAnalytics
+        tasks: plan.tasks, 
         completionDate: plan.completionDate,
       };
       const reflection = await generatePlanReflection(input);
@@ -203,15 +204,17 @@ function AnalyticsPageContent() {
     } finally {
       setIsGeneratingReflection(false);
     }
-  }, [toast]); // Removed isGeneratingReflection from dependencies
+  }, [toast, isGeneratingReflection]); 
 
   useEffect(() => {
     if (currentStudyPlanForAnalytics && currentStudyPlanForAnalytics.status === 'completed') {
-      fetchPlanReflection(currentStudyPlanForAnalytics);
+      // If autoShowReflectionParam is true, force fetch, otherwise fetch normally (cached if already there)
+      const force = autoShowReflectionParam === 'true';
+      fetchPlanReflection(currentStudyPlanForAnalytics, force);
     } else {
-      setPlanReflection(null); // Explicitly clear if not completed or no plan
+      setPlanReflection(null); 
     }
-  }, [currentStudyPlanForAnalytics, fetchPlanReflection]);
+  }, [currentStudyPlanForAnalytics, fetchPlanReflection, autoShowReflectionParam]);
 
 
   const performanceData = useMemo(() => {
@@ -578,7 +581,7 @@ function AnalyticsPageContent() {
             </Card>
           </div>
 
-          <Card className="analytics-card bg-card shadow-xl">
+          <Card className="analytics-card bg-card shadow-xl" id="aiPlanReflectionSection">
               <CardHeader className="pb-4">
                 <CardTitle className="text-2xl font-semibold flex items-center gap-3">
                    <Lightbulb className="h-7 w-7 text-yellow-400" />

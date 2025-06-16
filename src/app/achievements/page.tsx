@@ -14,6 +14,7 @@ import type { ScheduleData, ScheduleTask, Achievement } from "@/types"; // Updat
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { parseISO, isValid, formatDistanceToNowStrict } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { useSearchParams } from 'next/navigation'; // Added for chatbot interaction
 
 const sampleAchievements: Achievement[] = [
   { id: "first_plan", title: "Planner Pioneer", description: "Successfully created your first study plan.", icon: PlusCircle, achieved: false, color: "bg-blue-500" },
@@ -41,9 +42,10 @@ function ensureTaskStructure(tasks: ScheduleTask[] | undefined, planId: string):
 interface PlanDisplayCardProps {
   plan: ScheduleData;
   cardType: 'active' | 'completed' | 'archived';
+  isFocused?: boolean; // For chatbot interaction
 }
 
-const PlanDisplayCard: React.FC<PlanDisplayCardProps> = ({ plan, cardType }) => {
+const PlanDisplayCard: React.FC<PlanDisplayCardProps> = ({ plan, cardType, isFocused }) => {
   const completedTasksCount = useMemo(() => plan.tasks.filter(task => task.completed).length, [plan.tasks]);
   const totalTasksCount = useMemo(() => plan.tasks.length, [plan.tasks]);
   const progressPercentage = useMemo(() => totalTasksCount > 0 ? Math.round((completedTasksCount / totalTasksCount) * 100) : 0, [completedTasksCount, totalTasksCount]);
@@ -68,7 +70,7 @@ const PlanDisplayCard: React.FC<PlanDisplayCardProps> = ({ plan, cardType }) => 
 
 
   return (
-    <Card className={`shadow-lg ${borderColor}`}>
+    <Card className={`shadow-lg ${borderColor} ${isFocused ? 'ring-2 ring-accent ring-offset-2' : ''}`} id={`plan-card-${plan.id}`}>
       <CardHeader>
         <CardTitle className="text-xl flex items-center justify-between">
           <span className="flex items-center gap-2">{titleIcon} {titleText}</span>
@@ -128,6 +130,11 @@ const PlanDisplayCard: React.FC<PlanDisplayCardProps> = ({ plan, cardType }) => 
 export default function AchievementsPage() {
   const { currentUser } = useAuth();
   const { toast } = useToast();
+  const searchParams = useSearchParams(); // For chatbot interaction
+  const focusPlanId = searchParams.get('focusPlanId');
+  const focusAchievementId = searchParams.get('focusAchievementId');
+
+
   const [allStudyPlans, setAllStudyPlans] = useState<ScheduleData[]>([]);
   const [isLoadingPlans, setIsLoadingPlans] = useState(true);
 
@@ -154,7 +161,6 @@ export default function AchievementsPage() {
                 errorMessage = `Failed to fetch plans: ${response.statusText} (Status: ${response.status})`;
               }
             } catch (e) {
-              // If response.json() fails, use the original statusText if available
               if (response.statusText) {
                  errorMessage = `Failed to fetch plans: ${response.statusText} (Status: ${response.status})`;
               }
@@ -187,13 +193,26 @@ export default function AchievementsPage() {
     return () => window.removeEventListener('studyPlanUpdated', handleStudyPlanUpdate);
   }, [reloadDataFromApi]);
 
+  useEffect(() => {
+    if (focusPlanId) {
+      const element = document.getElementById(`plan-card-${focusPlanId}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    } else if (focusAchievementId) {
+      const element = document.getElementById(`achievement-card-${focusAchievementId}`);
+       if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }, [focusPlanId, focusAchievementId, allStudyPlans, isLoadingPlans]); // Depend on isLoadingPlans too
+
   const hasCompletedAnyPlan = useMemo(() => allStudyPlans.some(plan => plan.status === 'completed'), [allStudyPlans]);
 
   const dynamicAchievements = useMemo(() => {
       // TODO: Implement more sophisticated achievement logic, especially for streaks.
       return sampleAchievements.map(ach => {
         let achieved = false;
-        // Basic achievement logic based on current data
         switch (ach.id) {
           case 'first_plan':
             achieved = allStudyPlans.length > 0;
@@ -202,18 +221,14 @@ export default function AchievementsPage() {
             achieved = allStudyPlans.some(plan => (plan.tasks || []).some(task => task.completed));
             break;
           case 'streak_beginner':
-            achieved = false; // Placeholder: Actual streak logic needed here.
-            // For demo, let's assume 'Study Dabbler' for 3 days is achieved if any plan has >=3 completed tasks
-            // This is a very loose interpretation for demo purposes.
-            if (allStudyPlans.some(plan => (plan.tasks || []).filter(t => t.completed).length >= 3 )) { // Value hardcoded here for simplicity
-                 // achieved = true; // Temporarily enable for visual testing if needed.
+            achieved = false; 
+            if (allStudyPlans.some(plan => (plan.tasks || []).filter(t => t.completed).length >= 3 )) { 
             }
             break;
           case 'quiz_taker':
             achieved = allStudyPlans.some(plan => (plan.tasks || []).some(task => task.quizAttempted === true));
             break;
           case 'reflection_reader':
-            // True if any plan is completed AND the user has likely seen analytics (implicitly by plan being completed)
             achieved = hasCompletedAnyPlan;
             break;
           case 'plan_completer':
@@ -252,7 +267,7 @@ export default function AchievementsPage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {dynamicAchievements.map((ach) => (
-              <Card key={ach.id} className={`shadow-lg transition-all hover:shadow-xl ${ach.achieved ? 'border-green-500' : 'opacity-70'}`}>
+              <Card key={ach.id} id={`achievement-card-${ach.id}`} className={`shadow-lg transition-all hover:shadow-xl ${ach.achieved ? 'border-green-500' : 'opacity-70'} ${focusAchievementId === ach.id ? 'ring-2 ring-accent ring-offset-2' : ''}`}>
                 <CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-2">
                     <ach.icon className={`h-10 w-10 ${ach.achieved ? 'text-green-500' : 'text-muted-foreground'}`} />
                     <CardTitle className={`text-lg ${ach.achieved ? 'text-green-600' : ''}`}>{ach.title}</CardTitle>
@@ -299,7 +314,7 @@ export default function AchievementsPage() {
                   <div>
                     <h3 className="text-xl font-medium mb-4">Active Plans</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {activePlans.map(plan => <PlanDisplayCard key={plan.id} plan={plan} cardType="active" />)}
+                      {activePlans.map(plan => <PlanDisplayCard key={plan.id} plan={plan} cardType="active" isFocused={focusPlanId === plan.id} />)}
                     </div>
                   </div>
                 )}
@@ -308,7 +323,7 @@ export default function AchievementsPage() {
                   <div>
                     <h3 className="text-xl font-medium mb-4">Completed Plans</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {completedPlans.map(plan => <PlanDisplayCard key={plan.id} plan={plan} cardType="completed" />)}
+                      {completedPlans.map(plan => <PlanDisplayCard key={plan.id} plan={plan} cardType="completed" isFocused={focusPlanId === plan.id} />)}
                     </div>
                   </div>
                 )}
@@ -317,7 +332,7 @@ export default function AchievementsPage() {
                   <div>
                     <h3 className="text-xl font-medium mb-4">Archived Plans</h3>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {archivedPlans.map(plan => <PlanDisplayCard key={plan.id} plan={plan} cardType="archived" />)}
+                      {archivedPlans.map(plan => <PlanDisplayCard key={plan.id} plan={plan} cardType="archived" isFocused={focusPlanId === plan.id} />)}
                     </div>
                   </div>
                 )}
@@ -337,5 +352,3 @@ export default function AchievementsPage() {
     </AppLayout>
   );
 }
-
-    

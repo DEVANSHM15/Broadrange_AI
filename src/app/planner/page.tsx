@@ -36,7 +36,7 @@ import { AdaptiveReplanModal } from '@/components/adaptive-replan-modal';
 import { LogScorePopover } from '@/components/log-score-popover';
 import { QuizModal } from '@/components/quiz-modal';
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { useSearchParams } from 'next/navigation'; // Import useSearchParams
+import { useSearchParams } from 'next/navigation'; 
 
 
 function parseTasksFromString(scheduleString: string, planId: string, existingTasks?: ScheduleTask[]): ScheduleTask[] {
@@ -44,7 +44,7 @@ function parseTasksFromString(scheduleString: string, planId: string, existingTa
     const parsed = JSON.parse(scheduleString) as ParsedRawScheduleItem[];
     if (Array.isArray(parsed) && parsed.every(item => typeof item.date === 'string' && typeof item.task === 'string')) {
       return parsed.map((item, index) => {
-        const existingTask = existingTasks?.find(et => et.id && et.id.startsWith(`task-${planId}-${index}`));
+        const existingTask = existingTasks?.find(et => et.id && et.id.startsWith(`task-${planId}-${index}`)); // Less strict matching
         return {
           ...item,
           date: item.date,
@@ -80,9 +80,10 @@ export default function PlannerPage() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const planIdFromQuery = searchParams.get('planId');
+  const autoFocusSubjectsQuery = searchParams.get('autoFocusSubjects'); // For chatbot interaction
   
   const [currentStep, setCurrentStep] = useState(1); 
-  const [plannerFormInput, setPlannerFormInput] = useState<PlanInput>(initialPlannerData);
+  const [plannerFormInput, setPlannerFormInput] = useState<PlanInput>({...initialPlannerData, subjects: autoFocusSubjectsQuery || ''});
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date | undefined>(new Date()); 
   
   const [isAnalyzing, setIsAnalyzing] = useState(false); 
@@ -112,19 +113,18 @@ export default function PlannerPage() {
     }
     setIsLoadingPlans(true);
 
-    if (planIdFromQuery) { // If a specific plan ID is in the URL
+    if (planIdFromQuery) { 
       try {
         const response = await fetch(`/api/plans/${planIdFromQuery}?userId=${currentUser.id}`);
         if (!response.ok) {
           if (response.status === 404) {
-            toast({ title: "Plan Not Found", description: `The requested plan was not found or you're not authorized.`, variant: "destructive" });
+            toast({ title: "Plan Not Found", description: `The requested plan was not found or you're not authorized. Starting new plan creation.`, variant: "destructive" });
           } else {
             const errorData = await response.json().catch(() => ({error: "Unknown error fetching specific plan"}));
             throw new Error(errorData.error || `Failed to fetch plan ${planIdFromQuery}: ${response.statusText}`);
           }
-          // Fallback to creation view if specific plan not found or error
           setActivePlan(null);
-          setPlannerFormInput(initialPlannerData);
+          setPlannerFormInput({...initialPlannerData, subjects: autoFocusSubjectsQuery || ''}); // Respect autoFocus from chat
           setCurrentStep(1);
           setIsLoadingPlans(false);
           return;
@@ -140,7 +140,10 @@ export default function PlannerPage() {
           }))
         };
         setActivePlan(processedPlan);
-        setAllUserPlans([processedPlan]); 
+        setAllUserPlans(prev => { // Ensure the fetched plan is in allUserPlans for consistency if it was loaded directly
+            const exists = prev.some(p => p.id === processedPlan.id);
+            return exists ? prev.map(p => p.id === processedPlan.id ? processedPlan : p) : [...prev, processedPlan];
+        });
         setPlannerFormInput(processedPlan.planDetails);
         const startDate = processedPlan.planDetails.startDate ? parseISO(processedPlan.planDetails.startDate) : new Date();
         if (isValid(startDate)) {
@@ -153,12 +156,12 @@ export default function PlannerPage() {
         console.error(`Failed to fetch plan ${planIdFromQuery}:`, error);
         toast({ title: "Error Loading Plan", description: (error as Error).message, variant: "destructive" });
         setActivePlan(null);
-        setPlannerFormInput(initialPlannerData);
+        setPlannerFormInput({...initialPlannerData, subjects: autoFocusSubjectsQuery || ''});
         setCurrentStep(1);
       } finally {
         setIsLoadingPlans(false);
       }
-    } else { // No specific planId in URL, load default (active or most recent)
+    } else { 
       try {
         const response = await fetch(`/api/plans?userId=${currentUser.id}`);
         if (!response.ok) {
@@ -194,12 +197,12 @@ export default function PlannerPage() {
             setCurrentStep(3);
           } else {
             setCurrentStep(1); 
-            setPlannerFormInput(initialPlannerData);
+            setPlannerFormInput({...initialPlannerData, subjects: autoFocusSubjectsQuery || ''});
             setSelectedCalendarDate(new Date());
           }
         } else {
           setActivePlan(null);
-          setPlannerFormInput(initialPlannerData);
+          setPlannerFormInput({...initialPlannerData, subjects: autoFocusSubjectsQuery || ''});
           setSelectedCalendarDate(new Date());
           setCurrentStep(1);
         }
@@ -213,7 +216,7 @@ export default function PlannerPage() {
         setIsLoadingPlans(false);
       }
     }
-  }, [currentUser, toast, planIdFromQuery]); // Add planIdFromQuery as a dependency
+  }, [currentUser, toast, planIdFromQuery, autoFocusSubjectsQuery]); 
 
   useEffect(() => {
     fetchUserPlans();
@@ -337,7 +340,6 @@ export default function PlannerPage() {
         
         toast({ title: "Study Plan Generated!", description: "Your new study plan is ready.", variant: "default", action: <CheckCircle className="text-green-500"/> });
         await fetchUserPlans(); 
-        // setCurrentStep(3) will be handled by fetchUserPlans due to activePlan update
 
       } else {
         throw new Error("AI did not return a schedule.");
@@ -408,7 +410,7 @@ export default function PlannerPage() {
 
   const startNewPlanCreation = () => {
     setActivePlan(null); 
-    setPlannerFormInput(initialPlannerData);
+    setPlannerFormInput({...initialPlannerData, subjects: autoFocusSubjectsQuery || ''}); // Also check chatbot here
     setSelectedCalendarDate(new Date()); 
     setCalendarSelectedDateForDisplay(new Date()); 
     setCalendarDisplayMonth(new Date());
@@ -511,7 +513,7 @@ export default function PlannerPage() {
   };
 
 
-  if (isLoadingPlans && !activePlan) { 
+  if (isLoadingPlans && !activePlan && !planIdFromQuery && !autoFocusSubjectsQuery) { 
     return (
       <AppLayout>
         <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
@@ -609,12 +611,13 @@ export default function PlannerPage() {
             let planStartDate: Date | null = null;
             let planEndDate: Date | null = null;
             if (activePlan.tasks.length > 0) {
-                const sortedTasksByDate = [...activePlan.tasks].sort((a,b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
-                const firstTaskDate = parseISO(sortedTasksByDate[0].date);
-                const lastTaskDate = parseISO(sortedTasksByDate[sortedTasksByDate.length - 1].date);
-
-                if (isValid(firstTaskDate)) planStartDate = firstTaskDate;
-                if (isValid(lastTaskDate)) planEndDate = lastTaskDate;
+                const sortedTasksByDate = [...activePlan.tasks].filter(t=> isValid(parseISO(t.date))).sort((a,b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
+                if (sortedTasksByDate.length > 0) {
+                  const firstTaskDate = parseISO(sortedTasksByDate[0].date);
+                  const lastTaskDate = parseISO(sortedTasksByDate[sortedTasksByDate.length - 1].date);
+                  if (isValid(firstTaskDate)) planStartDate = firstTaskDate;
+                  if (isValid(lastTaskDate)) planEndDate = lastTaskDate;
+                }
             }
              if (!planStartDate && activePlan.planDetails.startDate && isValid(parseISO(activePlan.planDetails.startDate))) {
                  planStartDate = parseISO(activePlan.planDetails.startDate);
@@ -771,6 +774,3 @@ export default function PlannerPage() {
 const ScrollArea = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className, children, ...props }, ref) => (
   <div ref={ref} className={cn("relative overflow-y-auto", className)} {...props}>{children}</div>));
 ScrollArea.displayName = "ScrollArea";
-
-
-
