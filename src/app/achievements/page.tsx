@@ -3,7 +3,7 @@
 
 import AppLayout from "@/components/AppLayout";
 import { useAuth } from "@/contexts/auth-context";
-import { PlusCircle, CheckCircle2, Flame, Brain, Lightbulb, Trophy, Award, HelpCircle, Loader2, ListChecks, Edit, BookOpen, ArchiveIcon, ClockIcon, BarChart3 } from "lucide-react";
+import { PlusCircle, CheckCircle2, Flame, Brain, Lightbulb, Trophy, Award, HelpCircle, Loader2, ListChecks, Edit, BookOpen, ArchiveIcon, ClockIcon, BarChart3, Mountain } from "lucide-react"; // Added Mountain for potential use
 import { useEffect, useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -19,18 +19,24 @@ interface Achievement {
   id: string;
   title: string;
   icon: React.ElementType;
-  description: string;
+  description: string; // Kept for potential future use (e.g., tooltips)
   achieved: boolean;
-  color?: string;
+  value?: number; // For displaying numbers like "14"
+  unit?: string;  // For units like "DAYS"
+  // color prop is no longer used for direct styling of the new badge, 
+  // but kept in case of future logic that might reference it.
+  color?: string; 
 }
 
 const sampleAchievements: Achievement[] = [
-  { id: "first_plan", title: "Planner Pioneer", description: "Successfully created your first study plan.", icon: PlusCircle, achieved: false, color: "text-green-500" },
-  { id: "task_initiate", title: "Task Starter", description: "Completed your first task in a study plan.", icon: CheckCircle2, achieved: false, color: "text-blue-500" },
-  { id: "streak_beginner", title: "Study Dabbler", description: "Maintained a 3-day study streak.", icon: Flame, achieved: false, color: "text-orange-500" }, 
-  { id: "quiz_taker", title: "Quiz Challenger", description: "Attempted your first AI-generated quiz.", icon: Brain, achieved: false, color: "text-purple-500" },
-  { id: "reflection_reader", title: "Insight Seeker", description: "Viewed your first plan reflection.", icon: Lightbulb, achieved: false, color: "text-yellow-500"},
-  { id: "plan_completer", title: "Finisher", description: "Successfully completed a full study plan.", icon: Trophy, achieved: false, color: "text-amber-600" },
+  { id: "first_plan", title: "Planner Pioneer", description: "Successfully created your first study plan.", icon: PlusCircle, achieved: false },
+  { id: "task_initiate", title: "Task Starter", description: "Completed your first task in a study plan.", icon: CheckCircle2, achieved: false },
+  { id: "streak_beginner", title: "Study Dabbler", value: 3, unit: "DAYS", description: "Maintained a 3-day study streak.", icon: Flame, achieved: false }, 
+  { id: "quiz_taker", title: "Quiz Challenger", description: "Attempted your first AI-generated quiz.", icon: Brain, achieved: false },
+  { id: "reflection_reader", title: "Insight Seeker", description: "Viewed your first plan reflection.", icon: Lightbulb, achieved: false},
+  { id: "plan_completer", title: "Finisher", description: "Successfully completed a full study plan.", icon: Trophy, achieved: false },
+  // Example of how a more advanced streak could be structured:
+  // { id: "super_streak", title: "Super Streak", value: 14, unit: "DAYS", description: "Kept a 14-day study habit!", icon: Mountain, achieved: false },
 ];
 
 // Helper function to ensure tasks have necessary fields, especially after fetching from API
@@ -163,6 +169,7 @@ export default function AchievementsPage() {
                 errorMessage = `Failed to fetch plans: ${response.statusText} (Status: ${response.status})`;
               }
             } catch (e) {
+              // If response.json() fails, use the original statusText if available
               if (response.statusText) {
                  errorMessage = `Failed to fetch plans: ${response.statusText} (Status: ${response.status})`;
               }
@@ -198,8 +205,10 @@ export default function AchievementsPage() {
   const hasCompletedAnyPlan = useMemo(() => allStudyPlans.some(plan => plan.status === 'completed'), [allStudyPlans]);
 
   const dynamicAchievements = useMemo(() => {
+      // TODO: Implement more sophisticated achievement logic, especially for streaks.
       return sampleAchievements.map(ach => {
         let achieved = false;
+        // Basic achievement logic based on current data
         switch (ach.id) {
           case 'first_plan':
             achieved = allStudyPlans.length > 0;
@@ -208,12 +217,18 @@ export default function AchievementsPage() {
             achieved = allStudyPlans.some(plan => (plan.tasks || []).some(task => task.completed));
             break;
           case 'streak_beginner':
-            achieved = false; 
+            achieved = false; // Placeholder: Actual streak logic needed here.
+            // For demo, let's assume 'Study Dabbler' for 3 days is achieved if any plan has >=3 completed tasks
+            // This is a very loose interpretation for demo purposes.
+            if (allStudyPlans.some(plan => (plan.tasks || []).filter(t => t.completed).length >= (ach.value || 3) )) {
+                 // achieved = true; // Temporarily enable for visual testing if needed.
+            }
             break;
           case 'quiz_taker':
             achieved = allStudyPlans.some(plan => (plan.tasks || []).some(task => task.quizAttempted === true));
             break;
           case 'reflection_reader':
+            // True if any plan is completed AND the user has likely seen analytics (implicitly by plan being completed)
             achieved = hasCompletedAnyPlan; 
             break;
           case 'plan_completer':
@@ -252,22 +267,32 @@ export default function AchievementsPage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {dynamicAchievements.map((ach) => (
-              <Card key={ach.id} className={`shadow-md transition-all hover:shadow-lg ${ach.achieved ? 'border-green-500/50 bg-green-500/5' : 'border-border'}`}>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg flex items-center gap-3">
-                    <ach.icon className={`h-7 w-7 ${ach.achieved ? (ach.color || 'text-green-500') : 'text-muted-foreground/70'}`} />
-                    {ach.title}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className={`text-sm ${ach.achieved ? 'text-foreground' : 'text-muted-foreground'}`}>{ach.description}</p>
-                </CardContent>
-                {ach.achieved && (
-                  <CardFooter className="pt-2 pb-3">
-                      <Badge variant="default" className="bg-green-600 hover:bg-green-700 text-white text-xs">Achieved!</Badge>
-                  </CardFooter>
+              <div
+                key={ach.id}
+                className={`rounded-xl shadow-lg flex flex-col items-center justify-center text-center p-4 space-y-2 min-h-[14rem] h-full w-full transition-all duration-300 ease-in-out transform hover:shadow-2xl hover:-translate-y-1
+                            ${ach.achieved 
+                              ? 'bg-primary text-primary-foreground' 
+                              : 'bg-card border border-dashed opacity-75 hover:opacity-100'
+                            }`}
+                title={ach.description} // Show description on hover
+              >
+                <div className="relative mt-2 mb-1"> {/* Adjusted margins */}
+                  <ach.icon className={`h-16 w-16 ${ach.achieved ? 'text-primary-foreground/90 opacity-90' : 'text-muted-foreground/60'}`} />
+                  {ach.value !== undefined && (
+                    <span className={`absolute inset-0 flex items-center justify-center text-2xl font-bold pointer-events-none ${ach.achieved ? 'text-primary-foreground' : 'text-card-foreground'}`}>
+                      {ach.value}
+                    </span>
+                  )}
+                </div>
+                {ach.unit && (
+                  <p className={`text-xs uppercase font-semibold tracking-wider ${ach.achieved ? 'text-primary-foreground/80' : 'text-muted-foreground/70'}`}>
+                    {ach.unit}
+                  </p>
                 )}
-              </Card>
+                <h3 className={`text-lg font-medium ${ach.achieved ? 'text-primary-foreground' : 'text-card-foreground'}`}>
+                  {ach.title}
+                </h3>
+              </div>
             ))}
           </div>
         </section>
