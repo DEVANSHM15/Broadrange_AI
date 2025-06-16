@@ -131,9 +131,6 @@ export async function GET(req: Request) {
       userId
     );
 
-    // `db.all` returns an empty array if no rows match, not null or undefined.
-    // So, if plansFromDb is an empty array, the loop below won't run, and an empty plans array will be returned, which is correct.
-
     const plans: ScheduleData[] = [];
     for (const planRow of plansFromDb) {
       let tasksFromDbRaw: any[];
@@ -145,8 +142,8 @@ export async function GET(req: Request) {
            ORDER BY date ASC, id ASC`,
           planRow.id
         );
-      } catch (selectError) {
-        if (String(selectError).includes("no such column: notes")) {
+      } catch (selectError: any) {
+        if (String(selectError.message).includes("no such column: notes")) {
           console.warn(`GET /api/plans - Column 'notes' not found for planId ${planRow.id}, fetching tasks without it.`);
           tasksFromDbRaw = await db.all<any[]>(
             `SELECT id, date, task, completed, youtubeSearchQuery, referenceSearchQuery, quizScore, quizAttempted
@@ -202,8 +199,12 @@ export async function GET(req: Request) {
     return NextResponse.json(plans, { status: 200 });
 
   } catch (error) {
-    // Defensive error handling for the GET request
-    console.error(`RAW ERROR in GET /api/plans for userId ${userId}:`, error);
+    // Enhanced defensive error handling for the GET request
+    let rawErrorString = 'Could not stringify raw error object for logging.';
+    try {
+      rawErrorString = String(error); // Basic string conversion for logging
+    } catch (strErr) { /* ignore if String() itself fails */ }
+    console.error(`RAW ERROR in GET /api/plans for userId ${userId}:`, rawErrorString, error); // Log both simple string and original error
 
     let detailMessage = 'An unknown server error occurred while fetching plans.';
     if (error instanceof Error) {
@@ -211,17 +212,18 @@ export async function GET(req: Request) {
     } else if (typeof error === 'string') {
       detailMessage = error;
     } else {
-      // Attempt to stringify if it's an object, otherwise provide a generic message
+      // For non-Error objects, provide a generic detail to avoid serialization issues with NextResponse.json
       try {
-        detailMessage = JSON.stringify(error);
+        // Try to get a type, but don't stringify the whole object if it's complex
+        detailMessage = `An unexpected error type occurred: ${Object.prototype.toString.call(error)}. Check server logs for the raw error.`;
       } catch (e) {
-        detailMessage = 'The error object could not be stringified.';
+        detailMessage = 'The error object could not be processed or stringified.';
       }
     }
     
     return NextResponse.json({
       error: 'Failed to fetch study plans from server.',
-      details: detailMessage
+      details: detailMessage // detailMessage is now more carefully constructed as a string
     }, { status: 500 });
   }
 }
