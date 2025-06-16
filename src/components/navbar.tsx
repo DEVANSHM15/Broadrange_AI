@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { LogIn, UserPlus, LogOut, Moon, Sun, Settings, LayoutDashboard, BookOpen, BarChartBig, CalendarDaysIcon, ListChecks } from "lucide-react"; // Changed Award to ListChecks
+import { LogIn, UserPlus, LogOut, Moon, Sun, Settings, LayoutDashboard, BookOpen, BarChartBig, CalendarDaysIcon, ListChecks, NotebookPen } from "lucide-react"; // Added NotebookPen
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import {
@@ -62,8 +62,9 @@ export function AppHeader() {
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/planner", label: "AI Planner", icon: BookOpen },
     { href: "/calendar", label: "Calendar", icon: CalendarDaysIcon },
+    { href: "/weekly-diary", label: "Weekly Diary", icon: NotebookPen }, // Added Weekly Diary
     { href: "/analytics", label: "Analytics", icon: BarChartBig },
-    { href: "/achievements", label: "Progress Hub", icon: ListChecks }, // Updated label and icon
+    { href: "/achievements", label: "Progress Hub", icon: ListChecks },
   ];
 
   return (
@@ -175,5 +176,3 @@ export function AppHeader() {
     </header>
   );
 }
-
-    
