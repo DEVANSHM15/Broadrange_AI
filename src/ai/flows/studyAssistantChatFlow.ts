@@ -262,7 +262,7 @@ Interaction Guidelines:
 
 3.  **Output Structure**:
     *   \\\`responseText\\\`: Always provide a clear, concise, and friendly text response.
-    *   \\\`navigationPath\\\` (optional): Valid paths include "/dashboard", "/planner", "/planner?planId=PLAN_ID_HERE", "/calendar", "/analytics", "/analytics?planId=PLAN_ID_HERE", "/achievements", "/settings".
+    *   \\\`navigationPath\\\` (optional): Valid paths include "/dashboard", "/planner", "/planner?planId=PLAN_ID_HERE", "/calendar", "/analytics", "/analytics?planId=THE_PLAN_ID", "/achievements", "/settings".
     *   \\\`navigationState\\\` (optional): Use for query parameters. Examples:
         - For analytics: \\\`navigationPath: "/analytics", navigationState: { planId: "THE_PLAN_ID", autoShowReflection: "true" }\\\`
         - For planner: \\\`navigationPath: "/planner", navigationState: { planId: "THE_PLAN_ID" }\\\` or \\\`navigationState: { autoFocusSubjects: "Math" }\\\`

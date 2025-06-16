@@ -199,35 +199,21 @@ export async function GET(req: Request) {
     return NextResponse.json(plans, { status: 200 });
 
   } catch (error) {
-    // More robust error logging and response
-    let errorType = 'UnknownError';
-    let errorMessage = 'An unexpected error occurred while fetching plans.';
-    let errorStack = '';
-
-    if (error instanceof Error) {
-      errorType = error.name;
-      errorMessage = error.message;
-      errorStack = error.stack || '';
-    } else if (typeof error === 'string') {
-      errorMessage = error;
-    } else {
-        try {
-            errorMessage = `Non-Error object thrown: ${JSON.stringify(error)}`;
-        } catch (stringifyError) {
-            errorMessage = 'A non-serializable, non-Error object was thrown.';
-        }
-    }
-
-    console.error(`GET /api/plans ERROR for userId ${userId}:
-      Type: ${errorType}
-      Message: ${errorMessage}
-      Stack: ${errorStack}
-      Raw Error Object:`, error);
+    // Simplified and more robust catch block
+    console.error(`CRITICAL ERROR in GET /api/plans for userId ${userId}:`, error); 
     
+    let detailMessage = "An unexpected error occurred on the server while fetching plans.";
+    if (error instanceof Error) {
+      detailMessage = error.message;
+    } else if (typeof error === 'string') {
+      detailMessage = error;
+    }
+    // Ensure detailMessage is a simple string for JSON serialization
+    detailMessage = String(detailMessage).substring(0, 500); // Truncate if too long
+
     return NextResponse.json({
-      error: 'Failed to fetch study plans from server.',
-      details: `Server error: ${errorMessage.substring(0, 300)} (Check server logs for more details and userId: ${userId})`
+      error: 'Server Error: Failed to fetch study plans.',
+      details: detailMessage + " (Please check server logs for more information.)"
     }, { status: 500 });
   }
 }
-
