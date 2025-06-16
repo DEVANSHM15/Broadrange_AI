@@ -332,3 +332,4 @@ const studyAssistantChatFlow = ai.defineFlow(
 export async function studyAssistantChat(input: StudyAssistantChatInput): Promise<StudyAssistantChatOutput> {
   return studyAssistantChatFlow(input);
 }
+
