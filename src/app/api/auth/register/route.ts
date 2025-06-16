@@ -90,13 +90,16 @@ export async function POST(req: Request) {
 
     // Send welcome email (actual email sending logic is in its own API route)
     try {
+        // Use req.nextUrl.origin to construct the absolute URL for the API call
         const welcomeEmailResponse = await fetch(`${req.nextUrl.origin}/api/send-welcome`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, name }),
         });
         if (!welcomeEmailResponse.ok) {
+            // Log a warning if the email fails but don't block registration
             console.warn(`Welcome email failed to send for ${email}: ${welcomeEmailResponse.statusText}`);
+            // Optionally, you could try to parse the error from welcomeEmailResponse.json() for more details
         }
     } catch (emailError) {
         console.error(`Error sending welcome email for ${email}:`, emailError);
@@ -107,7 +110,7 @@ export async function POST(req: Request) {
 
   } catch (error) {
     console.error('Registration error:', error);
-    if (error instanceof SyntaxError) {
+    if (error instanceof SyntaxError) { // Check for JSON parsing errors specifically
       return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
     }
     return NextResponse.json({ error: 'An internal server error occurred' }, { status: 500 });
