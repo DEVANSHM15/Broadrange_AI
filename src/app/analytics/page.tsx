@@ -101,9 +101,9 @@ function AnalyticsPageContent() {
                 } catch (e) { /* Ignore if error response is not JSON */ }
             }
             toast({ title: errorTitle, description: errorDesc, variant: "destructive" });
-            planToAnalyze = null; 
+            planToAnalyze = null;
         }
-      } else { 
+      } else {
         const response = await fetch(`/api/plans?userId=${currentUser.id}`);
         if (!response.ok) {
             let apiErrorMessage = "Failed to fetch plans from server.";
@@ -116,7 +116,9 @@ function AnalyticsPageContent() {
               apiErrorDetails = `Server returned status ${response.status} but the error message was not in the expected JSON format. Please check server logs. (${response.statusText})`;
             }
             toast({ title: "Error Loading Plans", description: `${apiErrorMessage} ${apiErrorDetails}`, variant: "destructive" });
-            throw new Error("Failed to fetch plans");
+            setCurrentStudyPlanForAnalytics(null);
+            setIsLoadingPlan(false);
+            return;
         }
         const allPlans: ScheduleData[] = await response.json();
 
@@ -133,7 +135,7 @@ function AnalyticsPageContent() {
             const completedPlans = processedAllPlans.filter(p => p.status === 'completed').sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
             if (completedPlans.length > 0) {
               planToAnalyze = completedPlans[0];
-            } else { 
+            } else {
               planToAnalyze = processedAllPlans.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
             }
           }
@@ -144,8 +146,14 @@ function AnalyticsPageContent() {
 
     } catch (error) {
       console.error("Analytics: Failed to fetch or process plans:", error);
-      if (!(error instanceof Error && error.message.includes("Failed to fetch plans"))) { // Avoid double toast
-        toast({ title: "Error Loading Data", description: (error as Error).message, variant: "destructive" });
+      let errorMessage = "An error occurred while loading plan data.";
+      if (error instanceof Error && error.message.includes("Failed to fetch plans")) {
+         // This specific error is already toasted by the inner block, so avoid double toast
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      if (! (error instanceof Error && error.message.includes("Failed to fetch plans"))) {
+        toast({ title: "Error Loading Data", description: errorMessage, variant: "destructive" });
       }
       setCurrentStudyPlanForAnalytics(null);
     } finally {
@@ -184,15 +192,15 @@ function AnalyticsPageContent() {
 
  const fetchPlanReflection = useCallback(async (plan: ScheduleData, forceFetch: boolean = false) => {
     if (!plan.planDetails || !plan.tasks || plan.tasks.length === 0) return;
-    if (isGeneratingReflection && !forceFetch) return; 
+    if (isGeneratingReflection && !forceFetch) return;
     
     setIsGeneratingReflection(true);
-    if (forceFetch) setPlanReflection(null); 
+    if (forceFetch) setPlanReflection(null);
     
     try {
       const input: GeneratePlanReflectionInput = {
         planDetails: plan.planDetails,
-        tasks: plan.tasks, 
+        tasks: plan.tasks,
         completionDate: plan.completionDate,
       };
       const reflection = await generatePlanReflection(input);
@@ -201,13 +209,16 @@ function AnalyticsPageContent() {
       console.error("Failed to generate plan reflection for analytics:", error);
       let detailMessage = "An AI processing error occurred. Please try again later.";
       if (error instanceof Error) {
-        if (error.message.includes("AI failed to generate a reflection") || error.message.includes("Output was null")) {
+        const errorMessageLower = error.message.toLowerCase();
+        if (errorMessageLower.includes("429") || errorMessageLower.includes("quota") || errorMessageLower.includes("rate limit")) {
+          detailMessage = "AI Reflection Error: API rate limit or quota exceeded. Please check your API plan or try again later.";
+        } else if (error.message.includes("AI failed to generate a reflection") || error.message.includes("Output was null")) {
           detailMessage = "The AI couldn't structure its response for reflection. This can sometimes happen. You might try again or check the plan data.";
         } else if (error.message.includes("Plan details and tasks are required")) {
           detailMessage = "Missing necessary plan data to generate the reflection.";
-        } else if (error.message.toLowerCase().includes("schema validation failed") || error.message.toLowerCase().includes("parse errors")) {
+        } else if (errorMessageLower.includes("schema validation failed") || errorMessageLower.includes("parse errors")) {
            detailMessage = `Data sent to AI for reflection was not in the expected format. Details: ${error.message.substring(0,200)}`;
-        } else if (error.message.length < 150) { 
+        } else if (error.message.length < 150) {
           detailMessage = error.message;
         }
       }
@@ -216,17 +227,17 @@ function AnalyticsPageContent() {
           description: detailMessage,
           variant: "destructive"
       });
-      setPlanReflection(null); 
+      setPlanReflection(null);
     } finally {
       setIsGeneratingReflection(false);
     }
-  }, [toast, isGeneratingReflection]); 
+  }, [toast, isGeneratingReflection]);
 
   useEffect(() => {
     if (currentStudyPlanForAnalytics && currentStudyPlanForAnalytics.status === 'completed') {
       fetchPlanReflection(currentStudyPlanForAnalytics, false); // Fetch normally
     } else {
-      setPlanReflection(null); 
+      setPlanReflection(null);
     }
   }, [currentStudyPlanForAnalytics, fetchPlanReflection]);
 
@@ -247,7 +258,7 @@ function AnalyticsPageContent() {
       if (!task.date || !isValid(parseISO(task.date))) return;
       const taskDate = parseISO(task.date);
       const weekNumber = differenceInWeeks(taskDate, planStartDate) + 1;
-      if (weekNumber < 1) return; 
+      if (weekNumber < 1) return;
       const weekKey = `Week ${weekNumber}`;
       weeklyCompletion[weekKey] = (weeklyCompletion[weekKey] || 0) + 1;
     });
@@ -407,7 +418,7 @@ function AnalyticsPageContent() {
                 <HelpCircle className="h-4 w-4" />
                 <AlertTitle>{planIdFromQuery ? "Specified Plan Not Found" : "No Study Plan Found"}</AlertTitle>
                 <AlertDescription>
-                  {planIdFromQuery 
+                  {planIdFromQuery
                     ? `Could not load analytics for the specified plan. It might have been deleted or there was an issue fetching it.`
                     : "Complete a study plan, or have an active one, to see your analytics here. Create a new one on the AI Planner page."
                   }
@@ -419,8 +430,8 @@ function AnalyticsPageContent() {
     );
   }
   
-  const planUpdatedAt = currentStudyPlanForAnalytics.updatedAt && isValid(parseISO(currentStudyPlanForAnalytics.updatedAt)) 
-                        ? format(parseISO(currentStudyPlanForAnalytics.updatedAt), 'PPp') 
+  const planUpdatedAt = currentStudyPlanForAnalytics.updatedAt && isValid(parseISO(currentStudyPlanForAnalytics.updatedAt))
+                        ? format(parseISO(currentStudyPlanForAnalytics.updatedAt), 'PPp')
                         : 'N/A';
 
   const daysOfWeekShort = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -432,7 +443,7 @@ function AnalyticsPageContent() {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
             <h1 className="text-3xl font-bold tracking-tight">Study Analytics</h1>
             <p className="text-sm text-muted-foreground mt-1 md:mt-0">
-                Displaying analytics for: <span className="font-semibold text-primary">{currentStudyPlanForAnalytics.planDetails.subjects}</span> 
+                Displaying analytics for: <span className="font-semibold text-primary">{currentStudyPlanForAnalytics.planDetails.subjects}</span>
                 {currentStudyPlanForAnalytics.status === 'completed' && currentStudyPlanForAnalytics.completionDate && isValid(parseISO(currentStudyPlanForAnalytics.completionDate))
                     ? ` (Completed: ${format(parseISO(currentStudyPlanForAnalytics.completionDate), 'PP')})`
                     : ` (Status: ${currentStudyPlanForAnalytics.status.charAt(0).toUpperCase() + currentStudyPlanForAnalytics.status.slice(1)}, Updated: ${planUpdatedAt})`}

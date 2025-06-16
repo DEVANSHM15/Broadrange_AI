@@ -88,11 +88,11 @@ export default function DashboardPage() {
         let apiErrorMessage = "Failed to fetch plans from server.";
         let apiErrorDetails = `Server responded with status: ${response.status}.`;
         try {
-          const errorData = await response.json(); // Try to parse error as JSON
+          const errorData = await response.json(); 
           apiErrorMessage = String(errorData.error || apiErrorMessage);
           apiErrorDetails = String(errorData.details || apiErrorDetails);
         } catch (parseError) {
-          // This means the error response was not JSON
+          
           console.warn("Dashboard: API error response was not JSON.", parseError);
           apiErrorDetails = `Server returned status ${response.status} but the error message was not in the expected JSON format. Please check server logs for more details. (${response.statusText})`;
         }
@@ -100,8 +100,8 @@ export default function DashboardPage() {
         setActiveStudyPlan(null);
         setParsedTasksForActivePlan([]);
         setPlanReflection(null);
-        setIsLoadingPlanData(false); // Ensure loading state is cleared
-        return; 
+        setIsLoadingPlanData(false); 
+        return;
       }
       
       const allPlans: ScheduleData[] = await response.json();
@@ -129,9 +129,9 @@ export default function DashboardPage() {
         setActiveStudyPlan(null);
         setParsedTasksForActivePlan([]);
       }
-      setPlanReflection(null); 
+      setPlanReflection(null);
 
-    } catch (error) { 
+    } catch (error) {
       console.error("Dashboard: Critical error fetching plans from API:", error);
       toast({ title: "Network Error", description: `Could not connect to fetch plans. ${(error as Error).message}`, variant: "destructive" });
       setActiveStudyPlan(null);
@@ -144,7 +144,7 @@ export default function DashboardPage() {
 
 
   useEffect(() => {
-    reloadDataFromApi(); 
+    reloadDataFromApi();
 
     const handleStudyPlanUpdate = () => {
       reloadDataFromApi();
@@ -153,33 +153,42 @@ export default function DashboardPage() {
     return () => window.removeEventListener('studyPlanUpdated', handleStudyPlanUpdate);
   }, [reloadDataFromApi]);
 
+  const fetchPlanReflection = useCallback(async () => {
+      if (activeStudyPlan && activeStudyPlan.status === 'completed' && parsedTasksForActivePlan.length > 0 && activeStudyPlan.planDetails) {
+          if (isGeneratingReflection) return;
+          setIsGeneratingReflection(true);
+          try {
+              const input: GeneratePlanReflectionInput = {
+                  planDetails: activeStudyPlan.planDetails,
+                  tasks: parsedTasksForActivePlan,
+                  completionDate: activeStudyPlan.completionDate
+              };
+              const reflectionResult = await generatePlanReflection(input);
+              setPlanReflection(reflectionResult);
+          } catch (error) {
+              console.error("Dashboard: Failed to generate plan reflection:", error);
+              let detailMessage = "Could not generate plan reflection. Please try again later.";
+              if (error instanceof Error) {
+                  const errorMessageLower = error.message.toLowerCase();
+                  if (errorMessageLower.includes("429") || errorMessageLower.includes("quota") || errorMessageLower.includes("rate limit")) {
+                      detailMessage = "AI Reflection Error: API rate limit or quota exceeded. Please check your API plan or try again later.";
+                  } else if (error.message.length < 150) {
+                      detailMessage = error.message;
+                  }
+              }
+              toast({ title: "Reflection Error", description: detailMessage, variant: "destructive" });
+              setPlanReflection(null);
+          } finally {
+              setIsGeneratingReflection(false);
+          }
+      } else if (activeStudyPlan?.status !== 'completed') {
+          setPlanReflection(null);
+      }
+  }, [activeStudyPlan, parsedTasksForActivePlan, toast, isGeneratingReflection]);
+
   useEffect(() => {
-    const fetchPlanReflection = async () => {
-        if (activeStudyPlan && activeStudyPlan.status === 'completed' && parsedTasksForActivePlan.length > 0 && activeStudyPlan.planDetails) {
-            if (isGeneratingReflection) return; 
-            setIsGeneratingReflection(true);
-            try {
-                const input: GeneratePlanReflectionInput = {
-                    planDetails: activeStudyPlan.planDetails,
-                    tasks: parsedTasksForActivePlan,
-                    completionDate: activeStudyPlan.completionDate
-                };
-                const reflectionResult = await generatePlanReflection(input);
-                setPlanReflection(reflectionResult);
-            } catch (error) {
-                console.error("Dashboard: Failed to generate plan reflection:", error);
-                 toast({ title: "Reflection Error", description: "Could not generate plan reflection.", variant: "destructive" });
-                setPlanReflection(null);
-            } finally {
-                setIsGeneratingReflection(false);
-            }
-        } else if (activeStudyPlan?.status !== 'completed') {
-            setPlanReflection(null); 
-        }
-    };
     fetchPlanReflection();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeStudyPlan, parsedTasksForActivePlan, toast]); 
+  }, [fetchPlanReflection]);
 
 
   useEffect(() => {
@@ -199,7 +208,7 @@ export default function DashboardPage() {
         }
         return newTip;
       });
-    }, 30000); 
+    }, 30000);
 
     return () => {
       clearInterval(agentConfidenceInterval);
