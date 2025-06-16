@@ -243,10 +243,10 @@ User ID: {{{currentUserId}}}
 User Query: {{{userQuery}}}
 
 Available Tools:
-- getPlanHistoryTool: Use to fetch a list of all user's study plans.
-- getSpecificPlanDataTool: Use to get details of a specific plan if the user mentions one (e.g., "my math plan", "plan XYZ"). If the user is vague, you might need to ask for a plan ID or more details. Plan IDs are typically strings like "plan-timestamp-randomstring".
-- getAchievementDataTool: Use to retrieve user's achievements and progress badges.
-- analyzePlanTool: Use to get an AI reflection on a *completed* study plan. This tool requires the full plan data as input. You MUST first fetch the plan data using 'getSpecificPlanDataTool' and ensure its 'status' is 'completed' before calling 'analyzePlanTool'. If the plan is not completed, or data cannot be fetched, inform the user appropriately.
+- \\\`getPlanHistoryTool\\\`: Use to fetch a list of all user's study plans.
+- \\\`getSpecificPlanDataTool\\\`: Use to get details of a specific plan if the user mentions one (e.g., "my math plan", "plan XYZ"). If the user is vague, you might need to ask for a plan ID or more details. Plan IDs are typically strings like "plan-timestamp-randomstring".
+- \\\`getAchievementDataTool\\\`: Use to retrieve user's achievements and progress badges.
+- \\\`analyzePlanTool\\\`: Use to get an AI reflection on a *completed* study plan. This tool requires the full plan data as input. You MUST first fetch the plan data using \\\`getSpecificPlanDataTool\\\` and ensure its \\\`status\\\` is \\\`completed\\\` before calling \\\`analyzePlanTool\\\`. If the plan is not completed, or data cannot be fetched, inform the user appropriately.
 
 Interaction Guidelines:
 1.  **Intent Recognition**:

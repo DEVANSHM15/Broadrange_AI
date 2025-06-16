@@ -15,6 +15,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { generatePlanReflection, type GeneratePlanReflectionInput, type GeneratePlanReflectionOutput } from "@/ai/flows/generate-plan-reflection";
 import { Badge } from "@/components/ui/badge";
 import { parseISO, isValid } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
 
 
 const sampleAgentData: AgentDisplayData[] = [
@@ -59,6 +60,7 @@ const studyTips = [
 
 export default function DashboardPage() {
   const { currentUser } = useAuth();
+  const { toast } = useToast();
   const [agents, setAgents] = useState<AgentDisplayData[]>(sampleAgentData);
   const [activeStudyPlan, setActiveStudyPlan] = useState<ScheduleData | null>(null);
   const [parsedTasksForActivePlan, setParsedTasksForActivePlan] = useState<ScheduleTask[]>([]);
@@ -81,7 +83,28 @@ export default function DashboardPage() {
     try {
       const response = await fetch(`/api/plans?userId=${currentUser.id}`);
       if (!response.ok) {
-        throw new Error(`Failed to fetch plans: ${response.statusText}`);
+        let errorMessage = `Failed to fetch plans. Status: ${response.status}`;
+        let errorDetailMessage = "";
+        try {
+          const errorData = await response.json();
+          if (errorData.error) {
+            errorMessage = String(errorData.error);
+            if (errorData.details) {
+              errorDetailMessage = String(errorData.details);
+            }
+          } else if (response.statusText) {
+            errorMessage = `Failed to fetch plans: ${response.statusText} (Status: ${response.status})`;
+          }
+        } catch (e) {
+          // If response.json() fails (e.g., HTML error page)
+          if (response.statusText) {
+            errorMessage = `Failed to fetch plans: ${response.statusText} (Status: ${response.status})`;
+          }
+        }
+        const finalMessage = errorDetailMessage
+            ? `${errorMessage} (Details: ${errorDetailMessage})`
+            : errorMessage;
+        throw new Error(finalMessage);
       }
       const allPlans: ScheduleData[] = await response.json();
       let currentPlanToDisplay: ScheduleData | null = null;
@@ -114,12 +137,13 @@ export default function DashboardPage() {
 
     } catch (error) {
       console.error("Dashboard: Failed to fetch plans from API:", error);
+      toast({ title: "Error Loading Plan Data", description: (error as Error).message, variant: "destructive" });
       setActiveStudyPlan(null);
       setParsedTasksForActivePlan([]);
     } finally {
       setIsLoadingPlanData(false);
     }
-  }, [currentUser]);
+  }, [currentUser, toast]);
 
 
   useEffect(() => {
@@ -148,6 +172,7 @@ export default function DashboardPage() {
                 setPlanReflection(reflectionResult);
             } catch (error) {
                 console.error("Dashboard: Failed to generate plan reflection:", error);
+                 toast({ title: "Reflection Error", description: "Could not generate plan reflection.", variant: "destructive" });
                 setPlanReflection(null);
             } finally {
                 setIsGeneratingReflection(false);
@@ -158,7 +183,7 @@ export default function DashboardPage() {
     };
     fetchPlanReflection();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeStudyPlan, parsedTasksForActivePlan]); 
+  }, [activeStudyPlan, parsedTasksForActivePlan, toast]); // Added toast to dependencies
 
 
   useEffect(() => {
@@ -473,3 +498,4 @@ export default function DashboardPage() {
     </AppLayout>
   );
 }
+
