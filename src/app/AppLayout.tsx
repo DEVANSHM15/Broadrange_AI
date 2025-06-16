@@ -5,10 +5,8 @@ import type { ReactNode } from 'react';
 import { AppHeader } from '@/components/navbar';
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter, usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react'; // Added useState
+import { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
-import { ChatbotIcon } from '@/components/chatbot/ChatbotIcon'; // Added
-import { ChatbotModal } from '@/components/chatbot/ChatbotModal'; // Added
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -20,7 +18,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const { currentUser, isLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  const [isChatbotOpen, setIsChatbotOpen] = useState(false); // Added state for chatbot modal
 
   useEffect(() => {
     if (isLoading) return; 
@@ -67,12 +64,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       <main className={`flex-grow ${showAppHeader ? 'pt-4 md:pt-6' : ''}`}>
         {children}
       </main>
-      {currentUser && !isLoading && ( // Show chatbot icon only if user is logged in and auth is resolved
-        <>
-          <ChatbotIcon onClick={() => setIsChatbotOpen(true)} />
-          <ChatbotModal isOpen={isChatbotOpen} onClose={() => setIsChatbotOpen(false)} />
-        </>
-      )}
+      {/* Chatbot UI Removed */}
     </div>
   );
 }

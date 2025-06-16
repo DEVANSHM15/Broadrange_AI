@@ -133,24 +133,7 @@ export interface GenerateTaskQuizOutput {
   quizJson: string; // A JSON string that parses into Quiz
 }
 
-// Chatbot specific types
-export interface ChatbotMessage {
-  id: string;
-  text: string;
-  sender: 'user' | 'bot';
-  timestamp: number;
-  error?: boolean;
-  debugInfo?: string; // Optional for debugging tool usage or AI raw response
-}
-
-export interface StudyAssistantChatInput {
-  userQuery: string;
-  currentUserId: string; // Used by tools to fetch user-specific data
-}
-
-export interface StudyAssistantChatOutput {
-  responseText: string;
-  navigationPath?: string; // e.g., "/planner", "/analytics?planId=123"
-  navigationState?: Record<string, any>; // Data to pass to the new page, often as query params
-  error?: string;
-}
+// Chatbot specific types REMOVED
+// export interface ChatbotMessage { ... }
+// export interface StudyAssistantChatInput { ... }
+// export interface StudyAssistantChatOutput { ... }

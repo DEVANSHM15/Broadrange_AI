@@ -14,7 +14,7 @@ import type { ScheduleData, ScheduleTask, Achievement } from "@/types"; // Updat
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { parseISO, isValid, formatDistanceToNowStrict } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
-import { useSearchParams } from 'next/navigation'; // Added for chatbot interaction
+// Removed useSearchParams as it was only for chatbot interaction here
 
 const sampleAchievements: Achievement[] = [
   { id: "first_plan", title: "Planner Pioneer", description: "Successfully created your first study plan.", icon: PlusCircle, achieved: false, color: "bg-blue-500" },
@@ -42,7 +42,7 @@ function ensureTaskStructure(tasks: ScheduleTask[] | undefined, planId: string):
 interface PlanDisplayCardProps {
   plan: ScheduleData;
   cardType: 'active' | 'completed' | 'archived';
-  isFocused?: boolean; // For chatbot interaction
+  isFocused?: boolean; 
 }
 
 const PlanDisplayCard: React.FC<PlanDisplayCardProps> = ({ plan, cardType, isFocused }) => {
@@ -130,10 +130,7 @@ const PlanDisplayCard: React.FC<PlanDisplayCardProps> = ({ plan, cardType, isFoc
 export default function AchievementsPage() {
   const { currentUser } = useAuth();
   const { toast } = useToast();
-  const searchParams = useSearchParams(); // For chatbot interaction
-  const focusPlanId = searchParams.get('focusPlanId');
-  const focusAchievementId = searchParams.get('focusAchievementId');
-
+  // Removed searchParams and related focus IDs as they were for chatbot interaction
 
   const [allStudyPlans, setAllStudyPlans] = useState<ScheduleData[]>([]);
   const [isLoadingPlans, setIsLoadingPlans] = useState(true);
@@ -193,19 +190,7 @@ export default function AchievementsPage() {
     return () => window.removeEventListener('studyPlanUpdated', handleStudyPlanUpdate);
   }, [reloadDataFromApi]);
 
-  useEffect(() => {
-    if (focusPlanId) {
-      const element = document.getElementById(`plan-card-${focusPlanId}`);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    } else if (focusAchievementId) {
-      const element = document.getElementById(`achievement-card-${focusAchievementId}`);
-       if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    }
-  }, [focusPlanId, focusAchievementId, allStudyPlans, isLoadingPlans]); // Depend on isLoadingPlans too
+  // Removed useEffect related to focusPlanId and focusAchievementId
 
   const hasCompletedAnyPlan = useMemo(() => allStudyPlans.some(plan => plan.status === 'completed'), [allStudyPlans]);
 
@@ -267,7 +252,7 @@ export default function AchievementsPage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {dynamicAchievements.map((ach) => (
-              <Card key={ach.id} id={`achievement-card-${ach.id}`} className={`shadow-lg transition-all hover:shadow-xl ${ach.achieved ? 'border-green-500' : 'opacity-70'} ${focusAchievementId === ach.id ? 'ring-2 ring-accent ring-offset-2' : ''}`}>
+              <Card key={ach.id} id={`achievement-card-${ach.id}`} className={`shadow-lg transition-all hover:shadow-xl ${ach.achieved ? 'border-green-500' : 'opacity-70'}`}>
                 <CardHeader className="flex flex-row items-center gap-4 space-y-0 pb-2">
                     <ach.icon className={`h-10 w-10 ${ach.achieved ? 'text-green-500' : 'text-muted-foreground'}`} />
                     <CardTitle className={`text-lg ${ach.achieved ? 'text-green-600' : ''}`}>{ach.title}</CardTitle>
@@ -314,7 +299,7 @@ export default function AchievementsPage() {
                   <div>
                     <h3 className="text-xl font-medium mb-4">Active Plans</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {activePlans.map(plan => <PlanDisplayCard key={plan.id} plan={plan} cardType="active" isFocused={focusPlanId === plan.id} />)}
+                      {activePlans.map(plan => <PlanDisplayCard key={plan.id} plan={plan} cardType="active" />)}
                     </div>
                   </div>
                 )}
@@ -323,7 +308,7 @@ export default function AchievementsPage() {
                   <div>
                     <h3 className="text-xl font-medium mb-4">Completed Plans</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {completedPlans.map(plan => <PlanDisplayCard key={plan.id} plan={plan} cardType="completed" isFocused={focusPlanId === plan.id} />)}
+                      {completedPlans.map(plan => <PlanDisplayCard key={plan.id} plan={plan} cardType="completed" />)}
                     </div>
                   </div>
                 )}
@@ -332,7 +317,7 @@ export default function AchievementsPage() {
                   <div>
                     <h3 className="text-xl font-medium mb-4">Archived Plans</h3>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {archivedPlans.map(plan => <PlanDisplayCard key={plan.id} plan={plan} cardType="archived" isFocused={focusPlanId === plan.id} />)}
+                      {archivedPlans.map(plan => <PlanDisplayCard key={plan.id} plan={plan} cardType="archived" />)}
                     </div>
                   </div>
                 )}

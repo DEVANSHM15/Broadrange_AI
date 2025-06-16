@@ -80,10 +80,10 @@ export default function PlannerPage() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const planIdFromQuery = searchParams.get('planId');
-  const autoFocusSubjectsQuery = searchParams.get('autoFocusSubjects'); // For chatbot interaction
+  // Removed autoFocusSubjectsQuery as it was for chatbot interaction
   
   const [currentStep, setCurrentStep] = useState(1); 
-  const [plannerFormInput, setPlannerFormInput] = useState<PlanInput>({...initialPlannerData, subjects: autoFocusSubjectsQuery || ''});
+  const [plannerFormInput, setPlannerFormInput] = useState<PlanInput>({...initialPlannerData}); // Removed autoFocusSubjectsQuery from initial state
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date | undefined>(new Date()); 
   
   const [isAnalyzing, setIsAnalyzing] = useState(false); 
@@ -124,7 +124,7 @@ export default function PlannerPage() {
             throw new Error(errorData.error || `Failed to fetch plan ${planIdFromQuery}: ${response.statusText}`);
           }
           setActivePlan(null);
-          setPlannerFormInput({...initialPlannerData, subjects: autoFocusSubjectsQuery || ''}); // Respect autoFocus from chat
+          setPlannerFormInput({...initialPlannerData}); 
           setCurrentStep(1);
           setIsLoadingPlans(false);
           return;
@@ -140,7 +140,7 @@ export default function PlannerPage() {
           }))
         };
         setActivePlan(processedPlan);
-        setAllUserPlans(prev => { // Ensure the fetched plan is in allUserPlans for consistency if it was loaded directly
+        setAllUserPlans(prev => { 
             const exists = prev.some(p => p.id === processedPlan.id);
             return exists ? prev.map(p => p.id === processedPlan.id ? processedPlan : p) : [...prev, processedPlan];
         });
@@ -156,7 +156,7 @@ export default function PlannerPage() {
         console.error(`Failed to fetch plan ${planIdFromQuery}:`, error);
         toast({ title: "Error Loading Plan", description: (error as Error).message, variant: "destructive" });
         setActivePlan(null);
-        setPlannerFormInput({...initialPlannerData, subjects: autoFocusSubjectsQuery || ''});
+        setPlannerFormInput({...initialPlannerData});
         setCurrentStep(1);
       } finally {
         setIsLoadingPlans(false);
@@ -197,12 +197,12 @@ export default function PlannerPage() {
             setCurrentStep(3);
           } else {
             setCurrentStep(1); 
-            setPlannerFormInput({...initialPlannerData, subjects: autoFocusSubjectsQuery || ''});
+            setPlannerFormInput({...initialPlannerData});
             setSelectedCalendarDate(new Date());
           }
         } else {
           setActivePlan(null);
-          setPlannerFormInput({...initialPlannerData, subjects: autoFocusSubjectsQuery || ''});
+          setPlannerFormInput({...initialPlannerData});
           setSelectedCalendarDate(new Date());
           setCurrentStep(1);
         }
@@ -216,7 +216,7 @@ export default function PlannerPage() {
         setIsLoadingPlans(false);
       }
     }
-  }, [currentUser, toast, planIdFromQuery, autoFocusSubjectsQuery]); 
+  }, [currentUser, toast, planIdFromQuery]); 
 
   useEffect(() => {
     fetchUserPlans();
@@ -410,7 +410,7 @@ export default function PlannerPage() {
 
   const startNewPlanCreation = () => {
     setActivePlan(null); 
-    setPlannerFormInput({...initialPlannerData, subjects: autoFocusSubjectsQuery || ''}); // Also check chatbot here
+    setPlannerFormInput({...initialPlannerData}); 
     setSelectedCalendarDate(new Date()); 
     setCalendarSelectedDateForDisplay(new Date()); 
     setCalendarDisplayMonth(new Date());
@@ -513,7 +513,7 @@ export default function PlannerPage() {
   };
 
 
-  if (isLoadingPlans && !activePlan && !planIdFromQuery && !autoFocusSubjectsQuery) { 
+  if (isLoadingPlans && !activePlan && !planIdFromQuery) { 
     return (
       <AppLayout>
         <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">

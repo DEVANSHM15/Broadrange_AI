@@ -60,7 +60,7 @@ function AnalyticsPageContent() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const planIdFromQuery = searchParams.get('planId');
-  const autoShowReflectionParam = searchParams.get('autoShowReflection'); // For chatbot interaction
+  // Removed autoShowReflectionParam as it was for chatbot interaction
 
   const [currentStudyPlanForAnalytics, setCurrentStudyPlanForAnalytics] = useState<ScheduleData | null>(null);
   const [isLoadingPlan, setIsLoadingPlan] = useState(true);
@@ -135,7 +135,7 @@ function AnalyticsPageContent() {
     } finally {
       setIsLoadingPlan(false);
     }
-  }, [currentUser, toast, planIdFromQuery]); // Removed autoShowReflectionParam from deps
+  }, [currentUser, toast, planIdFromQuery]);
 
   useEffect(() => {
     if (currentStudyPlanForAnalytics) {
@@ -164,14 +164,14 @@ function AnalyticsPageContent() {
     const handleStudyPlanUpdate = () => reloadDataForAnalytics();
     window.addEventListener('studyPlanUpdated', handleStudyPlanUpdate);
     return () => window.removeEventListener('studyPlanUpdated', handleStudyPlanUpdate);
-  }, [reloadDataForAnalytics]); // reloadDataForAnalytics itself now depends on planIdFromQuery
+  }, [reloadDataForAnalytics]);
 
  const fetchPlanReflection = useCallback(async (plan: ScheduleData, forceFetch: boolean = false) => {
     if (!plan.planDetails || !plan.tasks || plan.tasks.length === 0) return;
     if (isGeneratingReflection && !forceFetch) return; 
     
     setIsGeneratingReflection(true);
-    if (forceFetch) setPlanReflection(null); // Clear old reflection if forcing
+    if (forceFetch) setPlanReflection(null); 
     
     try {
       const input: GeneratePlanReflectionInput = {
@@ -208,13 +208,12 @@ function AnalyticsPageContent() {
 
   useEffect(() => {
     if (currentStudyPlanForAnalytics && currentStudyPlanForAnalytics.status === 'completed') {
-      // If autoShowReflectionParam is true, force fetch, otherwise fetch normally (cached if already there)
-      const force = autoShowReflectionParam === 'true';
-      fetchPlanReflection(currentStudyPlanForAnalytics, force);
+      // The autoShowReflectionParam related logic removed here
+      fetchPlanReflection(currentStudyPlanForAnalytics, false); // Fetch normally
     } else {
       setPlanReflection(null); 
     }
-  }, [currentStudyPlanForAnalytics, fetchPlanReflection, autoShowReflectionParam]);
+  }, [currentStudyPlanForAnalytics, fetchPlanReflection]);
 
 
   const performanceData = useMemo(() => {
