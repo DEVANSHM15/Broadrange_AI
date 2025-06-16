@@ -97,13 +97,10 @@ export async function POST(req: Request) {
       detailMessage = error.message;
     } else if (typeof error === 'string') {
       detailMessage = error;
-    } else {
-      try {
-        detailMessage = JSON.stringify(error);
-      } catch (e) {
-        detailMessage = 'Error object during plan creation could not be stringified.';
-      }
     }
+    // Ensure detailMessage is a simple string for JSON serialization
+    detailMessage = String(detailMessage).substring(0, 500); 
+
 
     return NextResponse.json({
       error: 'Failed to create study plan on server.',
@@ -118,7 +115,7 @@ export async function GET(req: Request) {
   const userId = searchParams.get('userId');
 
   if (!userId) {
-    return NextResponse.json({ error: 'User ID query parameter is required' }, { status: 400 });
+    return NextResponse.json({ error: 'User ID query parameter is required', details: 'userId is missing from the request.' }, { status: 400 });
   }
 
   try {
@@ -198,22 +195,20 @@ export async function GET(req: Request) {
 
     return NextResponse.json(plans, { status: 200 });
 
-  } catch (error) {
-    // Simplified and more robust catch block
-    console.error(`CRITICAL ERROR in GET /api/plans for userId ${userId}:`, error); 
+  } catch (error: unknown) { // Outer catch for any unexpected errors
+    console.error(`FATAL API ERROR in GET /api/plans for userId ${userId}:`, error); 
     
-    let detailMessage = "An unexpected error occurred on the server while fetching plans.";
+    let errorDetail = "An critical server error occurred while fetching plans. Please check server logs for specific details.";
     if (error instanceof Error) {
-      detailMessage = error.message;
+        errorDetail = error.message;
     } else if (typeof error === 'string') {
-      detailMessage = error;
+        errorDetail = error;
     }
-    // Ensure detailMessage is a simple string for JSON serialization
-    detailMessage = String(detailMessage).substring(0, 500); // Truncate if too long
-
+    
     return NextResponse.json({
-      error: 'Server Error: Failed to fetch study plans.',
-      details: detailMessage + " (Please check server logs for more information.)"
+      error: 'Server Error: Failed to fetch study plans due to an internal issue.',
+      details: `Server-side error: ${String(errorDetail).substring(0,300)} (Full details in server logs)`
     }, { status: 500 });
   }
 }
+
