@@ -109,7 +109,7 @@ export async function GET(req: Request) {
   }
 
   try {
-    const db = await getDb();
+    const db = await getDb(); // Moved getDb() call inside the try block
     const plansFromDb = await db.all(
       `SELECT id, createdAt, updatedAt, scheduleString, subjects, dailyStudyHours, studyDurationDays, subjectDetails, startDate, status, completionDate 
        FROM study_plans 
@@ -192,9 +192,11 @@ export async function GET(req: Request) {
   } catch (error) {
     console.error(`GET /api/plans - Error fetching plans for userId ${userId}:`, error);
     const err = error as Error;
-    return NextResponse.json({
+    // Ensure a JSON response is always sent on error
+    const errorResponse = {
       error: 'Failed to fetch study plans from server.',
       details: err.message || 'An unknown error occurred on the server.'
-    }, { status: 500 });
+    };
+    return NextResponse.json(errorResponse, { status: 500 });
   }
 }
