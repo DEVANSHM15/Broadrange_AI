@@ -1,3 +1,4 @@
+
 // app/api/send-welcome/route.ts
 import { NextResponse } from "next/server";
 import sgMail from "@sendgrid/mail";
@@ -20,9 +21,17 @@ export async function POST(req: Request) {
 
   try {
     await sgMail.send(msg);
+    console.log(`Welcome email successfully dispatched to SendGrid for: ${email}`);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("SendGrid error:", error);
-    return NextResponse.json({ success: false, error }, { status: 500 });
+    // It's good practice to check if the error object has more details,
+    // especially from SendGrid, which often includes response body with error info.
+    if (error && typeof error === 'object' && 'response' in error) {
+      const sgError = error as { response?: { body?: any } };
+      console.error("SendGrid response body:", sgError.response?.body);
+    }
+    return NextResponse.json({ success: false, error: "Failed to send welcome email." }, { status: 500 });
   }
 }
+
