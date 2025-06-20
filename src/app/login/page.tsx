@@ -63,7 +63,7 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginFormData) => {
     setIsSubmittingForm(true);
     try {
-      const result = await login(data.email, data.password); // login returns AuthResponse
+      const result = await login(data.email, data.password);
       
       if (result.success) {
         toast({
@@ -209,3 +209,5 @@ export default function LoginPage() {
   );
 }
         
+
+    
