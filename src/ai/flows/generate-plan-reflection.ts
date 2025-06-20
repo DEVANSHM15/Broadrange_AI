@@ -160,25 +160,11 @@ const generatePlanReflectionFlow = ai.defineFlow(
     if (!input.planDetails || !input.tasks) {
       throw new Error("Plan details and tasks are required for reflection.");
     }
-
-    try {
-      const {output} = await reflectionPrompt(input); 
-      if (!output) {
-        throw new Error("AI failed to generate a reflection. Output was null.");
-      }
-      return output;
-    } catch (error: any) {
-      // Check if the error message indicates a quota issue or 429 error
-      if (error.message && (error.message.includes('[429') || error.message.toLowerCase().includes('quota') || error.message.includes('rate limit'))) {
-        console.error("Quota exceeded during reflection generation:", error.message);
-        // Re-throw a more user-friendly/specific error for the frontend to catch
-        throw new Error(`AI Reflection API Error: You've exceeded the usage limits for generating reflections. Please try again later or check your Google Cloud project's quota settings. (Details: ${error.message.substring(0, 150)}${error.message.length > 150 ? '...' : ''})`);
-      }
-      // Log other types of errors
-      console.error("Error in generatePlanReflectionFlow during prompt call:", error);
-      // Re-throw the original error or a generic one if it's not a quota issue
-      throw new Error(`An unexpected error occurred while generating the plan reflection: ${error.message}`);
+    const {output} = await reflectionPrompt(input); 
+    if (!output) {
+      throw new Error("AI failed to generate a reflection. Output was null.");
     }
+    return output;
   }
 );
 
