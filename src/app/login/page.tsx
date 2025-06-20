@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useGoogleLogin } from '@react-oauth/google';
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address."),
@@ -24,7 +25,6 @@ const loginSchema = z.object({
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
-// Simple Google G logo SVG component
 const GoogleIcon = () => (
   <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
     <path d="M17.64 9.20455C17.64 8.56682 17.5827 7.95273 17.4764 7.36364H9V10.845H13.8436C13.635 11.9705 13.0009 12.9232 12.0477 13.5614V15.8195H14.9564C16.6582 14.2527 17.64 11.9464 17.64 9.20455Z" fill="#4285F4"/>
@@ -90,11 +90,38 @@ export default function LoginPage() {
     }
   };
 
+  const googleLogin = useGoogleLogin({
+    onSuccess: credentialResponse => {
+      console.log('Google Sign-In Success:', credentialResponse);
+      // TODO: Send credentialResponse.access_token or credentialResponse.code to your backend
+      // For now, just show a toast. Your backend would verify this token/code,
+      // find/create a user, and then log them into your app.
+      toast({
+        title: "Google Sign-In Initiated",
+        description: "Google authentication successful. Backend integration to complete app login is pending.",
+      });
+    },
+    onError: () => {
+      console.error('Google Sign-In Error');
+      toast({
+        variant: "destructive",
+        title: "Google Sign-In Failed",
+        description: "Could not sign in with Google. Please try again.",
+      });
+    },
+    // flow: 'auth-code', // Use 'auth-code' flow if you want to send code to backend for token exchange
+  });
+
   const handleGoogleSignIn = () => {
-    toast({
-      title: "Feature Coming Soon",
-      description: "Sign in with Google is not yet implemented.",
-    });
+    if (!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID) {
+      toast({
+        title: "Configuration Missing",
+        description: "Google Client ID is not configured. Google Sign-In cannot proceed.",
+        variant: "destructive",
+      });
+      return;
+    }
+    googleLogin();
   };
 
   const handleForgotPassword = () => {
@@ -208,6 +235,3 @@ export default function LoginPage() {
     </div>
   );
 }
-        
-
-    
