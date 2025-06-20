@@ -129,7 +129,7 @@ export default function DashboardPage() {
         setActiveStudyPlan(null);
         setParsedTasksForActivePlan([]);
       }
-      setPlanReflection(null);
+      setPlanReflection(null); // Reset reflection when new plan data is loaded
 
     } catch (error) {
       console.error("Dashboard: Critical error fetching plans from API:", error);
@@ -153,42 +153,47 @@ export default function DashboardPage() {
     return () => window.removeEventListener('studyPlanUpdated', handleStudyPlanUpdate);
   }, [reloadDataFromApi]);
 
-  const fetchPlanReflection = useCallback(async () => {
-      if (activeStudyPlan && activeStudyPlan.status === 'completed' && parsedTasksForActivePlan.length > 0 && activeStudyPlan.planDetails) {
-          if (isGeneratingReflection) return;
-          setIsGeneratingReflection(true);
-          try {
-              const input: GeneratePlanReflectionInput = {
-                  planDetails: activeStudyPlan.planDetails,
-                  tasks: parsedTasksForActivePlan,
-                  completionDate: activeStudyPlan.completionDate
-              };
-              const reflectionResult = await generatePlanReflection(input);
-              setPlanReflection(reflectionResult);
-          } catch (error) {
-              console.error("Dashboard: Failed to generate plan reflection:", error);
-              let detailMessage = "Could not generate plan reflection. Please try again later.";
-              if (error instanceof Error) {
-                  const errorMessageLower = error.message.toLowerCase();
-                  if (errorMessageLower.includes("429") || errorMessageLower.includes("quota") || errorMessageLower.includes("rate limit")) {
-                      detailMessage = "AI Reflection Error: API rate limit or quota exceeded. Please check your API plan or try again later.";
-                  } else if (error.message.length < 150) {
-                      detailMessage = error.message;
-                  }
-              }
-              toast({ title: "Reflection Error", description: detailMessage, variant: "destructive" });
-              setPlanReflection(null);
-          } finally {
-              setIsGeneratingReflection(false);
-          }
-      } else if (activeStudyPlan?.status !== 'completed') {
-          setPlanReflection(null);
+ const fetchPlanReflection = useCallback(async (planToReflect: ScheduleData, tasksToReflect: ScheduleTask[]) => {
+      if (!planToReflect.planDetails || !tasksToReflect || tasksToReflect.length === 0) {
+          return;
       }
-  }, [activeStudyPlan, parsedTasksForActivePlan, toast, isGeneratingReflection]);
+      setIsGeneratingReflection(true);
+      setPlanReflection(null); // Clear previous reflection
+      try {
+          const input: GeneratePlanReflectionInput = {
+              planDetails: planToReflect.planDetails,
+              tasks: tasksToReflect,
+              completionDate: planToReflect.completionDate
+          };
+          const reflectionResult = await generatePlanReflection(input);
+          setPlanReflection(reflectionResult);
+      } catch (error) {
+          console.error("Dashboard: Failed to generate plan reflection:", error);
+          let detailMessage = "Could not generate plan reflection. Please try again later.";
+          if (error instanceof Error) {
+              const errorMessageLower = error.message.toLowerCase();
+              if (errorMessageLower.includes("429") || errorMessageLower.includes("quota") || errorMessageLower.includes("rate limit")) {
+                  detailMessage = "AI Reflection Error: API rate limit or quota exceeded. Please check your API plan or try again later.";
+              } else if (error.message.length < 150) {
+                  detailMessage = error.message;
+              }
+          }
+          toast({ title: "Reflection Error", description: detailMessage, variant: "destructive" });
+          setPlanReflection(null);
+      } finally {
+          setIsGeneratingReflection(false);
+      }
+  }, [toast]); // Removed isGeneratingReflection from dependencies
 
   useEffect(() => {
-    fetchPlanReflection();
-  }, [fetchPlanReflection]);
+    if (activeStudyPlan && activeStudyPlan.status === 'completed' && parsedTasksForActivePlan.length > 0) {
+      if (!isGeneratingReflection && planReflection === null) { // Only fetch if not already generating and no reflection exists
+        fetchPlanReflection(activeStudyPlan, parsedTasksForActivePlan);
+      }
+    } else if (planReflection !== null) { // If plan is not completed, clear any existing reflection
+        setPlanReflection(null);
+    }
+  }, [activeStudyPlan, parsedTasksForActivePlan, fetchPlanReflection, isGeneratingReflection, planReflection]);
 
 
   useEffect(() => {
