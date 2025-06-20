@@ -190,18 +190,22 @@ function AnalyticsPageContent() {
     return () => window.removeEventListener('studyPlanUpdated', handleStudyPlanUpdate);
   }, [reloadDataForAnalytics]);
 
- const fetchPlanReflection = useCallback(async (plan: ScheduleData, forceFetch: boolean = false) => {
-    if (!plan.planDetails || !plan.tasks || plan.tasks.length === 0) return;
-    if (isGeneratingReflection && !forceFetch) return;
+ const fetchPlanReflection = useCallback(async (planToReflect: ScheduleData, forceRefetch: boolean = false) => {
+    if (!planToReflect.planDetails || !planToReflect.tasks || planToReflect.tasks.length === 0) {
+        return;
+    }
+    // Guard against re-entry is now primarily handled by the calling useEffect.
     
     setIsGeneratingReflection(true);
-    if (forceFetch) setPlanReflection(null);
+    if (forceRefetch) {
+        setPlanReflection(null);
+    }
     
     try {
       const input: GeneratePlanReflectionInput = {
-        planDetails: plan.planDetails,
-        tasks: plan.tasks,
-        completionDate: plan.completionDate,
+        planDetails: planToReflect.planDetails,
+        tasks: planToReflect.tasks,
+        completionDate: planToReflect.completionDate,
       };
       const reflection = await generatePlanReflection(input);
       setPlanReflection(reflection);
@@ -227,19 +231,23 @@ function AnalyticsPageContent() {
           description: detailMessage,
           variant: "destructive"
       });
-      setPlanReflection(null);
+      setPlanReflection(null); // Clear reflection on error
     } finally {
       setIsGeneratingReflection(false);
     }
-  }, [toast, isGeneratingReflection]);
+  }, [toast]); // Removed isGeneratingReflection from dependencies
 
   useEffect(() => {
     if (currentStudyPlanForAnalytics && currentStudyPlanForAnalytics.status === 'completed') {
-      fetchPlanReflection(currentStudyPlanForAnalytics, false); // Fetch normally
-    } else {
+      // Only fetch if not already generating AND reflection is not already loaded
+      if (!isGeneratingReflection && planReflection === null) {
+        fetchPlanReflection(currentStudyPlanForAnalytics, false);
+      }
+    } else if (planReflection !== null) {
+      // If the current plan is not 'completed' but we have a reflection, clear it.
       setPlanReflection(null);
     }
-  }, [currentStudyPlanForAnalytics, fetchPlanReflection]);
+  }, [currentStudyPlanForAnalytics, fetchPlanReflection, isGeneratingReflection, planReflection]);
 
 
   const performanceData = useMemo(() => {
