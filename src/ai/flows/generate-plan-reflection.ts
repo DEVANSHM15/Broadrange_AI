@@ -160,7 +160,26 @@ const generatePlanReflectionFlow = ai.defineFlow(
     if (!input.planDetails || !input.tasks) {
       throw new Error("Plan details and tasks are required for reflection.");
     }
-    const {output} = await reflectionPrompt(input); 
+    let output;
+    try {
+        const result = await reflectionPrompt(input);
+        output = result.output; 
+    } catch (error) {
+        console.error("Error calling reflectionPrompt:", error);
+        let errorMessage = "An AI processing error occurred during reflection generation.";
+        if (error instanceof Error) {
+            const msgLower = error.message.toLowerCase();
+            if (msgLower.includes("[429") || msgLower.includes("quota") || msgLower.includes("rate limit")) {
+                errorMessage = "AI Reflection Error: API rate limit or quota exceeded. Please try again later.";
+            } else if (msgLower.includes("candidate was blocked")) {
+                 errorMessage = "AI Reflection Error: Content was blocked by safety settings. Ensure plan data is appropriate.";
+            } else if (error.message.length < 150) {
+                errorMessage = error.message;
+            }
+        }
+        throw new Error(errorMessage);
+    }
+    
     if (!output) {
       throw new Error("AI failed to generate a reflection. Output was null.");
     }
@@ -174,6 +193,3 @@ export async function generatePlanReflection(
   return generatePlanReflectionFlow(input);
 }
 
-    
-
-    
