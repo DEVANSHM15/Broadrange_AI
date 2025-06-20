@@ -4,7 +4,7 @@
 import AppLayout from "@/components/AppLayout";
 import { useAuth } from "@/contexts/auth-context";
 import { PlusCircle, CheckCircle2, Flame, Brain, Lightbulb, Trophy, Award, HelpCircle, Loader2, ListChecks, Edit, BookOpen, ArchiveIcon, ClockIcon, BarChart3, Mountain } from "lucide-react"; // Added Mountain for potential use
-import { useEffect, useState, useMemo, useCallback } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react"; // Import React
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -44,7 +44,7 @@ interface PlanDisplayCardProps {
   isFocused?: boolean; 
 }
 
-const PlanDisplayCard: React.FC<PlanDisplayCardProps> = ({ plan, cardType, isFocused }) => {
+const PlanDisplayCard: React.FC<PlanDisplayCardProps> = React.memo(({ plan, cardType, isFocused }) => {
   const completedTasksCount = useMemo(() => plan.tasks.filter(task => task.completed).length, [plan.tasks]);
   const totalTasksCount = useMemo(() => plan.tasks.length, [plan.tasks]);
   const progressPercentage = useMemo(() => totalTasksCount > 0 ? Math.round((completedTasksCount / totalTasksCount) * 100) : 0, [completedTasksCount, totalTasksCount]);
@@ -123,7 +123,8 @@ const PlanDisplayCard: React.FC<PlanDisplayCardProps> = ({ plan, cardType, isFoc
       </CardFooter>
     </Card>
   );
-};
+});
+PlanDisplayCard.displayName = 'PlanDisplayCard';
 
 
 export default function AchievementsPage() {
