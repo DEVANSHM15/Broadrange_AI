@@ -33,6 +33,39 @@ const GoogleIcon = () => (
   </svg>
 );
 
+// This sub-component will conditionally use the hook.
+const GoogleSignInButton = () => {
+  const { toast } = useToast();
+  const googleLogin = useGoogleLogin({
+    onSuccess: credentialResponse => {
+      console.log('Google Sign-In Success:', credentialResponse);
+      // TODO: Send credentialResponse.access_token or credentialResponse.code to your backend
+      // For now, just show a toast. Your backend would verify this token/code,
+      // find/create a user, and then log them into your app.
+      toast({
+        title: "Google Sign-In Initiated",
+        description: "Google authentication successful. Backend integration to complete app login is pending.",
+      });
+    },
+    onError: () => {
+      console.error('Google Sign-In Error');
+      toast({
+        variant: "destructive",
+        title: "Google Sign-In Failed",
+        description: "Could not sign in with Google. Please try again.",
+      });
+    },
+    // flow: 'auth-code', // Use 'auth-code' flow if you want to send code to backend for token exchange
+  });
+
+  return (
+    <Button variant="outline" className="w-full" onClick={() => googleLogin()}>
+      <GoogleIcon />
+      <span className="ml-2">Sign in with Google</span>
+    </Button>
+  );
+};
+
 
 export default function LoginPage() {
   const router = useRouter();
@@ -90,40 +123,6 @@ export default function LoginPage() {
       });
       setIsSubmittingForm(false);
     }
-  };
-
-  const googleLogin = useGoogleLogin({
-    onSuccess: credentialResponse => {
-      console.log('Google Sign-In Success:', credentialResponse);
-      // TODO: Send credentialResponse.access_token or credentialResponse.code to your backend
-      // For now, just show a toast. Your backend would verify this token/code,
-      // find/create a user, and then log them into your app.
-      toast({
-        title: "Google Sign-In Initiated",
-        description: "Google authentication successful. Backend integration to complete app login is pending.",
-      });
-    },
-    onError: () => {
-      console.error('Google Sign-In Error');
-      toast({
-        variant: "destructive",
-        title: "Google Sign-In Failed",
-        description: "Could not sign in with Google. Please try again.",
-      });
-    },
-    // flow: 'auth-code', // Use 'auth-code' flow if you want to send code to backend for token exchange
-  });
-
-  const handleGoogleSignIn = () => {
-    if (!isGoogleSignInEnabled) {
-      toast({
-        title: "Configuration Missing",
-        description: "Google Client ID is not configured. Google Sign-In cannot proceed.",
-        variant: "destructive",
-      });
-      return;
-    }
-    googleLogin();
   };
 
   const handleForgotPassword = () => {
@@ -215,11 +214,15 @@ export default function LoginPage() {
               </span>
             </div>
           </div>
-
-          <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={!isGoogleSignInEnabled}>
-            <GoogleIcon /> 
-            <span className="ml-2">Sign in with Google</span>
-          </Button>
+          
+          {isGoogleSignInEnabled ? (
+            <GoogleSignInButton />
+          ) : (
+            <Button variant="outline" className="w-full" disabled>
+              <GoogleIcon />
+              <span className="ml-2">Google Sign-In Not Configured</span>
+            </Button>
+          )}
 
         </CardContent>
         <CardFooter className="flex flex-col items-center text-sm pt-6">
