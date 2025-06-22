@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -40,6 +39,9 @@ export default function LoginPage() {
   const { toast } = useToast();
   const { login, isLoading: authLoading, currentUser } = useAuth();
   const [isSubmittingForm, setIsSubmittingForm] = useState(false);
+
+  // Check if Google Sign-In is configured
+  const isGoogleSignInEnabled = !!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
   const {
     register,
@@ -113,7 +115,7 @@ export default function LoginPage() {
   });
 
   const handleGoogleSignIn = () => {
-    if (!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID) {
+    if (!isGoogleSignInEnabled) {
       toast({
         title: "Configuration Missing",
         description: "Google Client ID is not configured. Google Sign-In cannot proceed.",
@@ -214,7 +216,7 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <Button variant="outline" className="w-full" onClick={handleGoogleSignIn}>
+          <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={!isGoogleSignInEnabled}>
             <GoogleIcon /> 
             <span className="ml-2">Sign in with Google</span>
           </Button>

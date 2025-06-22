@@ -18,10 +18,18 @@ export function AppProviders({ children }: AppProvidersProps) {
       "the variable is correctly named and has a value, then restart your development server."
     );
   }
+  
+  // Conditionally wrap with GoogleOAuthProvider ONLY if the client ID exists.
+  // This prevents the app from crashing if the environment variable is missing.
+  if (googleClientId) {
+    return (
+        <GoogleOAuthProvider clientId={googleClientId}>
+            <AuthProvider>{children}</AuthProvider>
+        </GoogleOAuthProvider>
+    );
+  }
 
-  return (
-    <GoogleOAuthProvider clientId={googleClientId}>
-      <AuthProvider>{children}</AuthProvider>
-    </GoogleOAuthProvider>
-  );
+  // Fallback for when no Google Client ID is provided.
+  // The rest of the app can still function with standard email/password auth.
+  return <AuthProvider>{children}</AuthProvider>;
 }
