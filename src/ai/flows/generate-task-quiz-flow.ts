@@ -101,7 +101,3 @@ const generateTaskQuizFlow = ai.defineFlow(
     return output;
   }
 );
-
-// Exporting types for use elsewhere, ensuring they are correctly defined
-export type { GenerateTaskQuizInput, GenerateTaskQuizOutput };
-

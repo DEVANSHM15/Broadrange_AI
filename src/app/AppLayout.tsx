@@ -64,7 +64,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
       <main className={`flex-grow ${showAppHeader ? 'pt-4 md:pt-6' : ''}`}>
         {children}
       </main>
-      {/* Chatbot UI Removed */}
     </div>
   );
 }
