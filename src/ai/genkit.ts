@@ -1,6 +1,5 @@
 import {genkit} from 'genkit';
 import {googleAI} from '@genkit-ai/googleai';
-// OpenAI plugin import removed
 
 export const ai = genkit({
   plugins: [
