@@ -11,6 +11,7 @@ interface LoginRequestBody {
 
 export async function POST(req: Request) {
   try {
+    const db = await getDb();
     const body = await req.json() as LoginRequestBody;
     const { email, password_unsafe } = body;
 
@@ -18,7 +19,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
     }
 
-    const db = await getDb();
     // Select all necessary fields, including password_hash
     const userFromDbRow = await db.get<{
         id: number; // SQLite ID is number

@@ -19,6 +19,7 @@ const validatePlanInput = (plan: Partial<ScheduleData>, userId?: number | string
 
 export async function POST(req: Request) {
   try {
+    const db = await getDb();
     const body = await req.json();
     const { userId, planData } = body; // Expecting userId and the full ScheduleData object as planData
 
@@ -36,7 +37,6 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: validationError }, { status: 400 });
     }
 
-    const db = await getDb();
     await db.run('BEGIN TRANSACTION');
 
     // Insert into study_plans table
@@ -89,9 +89,8 @@ export async function POST(req: Request) {
 
   } catch (error: unknown) {
     console.error('API POST /api/plans - Failed to create study plan:', error);
-    let db;
     try {
-        db = await getDb();
+        const db = await getDb();
         await db.run('ROLLBACK');
     } catch (rollbackError) {
         console.error('API POST /api/plans - Failed to rollback transaction:', rollbackError);

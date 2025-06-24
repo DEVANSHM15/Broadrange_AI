@@ -99,6 +99,7 @@ export async function PUT(
   const planId = params.planId;
   
   try {
+    const db = await getDb();
     const body = await req.json();
     const { planData, userId } = body; // Expecting planData (ScheduleData) and userId
     
@@ -114,8 +115,6 @@ export async function PUT(
     if (validationError) {
         return NextResponse.json({ error: validationError }, { status: 400 });
     }
-
-    const db = await getDb();
 
     const existingPlan = await db.get('SELECT userId FROM study_plans WHERE id = ?', planId);
     if (!existingPlan) {
@@ -238,8 +237,12 @@ export async function PUT(
     return NextResponse.json(returnPlan, { status: 200 });
 
   } catch (error) {
-    const db = await getDb(); 
-    await db.run('ROLLBACK'); 
+    try {
+      const db = await getDb(); 
+      await db.run('ROLLBACK'); 
+    } catch (rollbackError) {
+      console.error(`Failed to rollback transaction for plan ${planId}:`, rollbackError);
+    }
     console.error(`Failed to update study plan ${planId}:`, error);
      if (error instanceof SyntaxError) {
         return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });

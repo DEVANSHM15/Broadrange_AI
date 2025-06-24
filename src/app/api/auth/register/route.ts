@@ -17,6 +17,7 @@ interface RegisterRequestBody {
 
 export async function POST(req: Request) {
   try {
+    const db = await getDb();
     const body = await req.json() as RegisterRequestBody;
 
     const {
@@ -40,8 +41,6 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'Security answer must be at least 3 characters long if a question is provided' }, { status: 400 });
     }
 
-
-    const db = await getDb();
 
     // Check if user already exists
     const existingUser = await db.get('SELECT id FROM users WHERE email = ?', email);
