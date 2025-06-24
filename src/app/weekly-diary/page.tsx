@@ -1,2 +1,4 @@
-// This file's content was cleared as part of a revert operation.
-// It previously contained the Weekly Diary page.
+// This page is currently not in use. Returning a null component.
+export default function WeeklyDiaryPage() {
+  return null;
+}
