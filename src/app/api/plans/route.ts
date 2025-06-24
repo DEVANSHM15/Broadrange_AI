@@ -16,10 +16,10 @@ const validatePlanInput = (plan: Partial<ScheduleData>, userId?: number | string
     return null;
 };
 
+const db = await getDb();
 
 export async function POST(req: Request) {
   try {
-    const db = await getDb();
     const body = await req.json();
     const { userId, planData } = body; // Expecting userId and the full ScheduleData object as planData
 
@@ -90,7 +90,6 @@ export async function POST(req: Request) {
   } catch (error: unknown) {
     console.error('API POST /api/plans - Failed to create study plan:', error);
     try {
-        const db = await getDb();
         await db.run('ROLLBACK');
     } catch (rollbackError) {
         console.error('API POST /api/plans - Failed to rollback transaction:', rollbackError);
@@ -122,7 +121,6 @@ export async function GET(req: Request) {
   }
 
   try {
-    const db = await getDb(); // Moved getDb() inside try
     const plansFromDb = await db.all(
       `SELECT id, createdAt, updatedAt, scheduleString, subjects, dailyStudyHours, studyDurationDays, subjectDetails, startDate, status, completionDate 
        FROM study_plans 
@@ -219,4 +217,3 @@ export async function GET(req: Request) {
     }, { status: 500 });
   }
 }
-    

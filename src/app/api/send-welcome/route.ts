@@ -3,22 +3,14 @@
 import { NextResponse } from "next/server";
 import sgMail from "@sendgrid/mail";
 
-export async function POST(req: Request) {
-  // Moved API key setup inside the handler to prevent startup crashes
-  if (process.env.SENDGRID_API_KEY) {
-    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-  } else {
-    console.warn("SENDGRID_API_KEY is not set. Skipping email dispatch.");
-    // Return a success response so the registration flow doesn't break,
-    // but log that the email was not sent.
-    return NextResponse.json({ success: true, message: "Email dispatch skipped: API key not configured." });
-  }
+sgMail.setApiKey(process.env.SENDGRID_API_KEY!); // Store in .env.local
 
+export async function POST(req: Request) {
   const { email, name } = await req.json();
 
   const msg = {
     to: email,
-    from: 'devanshm.btech23@rvu.edu.in', // Must match your SendGrid sender
+    from: 'devanshm.btech23@rvu.edu.in ', // Must match your SendGrid sender
     subject: `🎉 Welcome to Broadrange AI, ${name}!`,
     html: `
       <h2>Hi ${name},</h2>
@@ -33,7 +25,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("SendGrid error:", error);
-    // Add more detailed error logging for SendGrid
+    // It's good practice to check if the error object has more details,
+    // especially from SendGrid, which often includes response body with error info.
     if (error && typeof error === 'object' && 'response' in error) {
       const sgError = error as { response?: { body?: any } };
       console.error("SendGrid response body:", sgError.response?.body);

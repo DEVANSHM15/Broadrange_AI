@@ -11,6 +11,7 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import type { GenerateTaskQuizInput, GenerateTaskQuizOutput, QuizQuestion } from '@/types'; // Import types
+export type { GenerateTaskQuizInput, GenerateTaskQuizOutput, QuizQuestion } from '@/types'; // Re-export types
 
 const GenerateTaskQuizInputSchema = z.object({
   taskText: z.string().describe('The specific study task or topic for which to generate a quiz.'),

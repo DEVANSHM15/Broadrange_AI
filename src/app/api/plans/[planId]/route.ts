@@ -15,6 +15,7 @@ const validatePlanInputForUpdate = (plan: Partial<ScheduleData>): string | null 
     return null;
 };
 
+const db = await getDb();
 
 export async function GET(
   req: Request,
@@ -32,7 +33,6 @@ export async function GET(
   }
 
   try {
-    const db = await getDb();
     const planRow = await db.get(
       `SELECT id, userId, createdAt, updatedAt, scheduleString, subjects, dailyStudyHours, studyDurationDays, subjectDetails, startDate, status, completionDate
        FROM study_plans
@@ -99,7 +99,6 @@ export async function PUT(
   const planId = params.planId;
   
   try {
-    const db = await getDb();
     const body = await req.json();
     const { planData, userId } = body; // Expecting planData (ScheduleData) and userId
     
@@ -238,7 +237,6 @@ export async function PUT(
 
   } catch (error) {
     try {
-      const db = await getDb(); 
       await db.run('ROLLBACK'); 
     } catch (rollbackError) {
       console.error(`Failed to rollback transaction for plan ${planId}:`, rollbackError);
@@ -268,8 +266,6 @@ export async function DELETE(
   }
 
   try {
-    const db = await getDb();
-
     const plan = await db.get('SELECT userId FROM study_plans WHERE id = ?', planId);
     if (!plan) {
       return NextResponse.json({ error: 'Plan not found' }, { status: 404 });

@@ -15,9 +15,10 @@ interface RegisterRequestBody {
   securityAnswer?: string; // Plain text security answer
 }
 
+const db = await getDb();
+
 export async function POST(req: Request) {
   try {
-    const db = await getDb();
     const body = await req.json() as RegisterRequestBody;
 
     const {

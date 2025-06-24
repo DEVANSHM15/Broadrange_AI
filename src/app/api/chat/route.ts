@@ -1,9 +1,4 @@
-import { NextResponse } from 'next/server';
-
-// This endpoint is disabled.
-export async function POST(req: Request) {
-  return NextResponse.json(
-    { error: 'This feature is currently disabled.' },
-    { status: 501 } // 501 Not Implemented
-  );
-}
+// This file is intentionally left blank. 
+// It's a placeholder for a potential chatbot API endpoint.
+// Proper implementation would require defining a POST handler
+// and integrating with an AI chat flow.

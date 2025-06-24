@@ -9,9 +9,10 @@ interface LoginRequestBody {
   password_unsafe: string; // Plain text password from client
 }
 
+const db = await getDb();
+
 export async function POST(req: Request) {
   try {
-    const db = await getDb();
     const body = await req.json() as LoginRequestBody;
     const { email, password_unsafe } = body;
 

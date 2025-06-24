@@ -33,9 +33,13 @@ const GoogleIcon = () => (
   </svg>
 );
 
-// This sub-component will conditionally use the hook.
-const GoogleSignInButton = () => {
+
+export default function LoginPage() {
+  const router = useRouter();
   const { toast } = useToast();
+  const { login, isLoading: authLoading, currentUser } = useAuth();
+  const [isSubmittingForm, setIsSubmittingForm] = useState(false);
+
   const googleLogin = useGoogleLogin({
     onSuccess: credentialResponse => {
       console.log('Google Sign-In Success:', credentialResponse);
@@ -57,24 +61,6 @@ const GoogleSignInButton = () => {
     },
     // flow: 'auth-code', // Use 'auth-code' flow if you want to send code to backend for token exchange
   });
-
-  return (
-    <Button variant="outline" className="w-full" onClick={() => googleLogin()}>
-      <GoogleIcon />
-      <span className="ml-2">Sign in with Google</span>
-    </Button>
-  );
-};
-
-
-export default function LoginPage() {
-  const router = useRouter();
-  const { toast } = useToast();
-  const { login, isLoading: authLoading, currentUser } = useAuth();
-  const [isSubmittingForm, setIsSubmittingForm] = useState(false);
-
-  // Check if Google Sign-In is configured
-  const isGoogleSignInEnabled = !!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
   const {
     register,
@@ -215,14 +201,10 @@ export default function LoginPage() {
             </div>
           </div>
           
-          {isGoogleSignInEnabled ? (
-            <GoogleSignInButton />
-          ) : (
-            <Button variant="outline" className="w-full" disabled>
-              <GoogleIcon />
-              <span className="ml-2">Google Sign-In Not Configured</span>
-            </Button>
-          )}
+          <Button variant="outline" className="w-full" onClick={() => googleLogin()}>
+            <GoogleIcon />
+            <span className="ml-2">Sign in with Google</span>
+          </Button>
 
         </CardContent>
         <CardFooter className="flex flex-col items-center text-sm pt-6">
