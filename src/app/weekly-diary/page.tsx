@@ -1,4 +1,4 @@
-// This page is currently not in use. Returning a null component.
+// This page has been removed.
 export default function WeeklyDiaryPage() {
   return null;
 }
