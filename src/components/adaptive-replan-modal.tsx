@@ -86,8 +86,24 @@ export function AdaptiveReplanModal({
   const handleSubmit = async (data: ReplanFormData) => {
     setIsLoading(true);
     try {
+      let tasks = [];
+      try {
+        tasks = JSON.parse(originalScheduleJSON);
+        if (!Array.isArray(tasks)) {
+          throw new Error("Parsed schedule is not an array.");
+        }
+      } catch (e) {
+        toast({
+          variant: "destructive",
+          title: "Schedule Data Error",
+          description: "Could not read the original schedule to create a new plan.",
+        });
+        setIsLoading(false);
+        return;
+      }
+
       const input: AdaptiveRePlanningInput = {
-        originalSchedule: originalScheduleJSON,
+        tasks: tasks,
         skippedDays: data.skippedDays,
         remainingDays: data.remainingDaysForNewPlan,
         subjects: planDetails.subjects,

@@ -12,17 +12,28 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
+const TaskSchema = z.object({
+  id: z.string(),
+  date: z.string(),
+  task: z.string(),
+  completed: z.boolean(),
+  youtubeSearchQuery: z.string().optional(),
+  referenceSearchQuery: z.string().optional(),
+  subTasks: z.array(z.any()).optional(),
+  quizScore: z.number().optional(),
+  quizAttempted: z.boolean().optional(),
+  notes: z.string().optional(),
+});
+
 const AdaptiveRePlanningInputSchema = z.object({
-  originalSchedule: z
-    .string()
-    .describe("The original study schedule in JSON format. Each entry should have 'date' and 'task' fields."),
+  tasks: z.array(TaskSchema).describe("The list of all tasks from the original plan, including their completion status."),
   skippedDays: z
     .number()
     .int()
     .min(0)
     .describe('The number of days the user skipped in their study schedule.'),
-  remainingDays: z.number().int().min(0).describe("The remaining days in the study plan."),
-  subjects: z.string().describe('The subject that is being studied.'),
+  remainingDays: z.number().int().min(1).describe("The total duration for the new, revised study plan."),
+  subjects: z.string().describe('The subject(s) being studied.'),
   dailyStudyHours: z.number().describe('The number of hours available for studying per day.'),
 });
 
@@ -34,7 +45,7 @@ const AdaptiveRePlanningOutputSchema = z.object({
     .describe(
       "The revised study schedule, delivered as a JSON string. This string must parse into a JavaScript array of objects. Each object in the array represents a single day's study tasks and must contain: 'date' (string, 'YYYY-MM-DD'), 'task' (string, description of activities), an optional 'youtubeSearchQuery' (string, concise YouTube search query), and an optional 'referenceSearchQuery' (string, concise web search query for reference material). Example: '[{\"date\": \"2024-01-10\", \"task\": \"Catch up on Math: Chapter 2 for 3 hours.\", \"youtubeSearchQuery\": \"math chapter 2 algebra tutorial\", \"referenceSearchQuery\": \"algebra chapter 2 summary\"}]'"
     ),
-  summary: z.string().describe('A short summary of the changes made to the schedule.'),
+  summary: z.string().describe('A short summary of the changes made to the schedule, mentioning how uncompleted tasks were redistributed.'),
 });
 
 export type AdaptiveRePlanningOutput = z.infer<typeof AdaptiveRePlanningOutputSchema>;
@@ -47,24 +58,30 @@ const prompt = ai.definePrompt({
   name: 'adaptiveRePlanningPrompt',
   input: {schema: AdaptiveRePlanningInputSchema},
   output: {schema: AdaptiveRePlanningOutputSchema},
-  prompt: `You are an expert study plan optimizer. Given the original study schedule, the number of skipped days, the remaining days, subjects, and available daily study hours, generate a revised study schedule that fits within the remaining time.
+  prompt: `You are an expert study plan optimizer. A user has fallen behind on their study schedule and needs a revised plan. Your goal is to create a new schedule that incorporates all *uncompleted* tasks from the original plan into the new, shorter timeframe, continuing from where they left off.
 
-Original Schedule: {{{originalSchedule}}}
-Skipped Days: {{{skippedDays}}}
-Remaining Days: {{{remainingDays}}}
-Subjects: {{{subjects}}}
-Daily Study Hours: {{{dailyStudyHours}}}
+Here is the user's situation:
+- Subjects: {{{subjects}}}
+- Daily Study Hours: {{{dailyStudyHours}}}
+- New plan duration (remaining days): {{{remainingDays}}}
+- Skipped Days: {{{skippedDays}}}
+
+Here is the full list of tasks from their original plan, with their completion status:
+{{#each tasks}}
+- Date: {{this.date}}, Task: "{{this.task}}", Completed: {{this.completed}}
+{{/each}}
 
 Instructions for revision:
-1. Revise the schedule to ensure all important topics are covered within the remaining days.
-2. Provide the revised schedule as a valid JSON string that parses into an array of objects.
-3. Each object in the array corresponds to a study day and must have:
-    - 'date' (string): 'YYYY-MM-DD', correctly incremented.
-    - 'task' (string): Detailed description of study activities for the day, including subject names and estimated time allocation reflecting 'dailyStudyHours'.
-    - 'youtubeSearchQuery' (string, optional): A concise YouTube search query (3-5 words) relevant to the task.
-    - 'referenceSearchQuery' (string, optional): A concise web search query (3-5 words) for reference materials relevant to the task.
-4. Ensure tasks are actionable and clear.
-5. Also, provide a short 'summary' of the changes made to the schedule.
+1.  **Identify the uncompleted tasks.** These are all the tasks marked with "Completed: false".
+2.  **Reschedule ONLY the uncompleted tasks.** Distribute these remaining tasks across the new \`{{{remainingDays}}}\` day duration. Do not include tasks that are already completed. The new plan should feel like a continuation, not a restart.
+3.  **Adjust daily workload.** The tasks for each new day should be reasonable for the \`{{{dailyStudyHours}}}\` available. You may need to combine smaller uncompleted tasks or split larger ones across multiple days.
+4.  **Provide the output as a valid JSON string.** The output for 'revisedSchedule' must parse into an array of objects.
+5.  Each object in the JSON array represents a single day's study tasks and must have:
+    - 'date' (string): 'YYYY-MM-DD', starting from today's date and incrementing correctly for the new plan duration.
+    - 'task' (string): A clear description of the study activities for the day.
+    - 'youtubeSearchQuery' (string, optional): A concise YouTube search query.
+    - 'referenceSearchQuery' (string, optional): A concise web search query.
+6.  Provide a short 'summary' of the changes, explaining how the uncompleted tasks were redistributed. For example: "I've rescheduled the 8 remaining tasks across your new 5-day plan, starting with the topics you missed."
 `,
 });
 
@@ -79,4 +96,3 @@ const adaptiveRePlanningFlow = ai.defineFlow(
     return output!;
   }
 );
-

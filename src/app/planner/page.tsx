@@ -759,7 +759,7 @@ export default function PlannerPage() {
                 </Button>
                 {(activePlan.status === 'active') && (
                     <AdaptiveReplanModal
-                        originalScheduleJSON={JSON.stringify(activePlan.tasks.map(({id, completed, youtubeSearchQuery, referenceSearchQuery, subTasks, quizScore, quizAttempted, notes, ...rest}) => rest))}
+                        originalScheduleJSON={JSON.stringify(activePlan.tasks)}
                         planDetails={activePlan.planDetails}
                         onReplanSuccess={handleReplanSuccess}
                     />)}
@@ -791,4 +791,3 @@ export default function PlannerPage() {
 const ScrollArea = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className, children, ...props }, ref) => (
   <div ref={ref} className={cn("relative overflow-y-auto", className)} {...props}>{children}</div>));
 ScrollArea.displayName = "ScrollArea";
-
