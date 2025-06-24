@@ -7,7 +7,7 @@ import type { StoredUser, AISettings } from '@/types'; // Assuming AISettings is
 interface RegisterRequestBody {
   name: string;
   email: string;
-  password_unsafe: string; // Plain text password from client
+  password_unsafe: string; // Plain text from client
   studyLevel?: string;
   preferredStudyTime?: string;
   aiSettings?: AISettings;
@@ -99,10 +99,15 @@ export async function POST(req: Request) {
         if (!welcomeEmailResponse.ok) {
             // Log a warning if the email fails but don't block registration
             console.warn(`Welcome email failed to send for ${email}: ${welcomeEmailResponse.statusText}`);
-            // Optionally, you could try to parse the error from welcomeEmailResponse.json() for more details
+            try {
+              const errorBody = await welcomeEmailResponse.json();
+              console.warn("Welcome email error details:", errorBody);
+            } catch (e) {
+              // Ignore if error body is not JSON
+            }
         }
     } catch (emailError) {
-        console.error(`Error sending welcome email for ${email}:`, emailError);
+        console.error(`Error dispatching welcome email for ${email}:`, emailError);
     }
 
 
