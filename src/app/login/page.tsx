@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -14,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { GoogleLogin, type CredentialResponse } from '@react-oauth/google';
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address."),
@@ -76,6 +78,16 @@ export default function LoginPage() {
       });
       setIsSubmittingForm(false);
     }
+  };
+  
+  const handleGoogleLoginSuccess = (credentialResponse: CredentialResponse) => {
+    console.log("Google Login Success:", credentialResponse);
+    // In a real app, you would send the credential to your backend
+    // to verify the token, then create a session or issue a JWT.
+    toast({
+      title: "Google Login Initiated",
+      description: "This is a placeholder. Backend logic is needed to complete login.",
+    });
   };
 
   const handleForgotPassword = () => {
@@ -156,6 +168,30 @@ export default function LoginPage() {
               )}
             </Button>
           </form>
+          <div className="relative my-4">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">
+                Or continue with
+              </span>
+            </div>
+          </div>
+          <div className="flex justify-center">
+             <GoogleLogin
+                onSuccess={handleGoogleLoginSuccess}
+                onError={() => {
+                  console.error('Google Login Failed');
+                  toast({
+                    variant: "destructive",
+                    title: "Google Login Failed",
+                    description: "An error occurred during Google authentication.",
+                  });
+                }}
+                width="364px"
+              />
+          </div>
         </CardContent>
         <CardFooter className="flex flex-col items-center text-sm pt-6">
           <p className="text-muted-foreground">
