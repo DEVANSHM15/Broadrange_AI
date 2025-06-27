@@ -92,9 +92,21 @@ const adaptiveRePlanningFlow = ai.defineFlow(
   },
   async input => {
     const {output} = await prompt(input);
-    if (!output) {
+    
+    if (!output || !output.revisedSchedule) {
       throw new Error('The AI failed to generate a revised schedule. The response was empty.');
     }
+
+    try {
+      const parsedSchedule = JSON.parse(output.revisedSchedule);
+      if (!Array.isArray(parsedSchedule) || parsedSchedule.length === 0) {
+        throw new Error("The AI returned a schedule with an invalid format (not a non-empty array).");
+      }
+    } catch (e) {
+      console.error("Failed to parse revised schedule from AI:", e);
+      throw new Error("The AI returned a schedule with invalid JSON. Please try again.");
+    }
+    
     return output;
   }
 );
