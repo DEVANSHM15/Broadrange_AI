@@ -245,7 +245,7 @@ export default function PlannerPage() {
   useEffect(() => {
     if (activePlan && activePlan.status === 'active' && activePlan.tasks.length > 0) {
       const today = new Date();
-      const todayDateString = format(today, 'yyyy-MM-dd');
+      today.setHours(0, 0, 0, 0); // Normalize today to the start of the day
 
       const firstUncompletedTask = activePlan.tasks
         .filter(t => !t.completed && t.date && isValid(parseISO(t.date)))
@@ -253,9 +253,8 @@ export default function PlannerPage() {
 
       if (firstUncompletedTask) {
         const taskDate = parseISO(firstUncompletedTask.date);
-        const taskDateString = format(taskDate, 'yyyy-MM-dd');
         
-        if (taskDateString < todayDateString) {
+        if (taskDate < today) {
           const diff = differenceInDays(today, taskDate);
           setDaysBehind(diff > 0 ? diff : 1);
           setShowReplanSuggestion(true);
@@ -263,6 +262,7 @@ export default function PlannerPage() {
           setShowReplanSuggestion(false);
         }
       } else {
+        // All tasks are completed
         setShowReplanSuggestion(false);
       }
     } else {
@@ -430,10 +430,12 @@ export default function PlannerPage() {
 
   const handleReplanSuccess = async (revisedData: AdaptiveRePlanningOutput, newDurationDays: number) => {
     if (activePlan && activePlan.planDetails && currentUser?.id) {
+      setIsAnalyzing(true);
       const now = new Date().toISOString();
       const updatedPlanDetails: PlanInput = {
         ...activePlan.planDetails,
         studyDurationDays: newDurationDays,
+        startDate: format(new Date(), 'yyyy-MM-dd'), // New plan starts today
       };
       const revisedTasks = parseTasksFromString(revisedData.revisedSchedule, activePlan.id);
       
@@ -446,13 +448,21 @@ export default function PlannerPage() {
         status: 'active',
       };
       
-      setActivePlan(replannedActivePlan); 
       const success = await saveActivePlanChanges(replannedActivePlan);
+      
       if (success) {
         toast({ title: "Plan Revised", description: revisedData.summary || "Your study plan has been updated." });
+        // Set calendar focus to the start of the new plan
+        const newStartDate = revisedTasks.length > 0 && isValid(parseISO(revisedTasks[0].date)) 
+            ? parseISO(revisedTasks[0].date) 
+            : new Date();
+        setCalendarSelectedDateForDisplay(newStartDate);
+        setCalendarDisplayMonth(newStartDate);
       } else {
+        // Error toast is handled by saveActivePlanChanges
         fetchUserPlans(); 
       }
+      setIsAnalyzing(false);
     }
   };
 
