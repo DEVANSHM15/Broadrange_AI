@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Loader2, Edit3 } from "lucide-react";
-import { useState, useEffect } from "react"; // Added useEffect
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { adaptiveRePlanning, type AdaptiveRePlanningInput, type AdaptiveRePlanningOutput } from "@/ai/flows/adaptive-re-planning";
 import type { PlanInput } from "@/types";
@@ -43,12 +43,14 @@ interface AdaptiveReplanModalProps {
   originalScheduleJSON: string; // The stringified JSON of the current schedule
   planDetails: PlanInput;
   onReplanSuccess: (revisedSchedule: AdaptiveRePlanningOutput, newDurationDays: number) => void;
+  prefilledSkippedDays?: number;
 }
 
 export function AdaptiveReplanModal({
   originalScheduleJSON,
   planDetails,
   onReplanSuccess,
+  prefilledSkippedDays,
 }: AdaptiveReplanModalProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -57,30 +59,19 @@ export function AdaptiveReplanModal({
   const form = useForm<ReplanFormData>({
     resolver: zodResolver(replanSchema),
     defaultValues: {
-      skippedDays: 0,
+      skippedDays: prefilledSkippedDays ?? 0,
       remainingDaysForNewPlan: planDetails.studyDurationDays,
     },
   });
 
-  // useEffect to sync form default if planDetails.studyDurationDays changes externally
-  // or when modal is opened.
   useEffect(() => {
     if (isOpen) {
-      // When modal opens, ensure the form reflects the current plan's duration.
       form.reset({
-        skippedDays: 0, // Reset skipped days when opening
+        skippedDays: prefilledSkippedDays ?? 0,
         remainingDaysForNewPlan: planDetails.studyDurationDays,
       });
-    } else {
-      // If modal is closed and the external plan duration has changed since last form value
-      if (form.getValues("remainingDaysForNewPlan") !== planDetails.studyDurationDays) {
-        form.reset({
-          skippedDays: 0, // Keep skippedDays at 0 if synced when closed
-          remainingDaysForNewPlan: planDetails.studyDurationDays,
-        });
-      }
     }
-  }, [isOpen, planDetails.studyDurationDays, form]);
+  }, [isOpen, planDetails.studyDurationDays, prefilledSkippedDays, form]);
 
 
   const handleSubmit = async (data: ReplanFormData) => {

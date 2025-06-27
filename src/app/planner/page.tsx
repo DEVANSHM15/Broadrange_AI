@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from "@/components/ui/label";
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, CheckCircle, Trash2, Edit3, CalendarIcon as CalendarDaysIcon, Search, ChevronLeft, ChevronRight, ListTree, FileQuestion, PlusCircle, Info, FileText } from 'lucide-react';
+import { Loader2, CheckCircle, Trash2, Edit3, CalendarIcon as CalendarDaysIcon, Search, ChevronLeft, ChevronRight, ListTree, FileQuestion, PlusCircle, Info, FileText, AlertCircle } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { generateStudySchedule, type GenerateStudyScheduleInput, type GenerateStudyScheduleOutput } from "@/ai/flows/generate-study-schedule";
 import type { PlanInput, ScheduleData, ScheduleTask, ParsedRawScheduleItem, SubTask } from "@/types";
@@ -29,7 +29,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as ShadCalendar } from "@/components/ui/calendar";
 import { Checkbox } from "@/components/ui/checkbox";
-import { format, parseISO, addDays, subDays, startOfWeek, endOfWeek, isSameMonth, addMonths, subMonths, isValid } from 'date-fns';
+import { format, parseISO, addDays, subDays, startOfWeek, endOfWeek, isSameMonth, addMonths, subMonths, isValid, differenceInDays } from 'date-fns';
 import { cn } from "@/lib/utils";
 import { TaskBreakdownModal } from '@/components/task-breakdown-modal';
 import { AdaptiveReplanModal } from '@/components/adaptive-replan-modal';
@@ -100,6 +100,9 @@ export default function PlannerPage() {
 
   const [editingNoteTask, setEditingNoteTask] = useState<ScheduleTask | null>(null);
   const [currentNoteText, setCurrentNoteText] = useState<string>("");
+  
+  const [showReplanSuggestion, setShowReplanSuggestion] = useState(false);
+  const [daysBehind, setDaysBehind] = useState(0);
 
 
   const fetchUserPlans = useCallback(async () => {
@@ -238,6 +241,35 @@ export default function PlannerPage() {
   useEffect(() => {
     fetchUserPlans();
   }, [fetchUserPlans]);
+
+  // New useEffect to detect if user is behind schedule
+  useEffect(() => {
+    if (activePlan && activePlan.status === 'active' && activePlan.tasks.length > 0) {
+      const today = new Date();
+      const todayDateString = format(today, 'yyyy-MM-dd');
+
+      const firstUncompletedTask = activePlan.tasks
+        .filter(t => !t.completed && t.date && isValid(parseISO(t.date)))
+        .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime())[0];
+
+      if (firstUncompletedTask) {
+        const taskDate = parseISO(firstUncompletedTask.date);
+        const taskDateString = format(taskDate, 'yyyy-MM-dd');
+        
+        if (taskDateString < todayDateString) {
+          const diff = differenceInDays(today, taskDate);
+          setDaysBehind(diff > 0 ? diff : 1);
+          setShowReplanSuggestion(true);
+        } else {
+          setShowReplanSuggestion(false);
+        }
+      } else {
+        setShowReplanSuggestion(false);
+      }
+    } else {
+      setShowReplanSuggestion(false);
+    }
+  }, [activePlan]);
 
 
   const saveActivePlanChanges = useCallback(async (planToSave: ScheduleData | null = activePlan) => {
@@ -643,75 +675,92 @@ export default function PlannerPage() {
              if (!planEndDate) planEndDate = addDays(planStartDate, activePlan.planDetails.studyDurationDays || 30);
 
           return (
-            <div className="flex flex-col md:flex-row gap-6 -mx-6 -my-6 p-6 bg-muted/20 rounded-b-lg">
-              <div className="md:w-[340px] flex-shrink-0 bg-card p-4 rounded-lg shadow">
-                <div className="flex items-center justify-between mb-3">
-                    <Button variant="outline" size="icon" onClick={() => setCalendarDisplayMonth(subMonths(calendarDisplayMonth, 1))} aria-label="Previous month"><ChevronLeft className="h-4 w-4" /></Button>
-                    <h2 className="text-lg font-semibold text-center">{isValid(calendarDisplayMonth) ? format(calendarDisplayMonth, 'MMMM yyyy') : "Loading..."}</h2>
-                    <Button variant="outline" size="icon" onClick={() => setCalendarDisplayMonth(addMonths(calendarDisplayMonth, 1))} aria-label="Next month"><ChevronRight className="h-4 w-4" /></Button>
+            <>
+              {showReplanSuggestion && activePlan && (
+                <Alert variant="destructive" className="mb-4">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>You seem to be behind schedule!</AlertTitle>
+                  <AlertDescription className="flex items-center justify-between">
+                    <span>Your next task was {daysBehind} day{daysBehind > 1 ? 's' : ''} ago. Consider re-planning to catch up.</span>
+                    <AdaptiveReplanModal
+                        originalScheduleJSON={JSON.stringify(activePlan.tasks)}
+                        planDetails={activePlan.planDetails}
+                        onReplanSuccess={handleReplanSuccess}
+                        prefilledSkippedDays={daysBehind}
+                    />
+                  </AlertDescription>
+                </Alert>
+              )}
+              <div className="flex flex-col md:flex-row gap-6 -mx-6 -my-6 p-6 bg-muted/20 rounded-b-lg">
+                <div className="md:w-[340px] flex-shrink-0 bg-card p-4 rounded-lg shadow">
+                  <div className="flex items-center justify-between mb-3">
+                      <Button variant="outline" size="icon" onClick={() => setCalendarDisplayMonth(subMonths(calendarDisplayMonth, 1))} aria-label="Previous month"><ChevronLeft className="h-4 w-4" /></Button>
+                      <h2 className="text-lg font-semibold text-center">{isValid(calendarDisplayMonth) ? format(calendarDisplayMonth, 'MMMM yyyy') : "Loading..."}</h2>
+                      <Button variant="outline" size="icon" onClick={() => setCalendarDisplayMonth(addMonths(calendarDisplayMonth, 1))} aria-label="Next month"><ChevronRight className="h-4 w-4" /></Button>
+                  </div>
+                  <ShadCalendar
+                    mode="single" selected={calendarSelectedDateForDisplay}
+                    onSelect={(date) => { setCalendarSelectedDateForDisplay(date); if(date && isValid(date)) setCalendarDisplayMonth(date); }}
+                    month={calendarDisplayMonth} onMonthChange={setCalendarDisplayMonth}
+                    className="rounded-md border-0 shadow-none p-0"
+                    disabled={date => (planStartDate && date < startOfWeek(planStartDate)) || (planEndDate && date > endOfWeek(planEndDate))}
+                    components={{ DayContent: ({ date, activeModifiers }) => {
+                        const tasksOnDay = getTasksForDate(date);
+                        const isSel = activeModifiers.selected; const isToday = activeModifiers.today;
+                        const isCurrMonth = isValid(date) && isValid(calendarDisplayMonth) && isSameMonth(date, calendarDisplayMonth);
+                        return (<div className={`relative h-full w-full flex flex-col items-center justify-center ${!isCurrMonth ? 'text-muted-foreground/50' : ''}`}>
+                            <span>{isValid(date) ? format(date, "d") : "X"}</span>
+                            {tasksOnDay.length > 0 && (<div className={`absolute bottom-1 left-1/2 -translate-x-1/2 h-1.5 w-1.5 rounded-full ${isSel || isToday ? 'bg-primary-foreground dark:bg-primary' : 'bg-primary dark:bg-primary-foreground'}`}></div>)}
+                          </div>);
+                      },}}/>
+                  <Button onClick={startNewPlanCreation} variant="outline" className="w-full mt-4"><PlusCircle className="mr-2 h-4 w-4" /> Create New Plan</Button>
                 </div>
-                <ShadCalendar
-                  mode="single" selected={calendarSelectedDateForDisplay}
-                  onSelect={(date) => { setCalendarSelectedDateForDisplay(date); if(date && isValid(date)) setCalendarDisplayMonth(date); }}
-                  month={calendarDisplayMonth} onMonthChange={setCalendarDisplayMonth}
-                  className="rounded-md border-0 shadow-none p-0"
-                  disabled={date => (planStartDate && date < startOfWeek(planStartDate)) || (planEndDate && date > endOfWeek(planEndDate))}
-                  components={{ DayContent: ({ date, activeModifiers }) => {
-                      const tasksOnDay = getTasksForDate(date);
-                      const isSel = activeModifiers.selected; const isToday = activeModifiers.today;
-                      const isCurrMonth = isValid(date) && isValid(calendarDisplayMonth) && isSameMonth(date, calendarDisplayMonth);
-                      return (<div className={`relative h-full w-full flex flex-col items-center justify-center ${!isCurrMonth ? 'text-muted-foreground/50' : ''}`}>
-                          <span>{isValid(date) ? format(date, "d") : "X"}</span>
-                          {tasksOnDay.length > 0 && (<div className={`absolute bottom-1 left-1/2 -translate-x-1/2 h-1.5 w-1.5 rounded-full ${isSel || isToday ? 'bg-primary-foreground dark:bg-primary' : 'bg-primary dark:bg-primary-foreground'}`}></div>)}
-                        </div>);
-                    },}}/>
-                <Button onClick={startNewPlanCreation} variant="outline" className="w-full mt-4"><PlusCircle className="mr-2 h-4 w-4" /> Create New Plan</Button>
-              </div>
-              <div className="flex-grow bg-card p-4 rounded-lg shadow min-h-[400px]">
-                {calendarSelectedDateForDisplay && isValid(calendarSelectedDateForDisplay) ? (<>
-                        <h3 className="text-xl font-semibold mb-1">{format(calendarSelectedDateForDisplay, 'EEEE, MMMM d, yyyy')}</h3>
-                        <p className="text-sm text-muted-foreground mb-4">Day {activePlan.tasks.findIndex(t => { try { return format(parseISO(t.date), 'yyyy-MM-dd') === format(calendarSelectedDateForDisplay, 'yyyy-MM-dd'); } catch { return false; } }) + 1} of {activePlan.planDetails.studyDurationDays}
-                             {activePlan.status === 'completed' ? <span className="ml-2 text-green-600 font-semibold">(Completed)</span> : activePlan.status === 'archived' ? <span className="ml-2 text-gray-500 font-semibold">(Archived)</span> : ''}</p>
-                        {tasksForSelectedDate.length > 0 ? (<ScrollArea className="h-[calc(100%-100px)] pr-3">{/* Adjust height as needed */}
-                            <ul className="space-y-3">{tasksForSelectedDate.map(task => (<li key={`cal-task-${task.id}`} className={`flex items-start gap-3 text-sm p-3 rounded-md transition-all shadow-sm ${task.completed ? 'bg-green-500/10 line-through text-muted-foreground' : 'bg-background hover:bg-accent/30'}`}>
-                                <Checkbox id={`task-cal-${task.id}`} checked={task.completed} onCheckedChange={() => handleCalendarTaskToggle(task.id)} aria-labelledby={`task-cal-label-${task.id}`} disabled={activePlan?.status === 'completed' || activePlan?.status === 'archived'} className="mt-1"/>
-                                <div className="flex-1">
-                                    <Label htmlFor={`task-cal-${task.id}`} id={`task-cal-label-${task.id}`} className={`font-medium ${(activePlan?.status === 'completed' || activePlan?.status === 'archived') ? 'cursor-default' : 'cursor-pointer'}`}>{task.task}</Label>
-                                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">
-                                      {(task.youtubeSearchQuery || task.referenceSearchQuery) && (<div className="flex gap-2">
-                                         {task.youtubeSearchQuery && (<a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(task.youtubeSearchQuery)}`} target="_blank" rel="noopener noreferrer" className="text-xs text-red-500 hover:text-red-600 hover:underline flex items-center gap-1" title={`Search YouTube: ${task.youtubeSearchQuery}`} onClick={(e) => e.stopPropagation()}>
-                                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.04 6.5c.14-.48.49-.9.96-1.11a2.57 2.57 0 0 1 2.34.38l5.34 3.36a1.73 1.73 0 0 1 0 2.74l-5.34 3.36a2.57 2.57 0 0 1-2.34.38c-.47-.21-.82-.63-.96-1.11Z"/><path d="M17.55 17.28c-1.18.37-2.7.6-4.55.6-4.79 0-8.5-2.01-8.5-4.5s3.71-4.5 8.5-4.5c1.85 0 3.37.23 4.55.6Z"/><path d="M22 12a9.9 9.9 0 0 1-7.45 9.67A9.37 9.37 0 0 1 12 22c-5.23 0-9.5-2.12-9.5-4.72V16M2.5 12C2.5 7 7.5 3 12.5 3s10 4 10 9"/></svg> YT</a>)}
-                                          {task.referenceSearchQuery && (<a href={`https://www.google.com/search?q=${encodeURIComponent(task.referenceSearchQuery)}`} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:text-blue-600 hover:underline flex items-center gap-1" title={`Search Web: ${task.referenceSearchQuery}`} onClick={(e) => e.stopPropagation()}><Search className="h-3 w-3"/> Web</a>)}
-                                      </div>)}
-                                      {(activePlan?.status !== 'completed' && activePlan?.status !== 'archived') && (<>
-                                          <Button variant="ghost" size="sm" onClick={() => handleOpenBreakdownModal(task)} className="h-auto p-0 text-xs text-primary/70 hover:text-primary" title="Break down task"><ListTree className="mr-1 h-3 w-3"/> Sub-tasks ({(task.subTasks || []).length})</Button>
-                                           <Button variant="ghost" size="sm" onClick={() => handleOpenQuizModal(task)} className="h-auto p-0 text-xs text-purple-500 hover:text-purple-600" title="Take quiz"><FileQuestion className="mr-1 h-3 w-3"/> Take AI Quiz</Button>
-                                          <LogScorePopover task={task} onSave={handleSaveQuizScore} onTakeQuiz={handleOpenQuizModal} disabled={activePlan?.status === 'completed' || activePlan?.status === 'archived'}/>
-                                           <Popover open={editingNoteTask?.id === task.id} onOpenChange={(isOpen) => { if (!isOpen) { setEditingNoteTask(null); setCurrentNoteText(""); }}}>
-                                            <PopoverTrigger asChild>
-                                              <Button variant="ghost" size="sm" className="h-auto p-0 text-xs text-blue-500 hover:text-blue-600" title="Add/Edit Notes" onClick={() => handleOpenNotesPopover(task)} disabled={isAnalyzing || activePlan?.status === 'completed' || activePlan?.status === 'archived'}>
-                                                <FileText className="mr-1 h-3 w-3" /> Notes
-                                              </Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-96 z-50">
-                                              <div className="grid gap-4">
-                                                <div className="space-y-2">
-                                                  <h4 className="font-medium leading-none">Notes for task:</h4>
-                                                  <p className="text-sm text-muted-foreground truncate" title={task.task}>{task.task.substring(0,50)}{task.task.length > 50 ? '...' : ''}</p>
+                <div className="flex-grow bg-card p-4 rounded-lg shadow min-h-[400px]">
+                  {calendarSelectedDateForDisplay && isValid(calendarSelectedDateForDisplay) ? (<>
+                          <h3 className="text-xl font-semibold mb-1">{format(calendarSelectedDateForDisplay, 'EEEE, MMMM d, yyyy')}</h3>
+                          <p className="text-sm text-muted-foreground mb-4">Day {activePlan.tasks.findIndex(t => { try { return format(parseISO(t.date), 'yyyy-MM-dd') === format(calendarSelectedDateForDisplay, 'yyyy-MM-dd'); } catch { return false; } }) + 1} of {activePlan.planDetails.studyDurationDays}
+                              {activePlan.status === 'completed' ? <span className="ml-2 text-green-600 font-semibold">(Completed)</span> : activePlan.status === 'archived' ? <span className="ml-2 text-gray-500 font-semibold">(Archived)</span> : ''}</p>
+                          {tasksForSelectedDate.length > 0 ? (<ScrollArea className="h-[calc(100%-100px)] pr-3">{/* Adjust height as needed */}
+                              <ul className="space-y-3">{tasksForSelectedDate.map(task => (<li key={`cal-task-${task.id}`} className={`flex items-start gap-3 text-sm p-3 rounded-md transition-all shadow-sm ${task.completed ? 'bg-green-500/10 line-through text-muted-foreground' : 'bg-background hover:bg-accent/30'}`}>
+                                  <Checkbox id={`task-cal-${task.id}`} checked={task.completed} onCheckedChange={() => handleCalendarTaskToggle(task.id)} aria-labelledby={`task-cal-label-${task.id}`} disabled={activePlan?.status === 'completed' || activePlan?.status === 'archived'} className="mt-1"/>
+                                  <div className="flex-1">
+                                      <Label htmlFor={`task-cal-${task.id}`} id={`task-cal-label-${task.id}`} className={`font-medium ${(activePlan?.status === 'completed' || activePlan?.status === 'archived') ? 'cursor-default' : 'cursor-pointer'}`}>{task.task}</Label>
+                                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">
+                                        {(task.youtubeSearchQuery || task.referenceSearchQuery) && (<div className="flex gap-2">
+                                          {task.youtubeSearchQuery && (<a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(task.youtubeSearchQuery)}`} target="_blank" rel="noopener noreferrer" className="text-xs text-red-500 hover:text-red-600 hover:underline flex items-center gap-1" title={`Search YouTube: ${task.youtubeSearchQuery}`} onClick={(e) => e.stopPropagation()}>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.04 6.5c.14-.48.49-.9.96-1.11a2.57 2.57 0 0 1 2.34.38l5.34 3.36a1.73 1.73 0 0 1 0 2.74l-5.34 3.36a2.57 2.57 0 0 1-2.34.38c-.47-.21-.82-.63-.96-1.11Z"/><path d="M17.55 17.28c-1.18.37-2.7.6-4.55.6-4.79 0-8.5-2.01-8.5-4.5s3.71-4.5 8.5-4.5c1.85 0 3.37.23 4.55.6Z"/><path d="M22 12a9.9 9.9 0 0 1-7.45 9.67A9.37 9.37 0 0 1 12 22c-5.23 0-9.5-2.12-9.5-4.72V16M2.5 12C2.5 7 7.5 3 12.5 3s10 4 10 9"/></svg> YT</a>)}
+                                            {task.referenceSearchQuery && (<a href={`https://www.google.com/search?q=${encodeURIComponent(task.referenceSearchQuery)}`} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:text-blue-600 hover:underline flex items-center gap-1" title={`Search Web: ${task.referenceSearchQuery}`} onClick={(e) => e.stopPropagation()}><Search className="h-3 w-3"/> Web</a>)}
+                                        </div>)}
+                                        {(activePlan?.status !== 'completed' && activePlan?.status !== 'archived') && (<>
+                                            <Button variant="ghost" size="sm" onClick={() => handleOpenBreakdownModal(task)} className="h-auto p-0 text-xs text-primary/70 hover:text-primary" title="Break down task"><ListTree className="mr-1 h-3 w-3"/> Sub-tasks ({(task.subTasks || []).length})</Button>
+                                            <Button variant="ghost" size="sm" onClick={() => handleOpenQuizModal(task)} className="h-auto p-0 text-xs text-purple-500 hover:text-purple-600" title="Take quiz"><FileQuestion className="mr-1 h-3 w-3"/> Take AI Quiz</Button>
+                                            <LogScorePopover task={task} onSave={handleSaveQuizScore} onTakeQuiz={handleOpenQuizModal} disabled={activePlan?.status === 'completed' || activePlan?.status === 'archived'}/>
+                                            <Popover open={editingNoteTask?.id === task.id} onOpenChange={(isOpen) => { if (!isOpen) { setEditingNoteTask(null); setCurrentNoteText(""); }}}>
+                                              <PopoverTrigger asChild>
+                                                <Button variant="ghost" size="sm" className="h-auto p-0 text-xs text-blue-500 hover:text-blue-600" title="Add/Edit Notes" onClick={() => handleOpenNotesPopover(task)} disabled={isAnalyzing || activePlan?.status === 'completed' || activePlan?.status === 'archived'}>
+                                                  <FileText className="mr-1 h-3 w-3" /> Notes
+                                                </Button>
+                                              </PopoverTrigger>
+                                              <PopoverContent className="w-96 z-50">
+                                                <div className="grid gap-4">
+                                                  <div className="space-y-2">
+                                                    <h4 className="font-medium leading-none">Notes for task:</h4>
+                                                    <p className="text-sm text-muted-foreground truncate" title={task.task}>{task.task.substring(0,50)}{task.task.length > 50 ? '...' : ''}</p>
+                                                  </div>
+                                                  <div className="grid gap-2">
+                                                    <Textarea id={`notes-${task.id}`} value={currentNoteText} onChange={(e) => setCurrentNoteText(e.target.value)} placeholder="Type your short notes here..." rows={3} className="break-words w-full" />
+                                                  </div>
+                                                  <Button onClick={handleSaveNote} disabled={isAnalyzing}>Save Notes</Button>
                                                 </div>
-                                                <div className="grid gap-2">
-                                                  <Textarea id={`notes-${task.id}`} value={currentNoteText} onChange={(e) => setCurrentNoteText(e.target.value)} placeholder="Type your short notes here..." rows={3} className="break-words w-full" />
-                                                </div>
-                                                <Button onClick={handleSaveNote} disabled={isAnalyzing}>Save Notes</Button>
-                                              </div>
-                                            </PopoverContent>
-                                          </Popover>
-                                        </>)}</div></div></li>))}</ul></ScrollArea>) 
-                        : (<p className="text-center text-muted-foreground pt-12">No tasks scheduled for this day.</p>)}
-                    </>) 
-                : (<p className="text-center text-muted-foreground pt-12">Select a date to see tasks.</p>)}
+                                              </PopoverContent>
+                                            </Popover>
+                                          </>)}</div></div></li>))}</ul></ScrollArea>) 
+                          : (<p className="text-center text-muted-foreground pt-12">No tasks scheduled for this day.</p>)}
+                      </>) 
+                  : (<p className="text-center text-muted-foreground pt-12">Select a date to see tasks.</p>)}
+                </div>
               </div>
-            </div>
+            </>
           );
       default: return null;
     }
