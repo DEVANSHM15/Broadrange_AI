@@ -445,11 +445,12 @@ export default function PlannerPage() {
         const revisedTasks = parseTasksFromString(revisedData.revisedSchedule, activePlan.id);
 
         const replannedData: ScheduleData = {
-            ...activePlan,
+            id: activePlan.id,
+            createdAt: activePlan.createdAt,
+            updatedAt: now,
             scheduleString: revisedData.revisedSchedule,
             tasks: revisedTasks,
             planDetails: updatedPlanDetails,
-            updatedAt: now,
             status: 'active',
         };
         

@@ -92,6 +92,9 @@ const adaptiveRePlanningFlow = ai.defineFlow(
   },
   async input => {
     const {output} = await prompt(input);
-    return output!;
+    if (!output) {
+      throw new Error('The AI failed to generate a revised schedule. The response was empty.');
+    }
+    return output;
   }
 );
