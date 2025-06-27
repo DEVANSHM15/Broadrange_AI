@@ -58,29 +58,29 @@ const prompt = ai.definePrompt({
   name: 'adaptiveRePlanningPrompt',
   input: {schema: AdaptiveRePlanningInputSchema},
   output: {schema: AdaptiveRePlanningOutputSchema},
-  prompt: `You are an expert study plan optimizer. A user has fallen behind on their study schedule and needs a revised plan. **Your primary goal is to create a new schedule that seamlessly continues from where the user left off, only rescheduling tasks that were not completed.** Do not restart subjects from the beginning.
+  prompt: `You are an expert study plan optimizer. A user has fallen behind on their study schedule and needs a revised plan. Your goal is to create a new, realistic schedule that helps them catch up by only rescheduling uncompleted tasks.
 
-Here is the user's situation:
+**User's Situation:**
 - Subjects: {{{subjects}}}
 - Daily Study Hours: {{{dailyStudyHours}}}
-- New plan duration (remaining days): {{{remainingDays}}}
+- New Plan Duration: {{{remainingDays}}} days
 - Skipped Days: {{{skippedDays}}}
 
-Here is the user's original plan with their progress. Pay close attention to the 'Completed' status for each task:
+**User's Progress So Far:**
+Here is the user's original plan. Pay close attention to the 'completed' status.
 {{#each tasks}}
-- Date: {{this.date}}, Task: "{{this.task}}", Completed: {{this.completed}}
+- Task: "{{this.task}}" on {{this.date}} - Completed: {{this.completed}}
 {{/each}}
 
-**Instructions for the revised plan:**
-1.  **Identify Uncompleted Work:** Carefully review the list above and gather all tasks where \`Completed\` is \`false\`. These are the only tasks you need to worry about.
-2.  **Create a Continuation Plan:** Take the list of uncompleted tasks and distribute them logically across the new \`{{{remainingDays}}}\` day timeframe. Start the new plan with the very next topic the user was supposed to study.
-3.  **Do Not Include Completed Tasks:** The revised schedule must not contain any tasks that were marked as \`Completed: true\`. The new plan must feel like a direct continuation.
-4.  **Balance the Workload:** Adjust the daily workload to be reasonable for the \`{{{dailyStudyHours}}}\` available. You might need to combine smaller uncompleted tasks or split larger ones across multiple days.
-5.  **Format the Output:**
-    - The \`revisedSchedule\` must be a valid JSON string that can be parsed into a JavaScript array of objects.
-    - Each object in the array represents a day and must have: \`date\` (string, 'YYYY-MM-DD'), \`task\` (string, description), \`youtubeSearchQuery\` (optional string), and \`referenceSearchQuery\` (optional string).
-    - Ensure dates start from today and increment correctly.
-6.  **Summarize Your Changes:** Provide a short \`summary\` explaining how you've redistributed the remaining work. For example: "I've rescheduled the 8 remaining tasks across your new 5-day plan, starting with the topics you missed."
+**Your Task: Create a Revised Continuation Plan**
+
+1.  **Analyze and Filter:** First, identify all tasks from the list above where \`Completed\` is \`false\`. These are the only tasks you need to reschedule. Ignore all tasks where \`Completed\` is \`true\`.
+2.  **Reschedule Logically:** Take this list of uncompleted tasks and distribute them across the \`{{{remainingDays}}}\`-day plan. The new schedule should start with the earliest uncompleted task from the original plan. **Do not restart subjects from the beginning.** The new plan must be a seamless continuation.
+3.  **Balance the Workload:** Adjust the daily workload to be reasonable for the \`{{{dailyStudyHours}}}\` available. You can combine smaller topics into a single day or split larger topics across multiple days.
+4.  **Format the Output Strictly:**
+    - The \`revisedSchedule\` field MUST be a valid JSON string that can be parsed into a JavaScript array of objects.
+    - Each object in the array must contain: \`date\` (string, 'YYYY-MM-DD', starting from today and incrementing), \`task\` (string, description), \`youtubeSearchQuery\` (optional string), and \`referenceSearchQuery\` (optional string).
+5.  **Provide a Summary:** In the \`summary\` field, write a brief, encouraging message explaining the changes. For example: "I've rescheduled the 8 remaining tasks across your new 5-day plan, starting with the topics you missed."
 `,
 });
 

@@ -38,32 +38,31 @@ import { QuizModal } from '@/components/quiz-modal';
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { useSearchParams } from 'next/navigation'; 
 
-
-function parseTasksFromString(scheduleString: string, planId: string, existingTasks?: ScheduleTask[]): ScheduleTask[] {
+function parseTasksFromString(scheduleString: string, planId: string): ScheduleTask[] {
   try {
     const parsed = JSON.parse(scheduleString) as ParsedRawScheduleItem[];
     if (Array.isArray(parsed) && parsed.every(item => typeof item.date === 'string' && typeof item.task === 'string')) {
       return parsed.map((item, index) => {
-        const existingTask = existingTasks?.find(et => et.id && et.id.startsWith(`task-${planId}-${index}`)); // Less strict matching
+        // For a new or revised schedule, we always create new tasks with new IDs and completed: false state.
         return {
-          ...item,
           date: item.date,
-          id: existingTask?.id || `task-${planId}-${index}-${new Date(item.date).getTime()}-${Math.random().toString(36).substring(2,9)}`,
-          completed: existingTask ? Boolean(existingTask.completed) : false,
+          task: item.task,
+          id: `task-${planId}-${new Date(item.date).getTime()}-${index}-${Math.random().toString(36).substring(2,9)}`, // More unique ID
+          completed: false, // ALL tasks in a new/revised schedule start as incomplete.
           youtubeSearchQuery: item.youtubeSearchQuery,
           referenceSearchQuery: item.referenceSearchQuery,
-          subTasks: existingTask?.subTasks || [],
-          quizScore: existingTask?.quizScore,
-          quizAttempted: existingTask ? Boolean(existingTask.quizAttempted) : false,
-          notes: existingTask?.notes || undefined,
+          subTasks: [], // Sub-tasks are not carried over in a re-plan for simplicity. Can be added later.
+          quizScore: undefined,
+          quizAttempted: false,
+          notes: undefined,
         };
       });
     }
     console.warn("[PlannerPage ParseTasks] Schedule string did not parse into expected array of objects. String:", scheduleString.substring(0,100));
-    return existingTasks || [];
+    return []; // Return empty array on failure
   } catch (error) {
     console.warn("[PlannerPage ParseTasks] Failed to parse schedule string:", error, "String was:", scheduleString.substring(0,100));
-    return existingTasks || [];
+    return []; // Return empty array on failure
   }
 }
 
@@ -436,7 +435,7 @@ export default function PlannerPage() {
         ...activePlan.planDetails,
         studyDurationDays: newDurationDays,
       };
-      const revisedTasks = parseTasksFromString(revisedData.revisedSchedule, activePlan.id, activePlan.tasks);
+      const revisedTasks = parseTasksFromString(revisedData.revisedSchedule, activePlan.id);
       
       const replannedActivePlan: ScheduleData = {
         ...activePlan,
