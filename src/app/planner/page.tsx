@@ -241,7 +241,7 @@ export default function PlannerPage() {
     fetchUserPlans();
   }, [fetchUserPlans]);
 
-  // New useEffect to detect if user is behind schedule
+  // useEffect to detect if user is behind schedule
   useEffect(() => {
     if (activePlan && activePlan.status === 'active' && activePlan.tasks.length > 0) {
       const today = new Date();
@@ -428,43 +428,74 @@ export default function PlannerPage() {
       });
   };
 
-  const handleReplanSuccess = async (revisedData: AdaptiveRePlanningOutput, newDurationDays: number) => {
-    if (activePlan && activePlan.planDetails && currentUser?.id) {
-      setIsAnalyzing(true);
-      const now = new Date().toISOString();
-      const updatedPlanDetails: PlanInput = {
-        ...activePlan.planDetails,
-        studyDurationDays: newDurationDays,
-        startDate: format(new Date(), 'yyyy-MM-dd'), // New plan starts today
-      };
-      const revisedTasks = parseTasksFromString(revisedData.revisedSchedule, activePlan.id);
-      
-      const replannedActivePlan: ScheduleData = {
-        ...activePlan,
-        scheduleString: revisedData.revisedSchedule,
-        tasks: revisedTasks,
-        planDetails: updatedPlanDetails,
-        updatedAt: now,
-        status: 'active',
-      };
-      
-      const success = await saveActivePlanChanges(replannedActivePlan);
-      
-      if (success) {
+  const handleReplanSuccess = useCallback(async (revisedData: AdaptiveRePlanningOutput, newDurationDays: number) => {
+    if (!activePlan || !activePlan.planDetails || !currentUser?.id) {
+        toast({ title: "Error", description: "Cannot re-plan without an active plan and user session.", variant: "destructive" });
+        return;
+    }
+
+    setIsAnalyzing(true);
+    try {
+        const now = new Date().toISOString();
+        const updatedPlanDetails: PlanInput = {
+            ...activePlan.planDetails,
+            studyDurationDays: newDurationDays,
+            startDate: format(new Date(), 'yyyy-MM-dd'),
+        };
+        const revisedTasks = parseTasksFromString(revisedData.revisedSchedule, activePlan.id);
+
+        const replannedData: ScheduleData = {
+            ...activePlan,
+            scheduleString: revisedData.revisedSchedule,
+            tasks: revisedTasks,
+            planDetails: updatedPlanDetails,
+            updatedAt: now,
+            status: 'active',
+        };
+        
+        const response = await fetch(`/api/plans/${activePlan.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: currentUser.id, planData: replannedData }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || `Failed to save revised plan: ${response.statusText}`);
+        }
+        
+        const updatedPlanFromServer: ScheduleData = await response.json();
+        
+        const processedPlan = {
+            ...updatedPlanFromServer,
+            tasks: (updatedPlanFromServer.tasks || []).map(t => ({
+                ...t,
+                subTasks: t.subTasks || [],
+                quizAttempted: t.quizAttempted || false,
+                notes: t.notes || undefined,
+            }))
+        };
+        
+        setActivePlan(processedPlan);
+        setAllUserPlans(prev => prev.map(p => p.id === processedPlan.id ? processedPlan : p));
+
         toast({ title: "Plan Revised", description: revisedData.summary || "Your study plan has been updated." });
-        // Set calendar focus to the start of the new plan
+        
         const newStartDate = revisedTasks.length > 0 && isValid(parseISO(revisedTasks[0].date)) 
             ? parseISO(revisedTasks[0].date) 
             : new Date();
         setCalendarSelectedDateForDisplay(newStartDate);
         setCalendarDisplayMonth(newStartDate);
-      } else {
-        // Error toast is handled by saveActivePlanChanges
-        fetchUserPlans(); 
-      }
-      setIsAnalyzing(false);
+        
+        window.dispatchEvent(new CustomEvent('studyPlanUpdated'));
+
+    } catch (error) {
+        console.error("Failed during re-plan process:", error);
+        toast({ title: "Error Revising Plan", description: (error as Error).message, variant: "destructive" });
+    } finally {
+        setIsAnalyzing(false);
     }
-  };
+  }, [activePlan, currentUser, toast]);
 
   const startNewPlanCreation = () => {
     setActivePlan(null); 
