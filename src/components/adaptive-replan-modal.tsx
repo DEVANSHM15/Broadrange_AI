@@ -1,4 +1,3 @@
-
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -105,20 +104,22 @@ export function AdaptiveReplanModal({
       
       if (result && result.revisedSchedule) {
         onReplanSuccess(result, data.remainingDaysForNewPlan);
-        toast({
-          title: "Plan Revised Successfully!",
-          description: result.summary || "Your study plan has been updated.",
-        });
+        // The success toast is now handled by the parent component (planner/page.tsx)
         setIsOpen(false);
       } else {
         throw new Error("AI did not return a revised schedule.");
       }
     } catch (error) {
       console.error("Adaptive re-planning error:", error);
+      let detailMessage = "Could not revise the plan. Please try again.";
+      if (error instanceof Error) {
+        // If the error message is very long, it's likely raw data. Show a generic message instead.
+        detailMessage = error.message.length > 200 ? "An unexpected error occurred during re-planning." : error.message;
+      }
       toast({
         variant: "destructive",
         title: "Re-planning Failed",
-        description: error instanceof Error ? error.message : "Could not revise the plan. Please try again.",
+        description: detailMessage,
       });
     } finally {
       setIsLoading(false);
