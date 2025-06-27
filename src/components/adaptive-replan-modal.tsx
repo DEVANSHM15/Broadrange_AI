@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -26,7 +27,7 @@ import { Loader2, Edit3 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { adaptiveRePlanning, type AdaptiveRePlanningInput, type AdaptiveRePlanningOutput } from "@/ai/flows/adaptive-re-planning";
-import type { PlanInput } from "@/types";
+import type { PlanInput, ScheduleTask } from "@/types";
 
 const replanSchema = z.object({
   skippedDays: z.coerce.number().int().min(0, "Skipped days cannot be negative."),
@@ -76,7 +77,7 @@ export function AdaptiveReplanModal({
   const handleSubmit = async (data: ReplanFormData) => {
     setIsLoading(true);
     try {
-      let tasks = [];
+      let tasks: ScheduleTask[] = [];
       try {
         tasks = JSON.parse(originalScheduleJSON);
         if (!Array.isArray(tasks)) {
@@ -92,8 +93,16 @@ export function AdaptiveReplanModal({
         return;
       }
 
+      // **FIX:** Simplify the task data sent to the AI to reduce prompt complexity and prevent overload.
+      const simplifiedTasks = tasks.map((task) => ({
+        id: task.id,
+        date: task.date,
+        task: task.task,
+        completed: task.completed,
+      }));
+
       const input: AdaptiveRePlanningInput = {
-        tasks: tasks,
+        tasks: simplifiedTasks, // Use the simplified list
         skippedDays: data.skippedDays,
         remainingDays: data.remainingDaysForNewPlan,
         subjects: planDetails.subjects,
@@ -104,17 +113,15 @@ export function AdaptiveReplanModal({
       
       if (result && result.revisedSchedule) {
         onReplanSuccess(result, data.remainingDaysForNewPlan);
-        // The success toast is now handled by the parent component (planner/page.tsx)
         setIsOpen(false);
       } else {
         throw new Error("AI did not return a revised schedule.");
       }
     } catch (error) {
       console.error("Adaptive re-planning error:", error);
-      let detailMessage = "Could not revise the plan. Please try again.";
-      if (error instanceof Error) {
-        // If the error message is very long, it's likely raw data. Show a generic message instead.
-        detailMessage = error.message.length > 200 ? "An unexpected error occurred during re-planning." : error.message;
+      let detailMessage = "An unexpected error occurred during re-planning.";
+      if (error instanceof Error && error.message.length < 200) {
+        detailMessage = error.message;
       }
       toast({
         variant: "destructive",

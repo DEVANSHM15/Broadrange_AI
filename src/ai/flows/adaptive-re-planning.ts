@@ -74,12 +74,17 @@ Here is the user's original plan. Pay close attention to the 'completed' status.
 
 **Your Task: Create a Revised Continuation Plan**
 
-1.  **Analyze and Filter:** First, identify all tasks from the list above where \`Completed\` is \`false\`. These are the only tasks you need to reschedule. Ignore all tasks where \`Completed\` is \`true\`.
-2.  **Reschedule Logically:** Take this list of uncompleted tasks and distribute them across the \`{{{remainingDays}}}\`-day plan. The new schedule should start with the earliest uncompleted task from the original plan. **Do not restart subjects from the beginning.** The new plan must be a seamless continuation.
-3.  **Balance the Workload:** Adjust the daily workload to be reasonable for the \`{{{dailyStudyHours}}}\` available. You can combine smaller topics into a single day or split larger topics across multiple days.
-4.  **Format the Output Strictly:**
-    - The \`revisedSchedule\` field MUST be a valid JSON string that can be parsed into a JavaScript array of objects.
-    - Each object in the array must contain: \`date\` (string, 'YYYY-MM-DD', starting from today and incrementing), \`task\` (string, description), \`youtubeSearchQuery\` (optional string), and \`referenceSearchQuery\` (optional string).
+1.  **Analyze and Filter:** First, identify ALL tasks from the list above where \`Completed\` is \`false\`. These are the ONLY tasks you need to reschedule. Completely ignore all tasks where \`Completed\` is \`true\`.
+2.  **Reschedule Logically:** Distribute this list of uncompleted tasks across the \`{{{remainingDays}}}\`-day plan. The new schedule should be a seamless continuation, starting with the earliest uncompleted task. **Do not restart subjects from the beginning.**
+3.  **Balance the Workload:** Adjust the daily workload to be reasonable for the \`{{{dailyStudyHours}}}\` available. You can combine smaller topics into a single day or split larger topics across multiple days if necessary.
+4.  **Format the Output Strictly:** Your output must be a valid JSON object with two keys: \`revisedSchedule\` and \`summary\`.
+    - The \`revisedSchedule\` value MUST be a JSON string that can be parsed into a JavaScript array of objects. Do not output a raw array, it must be a string.
+    - Each object in the array represents a single day and MUST contain:
+        - \`date\` (string, 'YYYY-MM-DD', starting from today and incrementing for each subsequent day).
+        - \`task\` (string, description of activities for that day).
+        - \`youtubeSearchQuery\` (string, optional, concise YouTube search query).
+        - \`referenceSearchQuery\` (string, optional, concise web search query).
+    - Example for \`revisedSchedule\` string: \`'[{\"date\": \"2024-06-28\", \"task\": \"Catch up on Math: Chapter 2 for 3 hours.\", \"youtubeSearchQuery\": \"math chapter 2 algebra tutorial\", \"referenceSearchQuery\": \"algebra chapter 2 summary\"}]'\`
 5.  **Provide a Summary:** In the \`summary\` field, write a brief, encouraging message explaining the changes. For example: "I've rescheduled the 8 remaining tasks across your new 5-day plan, starting with the topics you missed."
 `,
 });
