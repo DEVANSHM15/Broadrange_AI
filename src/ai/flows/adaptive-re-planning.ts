@@ -58,7 +58,7 @@ const prompt = ai.definePrompt({
   name: 'adaptiveRePlanningPrompt',
   input: {schema: AdaptiveRePlanningInputSchema},
   output: {schema: AdaptiveRePlanningOutputSchema},
-  prompt: `You are an expert study plan optimizer. A user has fallen behind on their study schedule and needs a revised plan. Your goal is to create a new schedule that incorporates all *uncompleted* tasks from the original plan into the new, shorter timeframe, continuing from where they left off.
+  prompt: `You are an expert study plan optimizer. A user has fallen behind on their study schedule and needs a revised plan. **Your primary goal is to create a new schedule that seamlessly continues from where the user left off, only rescheduling tasks that were not completed.** Do not restart subjects from the beginning.
 
 Here is the user's situation:
 - Subjects: {{{subjects}}}
@@ -66,22 +66,21 @@ Here is the user's situation:
 - New plan duration (remaining days): {{{remainingDays}}}
 - Skipped Days: {{{skippedDays}}}
 
-Here is the full list of tasks from their original plan, with their completion status:
+Here is the user's original plan with their progress. Pay close attention to the 'Completed' status for each task:
 {{#each tasks}}
 - Date: {{this.date}}, Task: "{{this.task}}", Completed: {{this.completed}}
 {{/each}}
 
-Instructions for revision:
-1.  **Identify the uncompleted tasks.** These are all the tasks marked with "Completed: false".
-2.  **Reschedule ONLY the uncompleted tasks.** Distribute these remaining tasks across the new \`{{{remainingDays}}}\` day duration. Do not include tasks that are already completed. The new plan should feel like a continuation, not a restart.
-3.  **Adjust daily workload.** The tasks for each new day should be reasonable for the \`{{{dailyStudyHours}}}\` available. You may need to combine smaller uncompleted tasks or split larger ones across multiple days.
-4.  **Provide the output as a valid JSON string.** The output for 'revisedSchedule' must parse into an array of objects.
-5.  Each object in the JSON array represents a single day's study tasks and must have:
-    - 'date' (string): 'YYYY-MM-DD', starting from today's date and incrementing correctly for the new plan duration.
-    - 'task' (string): A clear description of the study activities for the day.
-    - 'youtubeSearchQuery' (string, optional): A concise YouTube search query.
-    - 'referenceSearchQuery' (string, optional): A concise web search query.
-6.  Provide a short 'summary' of the changes, explaining how the uncompleted tasks were redistributed. For example: "I've rescheduled the 8 remaining tasks across your new 5-day plan, starting with the topics you missed."
+**Instructions for the revised plan:**
+1.  **Identify Uncompleted Work:** Carefully review the list above and gather all tasks where \`Completed\` is \`false\`. These are the only tasks you need to worry about.
+2.  **Create a Continuation Plan:** Take the list of uncompleted tasks and distribute them logically across the new \`{{{remainingDays}}}\` day timeframe. Start the new plan with the very next topic the user was supposed to study.
+3.  **Do Not Include Completed Tasks:** The revised schedule must not contain any tasks that were marked as \`Completed: true\`. The new plan must feel like a direct continuation.
+4.  **Balance the Workload:** Adjust the daily workload to be reasonable for the \`{{{dailyStudyHours}}}\` available. You might need to combine smaller uncompleted tasks or split larger ones across multiple days.
+5.  **Format the Output:**
+    - The \`revisedSchedule\` must be a valid JSON string that can be parsed into a JavaScript array of objects.
+    - Each object in the array represents a day and must have: \`date\` (string, 'YYYY-MM-DD'), \`task\` (string, description), \`youtubeSearchQuery\` (optional string), and \`referenceSearchQuery\` (optional string).
+    - Ensure dates start from today and increment correctly.
+6.  **Summarize Your Changes:** Provide a short \`summary\` explaining how you've redistributed the remaining work. For example: "I've rescheduled the 8 remaining tasks across your new 5-day plan, starting with the topics you missed."
 `,
 });
 
