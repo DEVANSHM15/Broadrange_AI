@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview A helpful study assistant chatbot with knowledge of the application.
@@ -8,19 +7,11 @@ import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import type { StudyAssistantChatInput, StudyAssistantChatOutput } from '@/types';
 
-const StudyAssistantChatInputSchema = z.object({
-  query: z.string().describe("The user's message to the assistant."),
-});
-
-const StudyAssistantChatOutputSchema = z.object({
-  response: z.string().describe("The assistant's text response to the user."),
-});
-
 export async function askStudyAssistant(input: StudyAssistantChatInput): Promise<StudyAssistantChatOutput> {
   try {
      const llmResponse = await ai.generate({
       model: 'googleai/gemini-pro',
-      system: `You are a friendly and helpful study assistant for the "Broadrange AI" application.
+      prompt: `You are a friendly and helpful study assistant for the "Broadrange AI" application.
 Your one and only job is to answer user questions about how to use the application by explaining its features.
 You must not attempt to perform actions or navigate. You only provide helpful, explanatory information.
 
@@ -43,8 +34,10 @@ When a user asks a question, use this information to provide a clear and concise
 *   You: "You can find all of your past study plans, including active, completed, and archived ones, on the 'Progress Hub' page."
 
 *   User: "What is the analytics page for?"
-*   You: "The Analytics page helps you understand your study habits! It shows charts on your performance and, for completed plans, provides an AI-generated reflection on your consistency and offers suggestions for your next plan."`,
-      prompt: input.query,
+*   You: "The Analytics page helps you understand your study habits! It shows charts on your performance and, for completed plans, provides an AI-generated reflection on your consistency and offers suggestions for your next plan."
+
+---
+User's Question: "${input.query}"`,
     });
 
     return {
