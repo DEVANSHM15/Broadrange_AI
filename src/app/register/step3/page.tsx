@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -12,7 +13,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormField, FormItem, FormControl, FormMessage } from "@/components/ui/form"; 
 import Image from "next/image";
 
@@ -138,24 +138,24 @@ export default function RegisterStep3Page() {
 
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
-      <div className="flex items-center gap-2 mb-8 text-2xl font-semibold text-primary">
-        <Image src="https://www.broadrange.ai/images/broadrange-logo.jpg" alt="Broadrange AI Logo" width={108} height={28} className="rounded-lg"/>
-        <span>CodeXStudy</span>
-      </div>
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="text-2xl text-center">AI Agent Setup</CardTitle>
-          <CardDescription className="text-center">
-            Step 3 of 3: Configure your CodeXStudy assistants.
-          </CardDescription>
-          <div className="flex justify-center gap-2 pt-2">
-            {[1,2,3].map(step => (
-              <div key={step} className={`h-2 w-8 rounded-full ${step === 3 ? 'bg-primary' : 'bg-primary/50'}`}></div>
-            ))}
+    <div className="w-full lg:grid min-h-screen lg:grid-cols-2">
+       <div className="flex items-center justify-center py-12 animate-in fade-in-0 slide-in-from-left-2 duration-1000">
+        <div className="mx-auto grid w-[400px] max-w-full gap-6 px-4">
+          <div className="grid gap-2 text-center">
+             <Link href="/" className="flex justify-center items-center gap-2 mb-4 text-2xl font-semibold text-primary">
+              <Image src="https://www.broadrange.ai/images/broadrange-logo.jpg" alt="Broadrange AI Logo" width={108} height={32} className="h-8 w-auto rounded-lg"/>
+              <span>CodeXStudy</span>
+            </Link>
+            <h1 className="text-3xl font-bold">AI Agent Setup</h1>
+            <p className="text-balance text-muted-foreground">
+              Step 3 of 3: Configure your CodeXStudy assistants.
+            </p>
+             <div className="flex justify-center gap-2 pt-2">
+                {[1,2,3].map(step => (
+                  <div key={step} className={`h-2 w-8 rounded-full ${step === 3 ? 'bg-primary' : 'bg-primary/50'}`}></div>
+                ))}
+            </div>
           </div>
-        </CardHeader>
-        <CardContent>
           <Form {...form}> 
             <form onSubmit={form.handleSubmit(onFinalSubmit)} className="space-y-6"> 
               <div className="space-y-4">
@@ -206,13 +206,18 @@ export default function RegisterStep3Page() {
               </div>
             </form>
           </Form>
-        </CardContent>
-         <CardFooter className="flex flex-col items-center text-sm">
-           <Link href="/" className="mt-4 text-primary hover:underline">
-            &larr; Back to Home
-          </Link>
-        </CardFooter>
-      </Card>
+        </div>
+      </div>
+       <div className="hidden bg-muted lg:block animate-in fade-in-0 duration-1000">
+        <Image
+          src="https://placehold.co/1080x1920.png"
+          alt="Abstract background image representing studying or learning"
+          width="1080"
+          height="1920"
+          data-ai-hint="library study"
+          className="h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
+        />
+      </div>
     </div>
   );
 }

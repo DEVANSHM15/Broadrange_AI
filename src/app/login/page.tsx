@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -12,7 +13,6 @@ import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { GoogleLogin, type CredentialResponse } from '@react-oauth/google';
 import Image from "next/image";
@@ -105,21 +105,21 @@ export default function LoginPage() {
   if (currentUser && !authLoading) return null;
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
-      <div className="flex items-center gap-2 mb-8 text-2xl font-semibold text-primary">
-        <Image src="https://www.broadrange.ai/images/broadrange-logo.jpg" alt="Broadrange AI Logo" width={108} height={28} className="rounded-lg"/>
-        <span>CodeXStudy</span>
-      </div>
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="text-2xl text-center">Welcome Back</CardTitle>
-          <CardDescription className="text-center">
-            Sign in to access your CodeXStudy study plans.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="space-y-1">
+    <div className="w-full lg:grid min-h-screen lg:grid-cols-2">
+      <div className="flex items-center justify-center py-12 animate-in fade-in-0 slide-in-from-left-2 duration-1000">
+        <div className="mx-auto grid w-[350px] gap-6">
+          <div className="grid gap-2 text-center">
+            <Link href="/" className="flex justify-center items-center gap-2 mb-4 text-2xl font-semibold text-primary">
+                <Image src="https://www.broadrange.ai/images/broadrange-logo.jpg" alt="Broadrange AI Logo" width={108} height={32} className="h-8 w-auto rounded-lg"/>
+                <span>CodeXStudy</span>
+            </Link>
+            <h1 className="text-3xl font-bold">Welcome Back</h1>
+            <p className="text-balance text-muted-foreground">
+              Sign in to access your study plans
+            </p>
+          </div>
+          <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4">
+            <div className="grid gap-2">
               <Label htmlFor="email">Email Address</Label>
               <Input
                 type="email"
@@ -131,8 +131,18 @@ export default function LoginPage() {
               />
               {errors.email && <p className="text-xs text-destructive mt-1">{errors.email.message}</p>}
             </div>
-            <div className="space-y-1">
-              <Label htmlFor="password">Password</Label>
+            <div className="grid gap-2">
+              <div className="flex items-center">
+                <Label htmlFor="password">Password</Label>
+                <Button
+                  type="button"
+                  variant="link"
+                  className="ml-auto inline-block text-sm underline"
+                  onClick={handleForgotPassword}
+                >
+                  Forgot password?
+                </Button>
+              </div>
               <Input
                 type="password"
                 id="password"
@@ -143,19 +153,9 @@ export default function LoginPage() {
               />
               {errors.password && <p className="text-xs text-destructive mt-1">{errors.password.message}</p>}
             </div>
-            <div className="flex justify-between items-center">
-              <div className="flex items-center space-x-2">
-                <Checkbox id="rememberMe" {...register("rememberMe")} />
-                <Label htmlFor="rememberMe" className="text-sm font-normal">Remember me</Label>
-              </div>
-              <Button
-                type="button"
-                variant="link"
-                className="text-sm h-auto p-0 font-normal"
-                onClick={handleForgotPassword}
-              >
-                Forgot password?
-              </Button>
+            <div className="flex items-center space-x-2">
+              <Checkbox id="rememberMe" {...register("rememberMe")} />
+              <Label htmlFor="rememberMe" className="text-sm font-normal">Remember me</Label>
             </div>
             <Button type="submit" className="w-full" disabled={isSubmittingForm}>
               {isSubmittingForm ? (
@@ -167,18 +167,17 @@ export default function LoginPage() {
                 "Sign In"
               )}
             </Button>
-          </form>
-          <div className="relative my-4">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
+            <div className="relative my-2">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">
+                  Or continue with
+                </span>
+              </div>
             </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
-                Or continue with
-              </span>
-            </div>
-          </div>
-          <div className="flex justify-center">
+            <div className="flex justify-center">
              <GoogleLogin
                 onSuccess={handleGoogleLoginSuccess}
                 onError={() => {
@@ -189,22 +188,28 @@ export default function LoginPage() {
                     description: "An error occurred during Google authentication.",
                   });
                 }}
-                width="364px"
+                width="350px"
               />
           </div>
-        </CardContent>
-        <CardFooter className="flex flex-col items-center text-sm pt-6">
-          <p className="text-muted-foreground">
-            Don't have an account?{" "}
-            <Link href="/register" className="font-medium text-primary hover:underline">
+          </form>
+          <div className="mt-4 text-center text-sm">
+            Don&apos;t have an account?{" "}
+            <Link href="/register" className="underline">
               Create Account
             </Link>
-          </p>
-          <Link href="/" className="mt-4 text-primary hover:underline">
-            &larr; Back to Home
-          </Link>
-        </CardFooter>
-      </Card>
+          </div>
+        </div>
+      </div>
+      <div className="hidden bg-muted lg:block animate-in fade-in-0 duration-1000">
+        <Image
+          src="https://placehold.co/1080x1920.png"
+          alt="Abstract background image representing studying or learning"
+          width="1080"
+          height="1920"
+          data-ai-hint="library study"
+          className="h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
+        />
+      </div>
     </div>
   );
 }

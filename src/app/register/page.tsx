@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -11,7 +12,6 @@ import { Loader2, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import Image from "next/image";
 
@@ -85,26 +85,26 @@ export default function RegisterStep1Page() {
   if (currentUser) return null;
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
-      <div className="flex items-center gap-2 mb-8 text-2xl font-semibold text-primary">
-        <Image src="https://www.broadrange.ai/images/broadrange-logo.jpg" alt="Broadrange AI Logo" width={108} height={28} className="rounded-lg"/>
-        <span>CodeXStudy</span>
-      </div>
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="text-2xl text-center">Create Your Account</CardTitle>
-          <CardDescription className="text-center">
-            Step 1 of 3: Basic Information for CodeXStudy
-          </CardDescription>
-          <div className="flex justify-center gap-2 pt-2">
-            {[1,2,3].map(step => (
-              <div key={step} className={`h-2 w-8 rounded-full ${step === 1 ? 'bg-primary' : 'bg-muted'}`}></div>
-            ))}
+    <div className="w-full lg:grid min-h-screen lg:grid-cols-2">
+      <div className="flex items-center justify-center py-12 animate-in fade-in-0 slide-in-from-left-2 duration-1000">
+        <div className="mx-auto grid w-[350px] gap-6">
+          <div className="grid gap-2 text-center">
+            <Link href="/" className="flex justify-center items-center gap-2 mb-4 text-2xl font-semibold text-primary">
+              <Image src="https://www.broadrange.ai/images/broadrange-logo.jpg" alt="Broadrange AI Logo" width={108} height={32} className="h-8 w-auto rounded-lg"/>
+              <span>CodeXStudy</span>
+            </Link>
+            <h1 className="text-3xl font-bold">Create an Account</h1>
+            <p className="text-balance text-muted-foreground">
+              Step 1 of 3: Enter your information below to get started.
+            </p>
+            <div className="flex justify-center gap-2 pt-2">
+              {[1,2,3].map(step => (
+                <div key={step} className={`h-2 w-8 rounded-full ${step === 1 ? 'bg-primary' : 'bg-muted'}`}></div>
+              ))}
+            </div>
           </div>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit(onSubmitStep1)} className="space-y-4">
-            <div className="space-y-1">
+          <form onSubmit={handleSubmit(onSubmitStep1)} className="grid gap-4">
+            <div className="grid gap-2">
               <Label htmlFor="name">Full Name</Label>
               <Input 
                 id="name"
@@ -115,7 +115,7 @@ export default function RegisterStep1Page() {
               />
               {errors.name && <p className="text-xs text-destructive mt-1">{errors.name.message}</p>}
             </div>
-            <div className="space-y-1">
+            <div className="grid gap-2">
               <Label htmlFor="email">Email Address</Label>
               <Input 
                 type="email" 
@@ -127,7 +127,7 @@ export default function RegisterStep1Page() {
               />
               {errors.email && <p className="text-xs text-destructive mt-1">{errors.email.message}</p>}
             </div>
-            <div className="space-y-1">
+            <div className="grid gap-2">
               <Label htmlFor="password">Password</Label>
               <div className="relative">
                 <Input 
@@ -170,19 +170,24 @@ export default function RegisterStep1Page() {
             </div>
             <Button type="submit" className="w-full">Continue to Step 2</Button>
           </form>
-        </CardContent>
-        <CardFooter className="flex flex-col items-center text-sm">
-           <p className="text-muted-foreground">
+          <div className="mt-4 text-center text-sm">
             Already have an account?{" "}
-            <Link href="/login" className="font-medium text-primary hover:underline">
+            <Link href="/login" className="underline">
               Sign In
             </Link>
-          </p>
-           <Link href="/" className="mt-4 text-primary hover:underline">
-            &larr; Back to Home
-          </Link>
-        </CardFooter>
-      </Card>
+          </div>
+        </div>
+      </div>
+      <div className="hidden bg-muted lg:block animate-in fade-in-0 duration-1000">
+        <Image
+          src="https://placehold.co/1080x1920.png"
+          alt="Abstract background image representing studying or learning"
+          width="1080"
+          height="1920"
+          data-ai-hint="library study"
+          className="h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
+        />
+      </div>
     </div>
   );
 }
