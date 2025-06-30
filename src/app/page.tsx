@@ -71,11 +71,11 @@ export default function LandingPage() {
                 </div>
               </div>
               <Image
-                src="https://placehold.co/600x400.png"
+                src="https://static.vecteezy.com/system/resources/previews/050/965/360/non_2x/open-notebook-with-blank-pages-next-to-a-cup-of-coffee-on-a-wooden-desk-photo.jpg"
                 width="600"
                 height="400"
-                alt="Hero"
-                data-ai-hint="students studying"
+                alt="Notebook and coffee on a desk"
+                data-ai-hint="notebook coffee"
                 className="mx-auto aspect-video overflow-hidden rounded-xl object-cover sm:w-full lg:order-last lg:aspect-square"
               />
             </div>
