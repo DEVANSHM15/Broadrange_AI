@@ -1,6 +1,6 @@
 'use server';
 /**
- * @fileOverview A study assistant chatbot flow for navigation.
+ * @fileOverview A helpful study assistant chatbot with knowledge of the application.
  * - askStudyAssistant - A function that handles a user's chat query.
  * - StudyAssistantChatInput - The input type for the chat function.
  * - StudyAssistantChatOutput - The return type for the chat function.
@@ -9,45 +9,14 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
-// Define the available pages for navigation.
-const availablePages = z.enum(["dashboard", "planner", "calendar", "analytics", "achievements", "settings"]);
-
-// Define the tool for navigation.
-const navigateToPage = ai.defineTool(
-  {
-    name: 'navigateToPage',
-    description: 'Navigates the user to a specified page within the application.',
-    inputSchema: z.object({
-      page: availablePages.describe('The page to navigate to. Must be one of the available lowercase options.'),
-    }),
-    outputSchema: z.object({
-      path: z.string().describe('The URL path for the requested page.'),
-    }),
-  },
-  async ({page}) => {
-    // Map the page name to a URL path.
-    const pathMap: Record<z.infer<typeof availablePages>, string> = {
-      dashboard: '/dashboard',
-      planner: '/planner',
-      calendar: '/calendar',
-      analytics: '/analytics',
-      achievements: '/achievements',
-      settings: '/settings',
-    };
-    return {path: pathMap[page]};
-  }
-);
-
 // Define the input and output schemas for the chat flow.
 export const StudyAssistantChatInputSchema = z.object({
-  query: z.string().describe('The user\'s message to the assistant.'),
-  currentPage: z.string().describe('The current page the user is on for context.'),
+  query: z.string().describe("The user's message to the assistant."),
 });
 export type StudyAssistantChatInput = z.infer<typeof StudyAssistantChatInputSchema>;
 
 export const StudyAssistantChatOutputSchema = z.object({
-  response: z.string().describe('The assistant\'s text response to the user.'),
-  navigateTo: z.string().optional().describe('The URL path to navigate to, if requested.'),
+  response: z.string().describe("The assistant's text response to the user."),
 });
 export type StudyAssistantChatOutput = z.infer<typeof StudyAssistantChatOutputSchema>;
 
@@ -62,38 +31,36 @@ const studyAssistantChatFlow = ai.defineFlow(
     try {
       const llmResponse = await ai.generate({
         model: 'googleai/gemini-pro',
-        system: `You are a friendly and helpful study assistant chatbot for the "Broadrange AI" app.
-        Your primary role is to help users navigate the application.
-        
-        Available pages and their corresponding keywords are:
-        - dashboard
-        - planner
-        - calendar
-        - analytics
-        - achievements (also known as "Progress Hub")
-        - settings
+        system: `You are a friendly and helpful study assistant chatbot for the "Broadrange AI" application.
+Your goal is to answer user questions about how to use the application and explain its features.
+Do NOT attempt to navigate or perform actions. Your only function is to provide helpful information.
 
-        If the user asks to go to one of these pages, you must use the 'navigateToPage' tool with the correct lowercase keyword. For example, if they say "show me my progress hub", you must call the tool with \`page: 'achievements'\`.
-        If the tool is used successfully, respond with a short, friendly confirmation like "Sure, taking you to the Dashboard now." or "Of course, heading to the AI Planner."
-        If the user's request is unclear or not related to navigation, provide a helpful, conversational response and state that you can primarily help with navigation.
-        Do not make up functionality. Stick to navigation.`,
-        prompt: `The user is currently on the "${input.currentPage}" page. The user's request is: "${input.query}"`,
-        tools: [navigateToPage],
+Here is a summary of the application's features:
+
+**Core Features & Pages:**
+
+*   **Dashboard (\`/dashboard\`):** This is the main landing page after logging in. It gives a quick overview of the user's current study plan, key performance indicators (like completion rate and average quiz scores), and the status of the AI agents.
+*   **AI Planner (\`/planner\`):** This is where users create and manage their study plans.
+    *   **Creating a Plan:** Users input their subjects (e.g., "Math, History"), how many days they want to study for, and their available daily study hours. The AI then generates a detailed, day-by-day task schedule.
+    *   **Managing a Plan:** Once a plan is created, this page shows the full task list and a calendar view. Users can check off tasks, add sub-tasks, take AI-generated quizzes for tasks, and even re-plan their schedule if they fall behind.
+*   **Calendar (\`/calendar\`):** This page provides a large, dedicated calendar view of the user's active study plan. It's the best place to focus on daily tasks and mark them as complete.
+*   **Analytics (\`/analytics\`):** This page is for reviewing past performance. It shows charts on weekly performance, most productive days, and daily completions. For plans that have been marked as 'completed', the ReflectionAI agent provides a detailed analysis of study consistency and suggestions for the future.
+*   **Progress Hub (\`/achievements\`):** This is where users can see all the achievements they've unlocked (like creating their first plan or completing a quiz). It also lists all of their study plans: active, completed, and archived.
+*   **Settings (\`/settings\`):** Users can update their personal information (like their name) and configure which AI agents (PlannerBot, ReflectionAI, AdaptiveAI) are enabled.
+
+When a user asks a question, use this information to provide a clear and concise answer.
+
+Example Questions & Answers:
+- User: "How do I make a new plan?"
+- You: "You can create a new study plan by going to the 'AI Planner' page! Just enter your subjects, how long you want to study for, and your daily study hours, and our AI will generate a schedule for you."
+
+- User: "Where can I see my old plans?"
+- You: "You can find all of your past study plans, including active, completed, and archived ones, on the 'Progress Hub' page."
+
+- User: "What is the analytics page for?"
+- You: "The Analytics page helps you understand your study habits! It shows charts on your performance and, for completed plans, provides an AI-generated reflection on your consistency and offers suggestions for your next plan."`,
+        prompt: input.query,
       });
-
-      const toolResponsePart = llmResponse.history().find(
-        (m) => m.role === 'tool' && m.content[0]?.toolResponse?.name === 'navigateToPage'
-      );
-
-      if (toolResponsePart && toolResponsePart.content[0].toolResponse) {
-        const path = (toolResponsePart.content[0].toolResponse.data as any)?.path;
-        if (path) {
-          return {
-            response: llmResponse.text,
-            navigateTo: path,
-          };
-        }
-      }
 
       return {
         response: llmResponse.text,

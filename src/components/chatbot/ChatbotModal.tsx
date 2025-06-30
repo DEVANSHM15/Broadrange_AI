@@ -29,8 +29,6 @@ interface ChatMessage {
 }
 
 export function ChatbotModal({ isOpen, onClose }: ChatbotModalProps) {
-  const router = useRouter();
-  const pathname = usePathname();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -39,7 +37,7 @@ export function ChatbotModal({ isOpen, onClose }: ChatbotModalProps) {
   useEffect(() => {
     if (isOpen) {
       setMessages([
-        { sender: 'bot', text: "Hello! How can I help you navigate today? You can ask me to go to pages like 'dashboard', 'planner', or 'settings'." },
+        { sender: 'bot', text: "Hello! I'm your study assistant. Ask me anything about how to use the Broadrange AI app." },
       ]);
     }
   }, [isOpen]);
@@ -66,20 +64,12 @@ export function ChatbotModal({ isOpen, onClose }: ChatbotModalProps) {
     try {
       const input: StudyAssistantChatInput = {
         query: userMessage.text,
-        currentPage: pathname,
       };
       const result = await askStudyAssistant(input);
 
       const botMessage: ChatMessage = { sender: 'bot', text: result.response };
       setMessages(prev => [...prev, botMessage]);
 
-      if (result.navigateTo) {
-        // Navigate after a short delay to allow the user to read the message
-        setTimeout(() => {
-          router.push(result.navigateTo!);
-          onClose(); // Close the modal on navigation
-        }, 1500);
-      }
     } catch (error) {
       console.error("Chatbot error:", error);
       const errorMessage: ChatMessage = { sender: 'bot', text: "Sorry, I'm having trouble connecting. Please try again later." };
@@ -93,9 +83,9 @@ export function ChatbotModal({ isOpen, onClose }: ChatbotModalProps) {
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px] h-[70vh] flex flex-col p-0">
         <DialogHeader className="p-6 pb-2">
-          <DialogTitle>Navigation Assistant</DialogTitle>
+          <DialogTitle>Study Assistant</DialogTitle>
           <DialogDescription>
-            Ask me where you want to go in the app.
+            Ask me questions about how to use the app.
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="flex-grow px-6" ref={scrollAreaRef}>
@@ -147,7 +137,7 @@ export function ChatbotModal({ isOpen, onClose }: ChatbotModalProps) {
             <Input
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              placeholder="e.g., 'Take me to the calendar'"
+              placeholder="e.g., 'How do I make a plan?'"
               autoComplete="off"
               disabled={isLoading}
             />
