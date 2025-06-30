@@ -1,4 +1,3 @@
-
 "use client";
 
 import type { ReactNode } from 'react';
@@ -7,6 +6,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
+import { ChatbotIcon } from '@/components/chatbot/ChatbotIcon';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -64,7 +64,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       <main className={`flex-grow ${showAppHeader ? 'pt-4 md:pt-6' : ''}`}>
         {children}
       </main>
-      {/* Chatbot UI Removed */}
+      {showAppHeader && <ChatbotIcon />}
     </div>
   );
 }
