@@ -61,7 +61,7 @@ const studyAssistantChatFlow = ai.defineFlow(
   async (input) => {
     try {
       const llmResponse = await ai.generate({
-        model: 'googleai/gemini-pro', // Explicitly specify a model that supports tool use well.
+        model: 'googleai/gemini-pro',
         system: `You are a friendly and helpful study assistant chatbot for the "Broadrange AI" app.
         Your primary role is to help users navigate the application.
         
@@ -99,19 +99,26 @@ const studyAssistantChatFlow = ai.defineFlow(
         response: llmResponse.text,
       };
     } catch (e) {
-      console.error("Error in studyAssistantChatFlow:", e);
-      let errorMessage = "Sorry, I encountered an unexpected error.";
+      console.error("FATAL Error in studyAssistantChatFlow:", e);
+      
+      let detailedError = "An unknown error occurred.";
       if (e instanceof Error) {
-        if (e.message.includes("429") || e.message.toLowerCase().includes("quota")) {
-            errorMessage = "Sorry, I'm a bit busy right now due to high demand. Please try again in a moment.";
-        } else if (e.message.toLowerCase().includes("api key not valid")) {
-            errorMessage = "There seems to be an issue with the API configuration. Please contact support.";
-        } else if (e.message.length < 150) { // Return specific error if it's short
-            errorMessage = e.message;
-        }
+          detailedError = e.message;
+      } else if (typeof e === 'string') {
+          detailedError = e;
+      } else {
+          try {
+              detailedError = JSON.stringify(e);
+          } catch {
+              detailedError = "A non-serializable error occurred."
+          }
       }
+
+      // Make the error message more user-friendly but still informative for debugging
+      const finalMessage = `I'm sorry, I hit a technical snag. The server reported the following error: "${detailedError}". This might be an issue with the API configuration or a temporary service outage.`;
+      
       return {
-        response: errorMessage,
+        response: finalMessage,
       };
     }
   }
