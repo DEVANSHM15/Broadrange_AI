@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview A study assistant chatbot flow for navigation.
@@ -80,7 +79,6 @@ const studyAssistantChatFlow = ai.defineFlow(
 
       User's request: "${input.query}"`,
       tools: [navigateToPage],
-      model: 'googleai/gemini-pro',
     });
 
     // Genkit's `generate` automatically handles the tool-use loop.
