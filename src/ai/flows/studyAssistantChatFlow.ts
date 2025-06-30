@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview A helpful study assistant chatbot with knowledge of the application.
@@ -6,9 +7,9 @@
  * - StudyAssistantChatOutput - The return type for the chat function.
  */
 
-import {z} from 'genkit';
+import { ai } from '@/ai/genkit'; // Standard import
+import { z } from 'genkit';
 
-// Define the input and output schemas for the chat flow.
 export const StudyAssistantChatInputSchema = z.object({
   query: z.string().describe("The user's message to the assistant."),
 });
@@ -19,33 +20,21 @@ export const StudyAssistantChatOutputSchema = z.object({
 });
 export type StudyAssistantChatOutput = z.infer<typeof StudyAssistantChatOutputSchema>;
 
-
-// Export a wrapper function to be called from the client.
-// This wrapper includes robust error handling to prevent the client from
-// receiving unhandled promise rejections by catching all errors, including initialization.
-export async function askStudyAssistant(input: StudyAssistantChatInput): Promise<StudyAssistantChatOutput> {
-  try {
-    // LAZY IMPORT: This is the key change. We import Genkit's 'ai' object here
-    // so that any initialization errors (e.g., missing API key) are caught by this try...catch block.
-    const { ai } = await import('@/ai/genkit');
-
-    // Define the flow inside the function to ensure it uses the successfully imported 'ai' object.
-    const studyAssistantChatFlow = ai.defineFlow(
-      {
-        name: 'studyAssistantChatFlow',
-        inputSchema: StudyAssistantChatInputSchema,
-        outputSchema: StudyAssistantChatOutputSchema,
-      },
-      async (flowInput) => {
-        const llmResponse = await ai.generate({
-          model: 'googleai/gemini-pro',
-          system: `You are a friendly and helpful study assistant for the "Broadrange AI" application.
+// Define the flow at the top level, which is more conventional.
+const studyAssistantChatFlow = ai.defineFlow(
+  {
+    name: 'studyAssistantChatFlow',
+    inputSchema: StudyAssistantChatInputSchema,
+    outputSchema: StudyAssistantChatOutputSchema,
+  },
+  async (flowInput) => {
+    const llmResponse = await ai.generate({
+      model: 'googleai/gemini-pro',
+      system: `You are a friendly and helpful study assistant for the "Broadrange AI" application.
 Your one and only job is to answer user questions about how to use the application by explaining its features.
 You must not attempt to perform actions or navigate. You only provide helpful, explanatory information.
 
 Here is a summary of the application's features you can talk about:
-
-**Application Pages & Features:**
 
 *   **Dashboard:** This is the main overview page. It shows your current study plan's progress, key stats like completion rate, and the status of your AI agents.
 *   **AI Planner:** This is where you create and manage study plans. You tell the AI your subjects and schedule, and it creates a task list for you. You can also view your full plan here.
@@ -65,23 +54,22 @@ When a user asks a question, use this information to provide a clear and concise
 
 *   User: "What is the analytics page for?"
 *   You: "The Analytics page helps you understand your study habits! It shows charts on your performance and, for completed plans, provides an AI-generated reflection on your consistency and offers suggestions for your next plan."`,
-          prompt: flowInput.query,
-        });
+      prompt: flowInput.query,
+    });
 
-        return {
-          response: llmResponse.text,
-        };
-      }
-    );
-    
-    // Execute the defined Genkit flow.
+    return {
+      response: llmResponse.text,
+    };
+  }
+);
+
+// The exported function is now a simple wrapper with robust error handling.
+export async function askStudyAssistant(input: StudyAssistantChatInput): Promise<StudyAssistantChatOutput> {
+  try {
     return await studyAssistantChatFlow(input);
-
   } catch (e) {
-    // If ANY error occurs, including the lazy import, catch it here.
-    console.error("FATAL Error in askStudyAssistant execution:", e);
+    console.error("FATAL Error in askStudyAssistant flow execution:", e);
     
-    // Determine the detailed error message.
     let detailedError = "An unknown error occurred.";
     if (e instanceof Error) {
         detailedError = e.message;
@@ -95,11 +83,8 @@ When a user asks a question, use this information to provide a clear and concise
         }
     }
 
-    // Create a user-facing error message that includes the technical details.
     const finalMessage = `I'm sorry, I have encountered a critical error. The server reported the following: "${detailedError}". This is likely an issue with the backend configuration (e.g., a missing or invalid GOOGLE_API_KEY in the .env file, or billing not enabled for the project). Please check the server logs for more details.`;
     
-    // Return a valid output object containing the error message,
-    // so the client-side code doesn't hit its own generic 'catch' block.
     return {
       response: finalMessage,
     };
