@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -71,7 +72,7 @@ export function AppHeader() {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-14 items-center">
         <Link href={currentUser ? "/dashboard" : "/"} className="mr-6 flex items-center space-x-2 text-primary">
-          <Image src="https://www.broadrange.ai/images/broadrange-logo.jpg" alt="Broadrange AI Logo" width={93} height={24} className="h-6 w-auto rounded-lg"/>
+          <Image src="https://www.broadrange.ai/images/broadrange-logo.jpg" alt="Broadrange AI Logo" width={93} height={24} className="h-8 w-auto rounded-lg"/>
           <span className="font-bold sm:inline-block">CodeXStudy</span>
         </Link>
         
