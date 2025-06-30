@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
+import Image from "next/image";
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address."),
@@ -106,8 +107,8 @@ export default function LoginPage() {
         <Card className="mx-auto max-w-sm w-full">
             <CardHeader className="text-center">
                 <Link href="/" className="flex justify-center items-center gap-2 text-2xl font-bold text-primary mb-2">
-                    <BookOpen className="h-8 w-8" />
-                    <span>CodeXStudy</span>
+                    <Image src="https://www.broadrange.ai/images/broadrange-logo.jpg" alt="Broadrange AI Logo" width={93} height={24} className="h-8 w-auto rounded-lg" />
+                    <span className="font-bold sm:inline-block">CodeXStudy</span>
                 </Link>
                 <CardTitle className="text-2xl">Welcome Back</CardTitle>
                 <CardDescription>
@@ -132,17 +133,7 @@ export default function LoginPage() {
                         {errors.email && <p className="text-xs text-destructive mt-1">{errors.email.message}</p>}
                     </div>
                     <div className="grid gap-2">
-                        <div className="flex items-center">
-                            <Label htmlFor="password">Password</Label>
-                            <Button
-                            type="button"
-                            variant="link"
-                            className="ml-auto inline-block text-sm underline h-auto p-0"
-                            onClick={handleForgotPassword}
-                            >
-                            Forgot password?
-                            </Button>
-                        </div>
+                        <Label htmlFor="password">Password</Label>
                         <div className="relative">
                             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
@@ -156,9 +147,19 @@ export default function LoginPage() {
                         </div>
                         {errors.password && <p className="text-xs text-destructive mt-1">{errors.password.message}</p>}
                     </div>
-                    <div className="flex items-center space-x-2">
-                        <Checkbox id="rememberMe" {...register("rememberMe")} />
-                        <Label htmlFor="rememberMe" className="text-sm font-normal">Remember me</Label>
+                    <div className="flex items-center">
+                        <div className="flex items-center space-x-2">
+                            <Checkbox id="rememberMe" {...register("rememberMe")} />
+                            <Label htmlFor="rememberMe" className="text-sm font-normal">Remember me</Label>
+                        </div>
+                        <Button
+                            type="button"
+                            variant="link"
+                            className="ml-auto inline-block text-sm underline h-auto p-0"
+                            onClick={handleForgotPassword}
+                        >
+                            Forgot password?
+                        </Button>
                     </div>
                     <Button type="submit" className="w-full" disabled={isSubmittingForm}>
                         {isSubmittingForm ? (

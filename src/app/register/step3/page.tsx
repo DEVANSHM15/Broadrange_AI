@@ -14,6 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Form, FormField, FormItem, FormControl } from "@/components/ui/form"; 
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import Image from "next/image";
 
 const step3Schema = z.object({
   plannerBotEnabled: z.boolean().default(true),
@@ -140,8 +141,8 @@ export default function RegisterStep3Page() {
         <Card className="mx-auto max-w-sm w-full">
             <CardHeader className="text-center">
                 <Link href="/" className="flex justify-center items-center gap-2 text-2xl font-bold text-primary mb-2">
-                    <BookOpen className="h-8 w-8" />
-                    <span>CodeXStudy</span>
+                    <Image src="https://www.broadrange.ai/images/broadrange-logo.jpg" alt="Broadrange AI Logo" width={93} height={24} className="h-8 w-auto rounded-lg" />
+                    <span className="font-bold sm:inline-block">CodeXStudy</span>
                 </Link>
                 <CardTitle className="text-2xl">AI Agent Setup</CardTitle>
                 <CardDescription>

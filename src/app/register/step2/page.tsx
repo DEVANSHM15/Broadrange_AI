@@ -16,6 +16,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormField, FormItem, FormControl, FormMessage, FormDescription } from "@/components/ui/form";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import Image from "next/image";
 
 const step2Schema = z.object({
   studyLevel: z.string().min(1, "Please select your study level."),
@@ -95,8 +96,8 @@ export default function RegisterStep2Page() {
         <Card className="mx-auto max-w-sm w-full">
             <CardHeader className="text-center">
                 <Link href="/" className="flex justify-center items-center gap-2 text-2xl font-bold text-primary mb-2">
-                    <BookOpen className="h-8 w-8" />
-                    <span>CodeXStudy</span>
+                    <Image src="https://www.broadrange.ai/images/broadrange-logo.jpg" alt="Broadrange AI Logo" width={93} height={24} className="h-8 w-auto rounded-lg" />
+                    <span className="font-bold sm:inline-block">CodeXStudy</span>
                 </Link>
                 <CardTitle className="text-2xl">Study & Security Setup</CardTitle>
                 <CardDescription>

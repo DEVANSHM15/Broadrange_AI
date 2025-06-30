@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
+import Image from "next/image";
 
 const step1Schema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
@@ -97,8 +98,8 @@ export default function RegisterStep1Page() {
         <Card className="mx-auto max-w-sm w-full">
             <CardHeader className="text-center">
                 <Link href="/" className="flex justify-center items-center gap-2 text-2xl font-bold text-primary mb-2">
-                    <BookOpen className="h-8 w-8" />
-                    <span>CodeXStudy</span>
+                    <Image src="https://www.broadrange.ai/images/broadrange-logo.jpg" alt="Broadrange AI Logo" width={93} height={24} className="h-8 w-auto rounded-lg" />
+                    <span className="font-bold sm:inline-block">CodeXStudy</span>
                 </Link>
                 <CardTitle className="text-2xl">Create an Account</CardTitle>
                 <CardDescription>

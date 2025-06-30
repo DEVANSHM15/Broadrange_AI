@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Loader2, ShieldCheck, CheckCircle, BookOpen, Mail, KeyRound, Lock } from "lucide-react";
 import type { StoredUser } from "@/types";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import Image from "next/image";
 
 const LOCAL_STORAGE_USERS_KEY = "studyMindAiUsers_v2";
 
@@ -248,8 +249,8 @@ export default function ForgotPasswordPage() {
         <Card className="mx-auto max-w-sm w-full">
              <CardHeader className="text-center">
                 <Link href="/" className="flex justify-center items-center gap-2 text-2xl font-bold text-primary mb-2">
-                    <BookOpen className="h-8 w-8" />
-                    <span>CodeXStudy</span>
+                    <Image src="https://www.broadrange.ai/images/broadrange-logo.jpg" alt="Broadrange AI Logo" width={93} height={24} className="h-8 w-auto rounded-lg" />
+                    <span className="font-bold sm:inline-block">CodeXStudy</span>
                 </Link>
             </CardHeader>
             {renderContent()}
