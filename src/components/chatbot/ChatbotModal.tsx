@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useRef, useEffect, type FormEvent } from 'react';
@@ -16,7 +17,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Send, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { askStudyAssistant, type StudyAssistantChatInput } from '@/ai/flows/studyAssistantChatFlow';
+import { askStudyAssistant } from '@/ai/flows/studyAssistantChatFlow';
+import type { StudyAssistantChatInput } from '@/types';
 
 interface ChatbotModalProps {
   isOpen: boolean;

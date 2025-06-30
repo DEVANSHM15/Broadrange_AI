@@ -1,30 +1,25 @@
+
 'use server';
 /**
  * @fileOverview A helpful study assistant chatbot with knowledge of the application.
- * - askStudyAssistant - A function that handles a user's chat query.
- * - StudyAssistantChatInput - The input type for the chat function.
- * - StudyAssistantChatOutput - The return type for the chat function.
  */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
+import type { StudyAssistantChatInput, StudyAssistantChatOutput } from '@/types';
 
-export const StudyAssistantChatInputSchema = z.object({
+const StudyAssistantChatInputSchema = z.object({
   query: z.string().describe("The user's message to the assistant."),
 });
-export type StudyAssistantChatInput = z.infer<typeof StudyAssistantChatInputSchema>;
 
-export const StudyAssistantChatOutputSchema = z.object({
+const StudyAssistantChatOutputSchema = z.object({
   response: z.string().describe("The assistant's text response to the user."),
 });
-export type StudyAssistantChatOutput = z.infer<typeof StudyAssistantChatOutputSchema>;
 
-
-// The exported function is now a simple wrapper with robust error handling.
 export async function askStudyAssistant(input: StudyAssistantChatInput): Promise<StudyAssistantChatOutput> {
   try {
      const llmResponse = await ai.generate({
-      model: 'googleai/gemini-pro', // Explicitly define model
+      model: 'googleai/gemini-pro',
       system: `You are a friendly and helpful study assistant for the "Broadrange AI" application.
 Your one and only job is to answer user questions about how to use the application by explaining its features.
 You must not attempt to perform actions or navigate. You only provide helpful, explanatory information.
@@ -72,11 +67,8 @@ When a user asks a question, use this information to provide a clear and concise
         }
     }
 
-    // This is the message that will be returned to the client.
     const finalMessage = `I've encountered a critical server error. Please check your setup. The error is: "${detailedError}". This could be due to a missing or invalid GOOGLE_API_KEY in your .env file, or billing not being enabled for your Google Cloud project.`;
     
-    // We are now returning the error message inside a *successful* promise resolution.
-    // This prevents the client from hitting its own catch block.
     return {
       response: finalMessage,
     };

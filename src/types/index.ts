@@ -133,7 +133,11 @@ export interface GenerateTaskQuizOutput {
   quizJson: string; // A JSON string that parses into Quiz
 }
 
-// Chatbot specific types REMOVED
-// export interface ChatbotMessage { ... }
-// export interface StudyAssistantChatInput { ... }
-// export interface StudyAssistantChatOutput { ... }
+// Chatbot specific types
+export interface StudyAssistantChatInput {
+  query: string;
+}
+
+export interface StudyAssistantChatOutput {
+  response: string;
+}
