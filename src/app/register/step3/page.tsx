@@ -207,16 +207,16 @@ export default function RegisterStep3Page() {
                 </Form>
             </div>
         </div>
-        <div className="hidden bg-muted lg:block animate-in fade-in-0 duration-1000">
-            <div className="relative h-full w-full">
-                <Image
-                    src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTnhMZxaknowE4DkGwaUx-kpyrcIGbVkJxTSA&s"
-                    alt="A student studying with books and a laptop"
-                    fill
-                    className="object-cover dark:brightness-[0.7]"
-                    data-ai-hint="student studying"
-                />
-            </div>
+        <div className="hidden bg-muted lg:flex lg:items-center lg:justify-center lg:p-12 animate-in fade-in-0 duration-1000">
+            <Image
+                src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTnhMZxaknowE4DkGwaUx-kpyrcIGbVkJxTSA&s"
+                alt="A student studying with books and a laptop"
+                width={1920}
+                height={1280}
+                className="h-auto w-full max-w-md rounded-lg object-contain shadow-2xl"
+                data-ai-hint="student studying"
+                priority
+            />
         </div>
     </div>
   );
