@@ -172,7 +172,7 @@ export default function LoginPage() {
       </div>
       <div className="hidden lg:block animate-in fade-in-0 duration-1000">
         <Image
-          src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRIzZN2Rc3_YicRjfyFtRrgrXTQyjZGb90NHg&s"
+          src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRdItPl3rsdORxFVIZUfCoF7GLU1QG9IHn1pQ&s"
           alt="A modern, well-lit study setup"
           width={1920}
           height={1280}
