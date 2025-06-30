@@ -13,7 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import Image from "next/image";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
+
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address."),
@@ -93,94 +94,85 @@ export default function LoginPage() {
   if (currentUser && !authLoading) return null;
 
   return (
-    <div className="w-full min-h-screen lg:grid lg:grid-cols-2">
-      <div className="flex items-center justify-center py-12 animate-in fade-in-0 slide-in-from-left-24 duration-1000">
-        <div className="mx-auto grid w-[350px] gap-6">
-          <div className="grid gap-2 text-center">
-            <Link href="/" className="flex justify-center items-center gap-2 text-2xl font-bold text-primary mb-4">
-                <BookOpen className="h-8 w-8" />
-                <span>CodeXStudy</span>
-            </Link>
-            <h1 className="text-3xl font-bold">Welcome Back</h1>
-            <p className="text-balance text-muted-foreground">
-              Sign in to access your study plans
-            </p>
-          </div>
-          <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="email"
-                  id="email"
-                  className={`pl-10 ${errors.email ? "border-destructive" : ""}`}
-                  {...register("email")}
-                  required
-                  placeholder="you@example.com"
-                />
-              </div>
-              {errors.email && <p className="text-xs text-destructive mt-1">{errors.email.message}</p>}
-            </div>
-            <div className="grid gap-2">
-              <div className="flex items-center">
-                <Label htmlFor="password">Password</Label>
-                <Button
-                  type="button"
-                  variant="link"
-                  className="ml-auto inline-block text-sm underline h-auto p-0"
-                  onClick={handleForgotPassword}
-                >
-                  Forgot password?
-                </Button>
-              </div>
-              <div className="relative">
-                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="password"
-                  id="password"
-                  className={`pl-10 ${errors.password ? "border-destructive" : ""}`}
-                  {...register("password")}
-                  required
-                  placeholder="••••••••"
-                />
-              </div>
-              {errors.password && <p className="text-xs text-destructive mt-1">{errors.password.message}</p>}
-            </div>
-            <div className="flex items-center space-x-2">
-              <Checkbox id="rememberMe" {...register("rememberMe")} />
-              <Label htmlFor="rememberMe" className="text-sm font-normal">Remember me</Label>
-            </div>
-            <Button type="submit" className="w-full" disabled={isSubmittingForm}>
-              {isSubmittingForm ? (
-                <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Signing In...
-                </>
-              ) : (
-                "Sign In"
-              )}
-            </Button>
-          </form>
-          <div className="mt-4 text-center text-sm">
-            Don&apos;t have an account?{" "}
-            <Link href="/register" className="underline">
-              Create Account
-            </Link>
-          </div>
-        </div>
-      </div>
-      <div className="hidden bg-muted lg:flex items-center justify-center p-8 animate-in fade-in-0 duration-1000">
-        <Image
-          src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRdItPl3rsdORxFVIZUfCoF7GLU1QG9IHn1pQ&s"
-          alt="A modern, well-lit study setup"
-          width={1920}
-          height={1280}
-          className="h-auto w-full max-w-md rounded-xl shadow-2xl"
-          data-ai-hint="study setup"
-          priority
-        />
-      </div>
+    <div className="w-full min-h-screen flex items-center justify-center p-4 bg-muted/30">
+        <Card className="mx-auto max-w-sm w-full">
+            <CardHeader className="text-center">
+                <Link href="/" className="flex justify-center items-center gap-2 text-2xl font-bold text-primary mb-4">
+                    <BookOpen className="h-8 w-8" />
+                    <span>CodeXStudy</span>
+                </Link>
+                <CardTitle className="text-2xl">Welcome Back</CardTitle>
+                <CardDescription>
+                    Sign in to access your study plans
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4">
+                    <div className="grid gap-2">
+                        <Label htmlFor="email">Email</Label>
+                        <div className="relative">
+                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                            type="email"
+                            id="email"
+                            className={`pl-10 ${errors.email ? "border-destructive" : ""}`}
+                            {...register("email")}
+                            required
+                            placeholder="you@example.com"
+                            />
+                        </div>
+                        {errors.email && <p className="text-xs text-destructive mt-1">{errors.email.message}</p>}
+                    </div>
+                    <div className="grid gap-2">
+                        <div className="flex items-center">
+                            <Label htmlFor="password">Password</Label>
+                            <Button
+                            type="button"
+                            variant="link"
+                            className="ml-auto inline-block text-sm underline h-auto p-0"
+                            onClick={handleForgotPassword}
+                            >
+                            Forgot password?
+                            </Button>
+                        </div>
+                        <div className="relative">
+                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                            type="password"
+                            id="password"
+                            className={`pl-10 ${errors.password ? "border-destructive" : ""}`}
+                            {...register("password")}
+                            required
+                            placeholder="••••••••"
+                            />
+                        </div>
+                        {errors.password && <p className="text-xs text-destructive mt-1">{errors.password.message}</p>}
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <Checkbox id="rememberMe" {...register("rememberMe")} />
+                        <Label htmlFor="rememberMe" className="text-sm font-normal">Remember me</Label>
+                    </div>
+                    <Button type="submit" className="w-full" disabled={isSubmittingForm}>
+                        {isSubmittingForm ? (
+                            <>
+                            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                            Signing In...
+                            </>
+                        ) : (
+                            "Sign In"
+                        )}
+                    </Button>
+                </form>
+            </CardContent>
+            <CardFooter className="justify-center">
+                 <div className="text-sm">
+                    Don&apos;t have an account?{" "}
+                    <Link href="/register" className="underline">
+                        Create Account
+                    </Link>
+                </div>
+            </CardFooter>
+        </Card>
     </div>
   );
 }

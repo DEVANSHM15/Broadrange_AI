@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormField, FormItem, FormControl, FormMessage, FormDescription } from "@/components/ui/form";
-import Image from "next/image";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 
 const step2Schema = z.object({
   studyLevel: z.string().min(1, "Please select your study level."),
@@ -91,24 +91,24 @@ export default function RegisterStep2Page() {
    if (currentUser) return null;
 
   return (
-    <div className="w-full min-h-screen lg:grid lg:grid-cols-2">
-        <div className="flex items-center justify-center py-12 animate-in fade-in-0 slide-in-from-left-24 duration-1000">
-            <div className="mx-auto grid w-[380px] gap-6">
-                <div className="grid gap-2 text-center">
-                    <Link href="/" className="flex justify-center items-center gap-2 text-2xl font-bold text-primary mb-2">
-                        <BookOpen className="h-8 w-8" />
-                        <span>CodeXStudy</span>
-                    </Link>
-                    <h1 className="text-3xl font-bold">Study & Security Setup</h1>
-                    <p className="text-balance text-muted-foreground">
-                        Step 2 of 3: Preferences and security.
-                    </p>
-                    <div className="flex justify-center gap-2 pt-2">
-                        {[1,2,3].map(step => (
-                        <div key={step} className={`h-2 w-8 rounded-full ${step === 2 ? 'bg-primary' : (step < 2 ? 'bg-primary/50' : 'bg-muted')}`}></div>
-                        ))}
-                    </div>
+    <div className="w-full min-h-screen flex items-center justify-center p-4 bg-muted/30">
+        <Card className="mx-auto max-w-sm w-full">
+            <CardHeader className="text-center">
+                 <Link href="/" className="flex justify-center items-center gap-2 text-2xl font-bold text-primary mb-2">
+                    <BookOpen className="h-8 w-8" />
+                    <span>CodeXStudy</span>
+                </Link>
+                <CardTitle className="text-2xl">Study & Security Setup</CardTitle>
+                <CardDescription>
+                    Step 2 of 3: Preferences and security.
+                </CardDescription>
+                <div className="flex justify-center gap-2 pt-2">
+                    {[1,2,3].map(step => (
+                    <div key={step} className={`h-2 w-8 rounded-full ${step === 2 ? 'bg-primary' : (step < 2 ? 'bg-primary/50' : 'bg-muted')}`}></div>
+                    ))}
                 </div>
+            </CardHeader>
+            <CardContent>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmitStep2)} className="space-y-6">
                         <FormField
@@ -218,31 +218,20 @@ export default function RegisterStep2Page() {
                         />
 
                         <div className="flex gap-4 pt-2">
-                        <Button 
-                            type="button" 
-                            variant="outline"
-                            className="w-full" 
-                            onClick={() => router.push('/register')}
-                        >
-                            Back
-                        </Button>
-                        <Button type="submit" className="w-full">Continue to Step 3</Button>
+                            <Button 
+                                type="button" 
+                                variant="outline"
+                                className="w-full" 
+                                onClick={() => router.push('/register')}
+                            >
+                                Back
+                            </Button>
+                            <Button type="submit" className="w-full">Continue to Step 3</Button>
                         </div>
                     </form>
                 </Form>
-            </div>
-        </div>
-        <div className="hidden bg-muted lg:flex items-center justify-center p-8 animate-in fade-in-0 duration-1000">
-            <Image
-                src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRdItPl3rsdORxFVIZUfCoF7GLU1QG9IHn1pQ&s"
-                alt="A modern, well-lit study setup"
-                width={1920}
-                height={1280}
-                className="h-auto w-full max-w-md rounded-xl shadow-2xl"
-                data-ai-hint="study setup"
-                priority
-            />
-        </div>
+            </CardContent>
+        </Card>
     </div>
   );
 }

@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import Image from "next/image";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 
 const step1Schema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
@@ -83,25 +83,24 @@ export default function RegisterStep1Page() {
   if (currentUser) return null;
 
   return (
-    <div className="w-full min-h-screen lg:grid lg:grid-cols-2">
-        <div className="flex items-center justify-center py-12 animate-in fade-in-0 slide-in-from-left-24 duration-1000">
-            <div className="mx-auto grid w-[380px] gap-6">
-                <div className="grid gap-2 text-center">
-                    <Link href="/" className="flex justify-center items-center gap-2 text-2xl font-bold text-primary mb-2">
-                        <BookOpen className="h-8 w-8" />
-                        <span>CodeXStudy</span>
-                    </Link>
-                    <h1 className="text-3xl font-bold">Create an Account</h1>
-                    <p className="text-balance text-muted-foreground">
-                        Step 1 of 3: Enter your information below.
-                    </p>
-                    <div className="flex justify-center gap-2 pt-2">
-                        {[1,2,3].map(step => (
-                        <div key={step} className={`h-2 w-8 rounded-full ${step === 1 ? 'bg-primary' : 'bg-muted'}`}></div>
-                        ))}
-                    </div>
+    <div className="w-full min-h-screen flex items-center justify-center p-4 bg-muted/30">
+        <Card className="mx-auto max-w-sm w-full">
+            <CardHeader className="text-center">
+                <Link href="/" className="flex justify-center items-center gap-2 text-2xl font-bold text-primary mb-4">
+                    <BookOpen className="h-8 w-8" />
+                    <span>CodeXStudy</span>
+                </Link>
+                <CardTitle className="text-2xl">Create an Account</CardTitle>
+                <CardDescription>
+                    Step 1 of 3: Enter your information below.
+                </CardDescription>
+                <div className="flex justify-center gap-2 pt-2">
+                    {[1,2,3].map(step => (
+                    <div key={step} className={`h-2 w-8 rounded-full ${step === 1 ? 'bg-primary' : 'bg-muted'}`}></div>
+                    ))}
                 </div>
-
+            </CardHeader>
+            <CardContent>
                 <form onSubmit={handleSubmit(onSubmitStep1)} className="grid gap-4">
                     <div className="grid gap-2">
                         <Label htmlFor="name">Full Name</Label>
@@ -176,25 +175,16 @@ export default function RegisterStep1Page() {
                     </div>
                     <Button type="submit" className="w-full">Continue to Step 2</Button>
                 </form>
-                <div className="mt-4 text-center text-sm">
+            </CardContent>
+             <CardFooter className="justify-center">
+                <div className="text-sm">
                     Already have an account?{" "}
                     <Link href="/login" className="underline">
                         Sign In
                     </Link>
                 </div>
-            </div>
-        </div>
-        <div className="hidden bg-muted lg:flex items-center justify-center p-8 animate-in fade-in-0 duration-1000">
-            <Image
-                src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRdItPl3rsdORxFVIZUfCoF7GLU1QG9IHn1pQ&s"
-                alt="A modern, well-lit study setup"
-                width={1920}
-                height={1280}
-                className="h-auto w-full max-w-md rounded-xl shadow-2xl"
-                data-ai-hint="study setup"
-                priority
-            />
-        </div>
+            </CardFooter>
+        </Card>
     </div>
   );
 }
