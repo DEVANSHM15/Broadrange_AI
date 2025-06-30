@@ -74,23 +74,26 @@ const studyAssistantChatFlow = ai.defineFlow(
 
       User's request: "${input.query}"`,
       tools: [navigateToPage],
-      model: 'googleai/gemini-2.0-flash',
+      model: 'googleai/gemini-pro', // Using a standard, reliable model for tool calling.
     });
 
-    const toolResponse = llmResponse.toolRequest?.responses[0];
-    if (toolResponse && toolResponse.name === 'navigateToPage') {
-      const path = toolResponse.response.path;
-      // Get the final text response from the LLM after it has processed the tool's output.
-      const finalResponse = await ai.generate({
-        prompt: `You are a helpful study assistant. A navigation action was just completed to path '${path}'. Provide a short, friendly confirmation message to the user.`,
-        model: 'googleai/gemini-2.0-flash',
-      });
+    // Genkit's `generate` can automatically handle the tool-use loop.
+    // We check the history for evidence of a tool call.
+    const toolCallPart = llmResponse.history().find(
+        (m) => m.role === 'tool' && m.content[0]?.toolRequest?.name === 'navigateToPage'
+    );
+
+    if (toolCallPart) {
+      // The tool was called. The result (`path`) is in the `data` field of the tool response part.
+      // The final text from the LLM after seeing the tool result is in `llmResponse.text`.
+      const path = (toolCallPart.content[0].data as any).path;
       return {
-        response: finalResponse.text,
+        response: llmResponse.text,
         navigateTo: path,
       };
     }
 
+    // If no tool was called, just return the text response.
     return {
       response: llmResponse.text,
     };
