@@ -83,17 +83,20 @@ export function PomodoroTimerModal() {
   };
 
   const resetTimer = () => {
-    setIsActive(false);
-    setMode("focus");
-    
+    setIsActive(false); // Stop the timer
+    setMode("focus"); // Always reset to focus mode
+
     const newFocusMins = parseInt(inputFocusMinutes, 10);
     const resetMinutes = (!isNaN(newFocusMins) && newFocusMins >= 1 && newFocusMins <= 120) 
       ? newFocusMins 
       : DEFAULT_WORK_MINUTES;
 
-    setActiveFocusMinutes(resetMinutes);
-    // The useEffect listening to `activeFocusMinutes` and `mode` will correctly update `timeLeft`
-    // because `isActive` is false.
+    if (activeFocusMinutes !== resetMinutes) {
+      setActiveFocusMinutes(resetMinutes);
+    }
+    
+    // Directly set the timeLeft state to ensure the display updates correctly.
+    setTimeLeft(resetMinutes * 60);
   };
   
   const handleInputBlur = (inputType: 'focus' | 'break') => {
