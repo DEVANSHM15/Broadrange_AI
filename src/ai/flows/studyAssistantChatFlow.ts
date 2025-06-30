@@ -6,7 +6,6 @@
  * - StudyAssistantChatOutput - The return type for the chat function.
  */
 
-import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 // Define the input and output schemas for the chat flow.
@@ -20,19 +19,27 @@ export const StudyAssistantChatOutputSchema = z.object({
 });
 export type StudyAssistantChatOutput = z.infer<typeof StudyAssistantChatOutputSchema>;
 
-// Define the main chat flow.
-const studyAssistantChatFlow = ai.defineFlow(
-  {
-    name: 'studyAssistantChatFlow',
-    inputSchema: StudyAssistantChatInputSchema,
-    outputSchema: StudyAssistantChatOutputSchema,
-  },
-  async (input) => {
-    // Note: The primary try/catch is now in the exported wrapper function
-    // to catch any and all errors, including Genkit initialization issues.
-    const llmResponse = await ai.generate({
-      model: 'googleai/gemini-pro',
-      system: `You are a friendly and helpful study assistant for the "Broadrange AI" application.
+
+// Export a wrapper function to be called from the client.
+// This wrapper includes robust error handling to prevent the client from
+// receiving unhandled promise rejections by catching all errors, including initialization.
+export async function askStudyAssistant(input: StudyAssistantChatInput): Promise<StudyAssistantChatOutput> {
+  try {
+    // LAZY IMPORT: This is the key change. We import Genkit's 'ai' object here
+    // so that any initialization errors (e.g., missing API key) are caught by this try...catch block.
+    const { ai } = await import('@/ai/genkit');
+
+    // Define the flow inside the function to ensure it uses the successfully imported 'ai' object.
+    const studyAssistantChatFlow = ai.defineFlow(
+      {
+        name: 'studyAssistantChatFlow',
+        inputSchema: StudyAssistantChatInputSchema,
+        outputSchema: StudyAssistantChatOutputSchema,
+      },
+      async (flowInput) => {
+        const llmResponse = await ai.generate({
+          model: 'googleai/gemini-pro',
+          system: `You are a friendly and helpful study assistant for the "Broadrange AI" application.
 Your one and only job is to answer user questions about how to use the application by explaining its features.
 You must not attempt to perform actions or navigate. You only provide helpful, explanatory information.
 
@@ -58,25 +65,21 @@ When a user asks a question, use this information to provide a clear and concise
 
 *   User: "What is the analytics page for?"
 *   You: "The Analytics page helps you understand your study habits! It shows charts on your performance and, for completed plans, provides an AI-generated reflection on your consistency and offers suggestions for your next plan."`,
-      prompt: input.query,
-    });
+          prompt: flowInput.query,
+        });
 
-    return {
-      response: llmResponse.text,
-    };
-  }
-);
-
-// Export a wrapper function to be called from the client.
-// This wrapper includes robust error handling to prevent the client from
-// receiving unhandled promise rejections.
-export async function askStudyAssistant(input: StudyAssistantChatInput): Promise<StudyAssistantChatOutput> {
-  try {
+        return {
+          response: llmResponse.text,
+        };
+      }
+    );
+    
     // Execute the defined Genkit flow.
     return await studyAssistantChatFlow(input);
+
   } catch (e) {
-    // If ANY error occurs during the flow execution, catch it here.
-    console.error("FATAL Error in studyAssistantChatFlow execution:", e);
+    // If ANY error occurs, including the lazy import, catch it here.
+    console.error("FATAL Error in askStudyAssistant execution:", e);
     
     // Determine the detailed error message.
     let detailedError = "An unknown error occurred.";
