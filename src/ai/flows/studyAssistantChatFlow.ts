@@ -79,8 +79,8 @@ When a user asks a question, use this information to provide a clear and concise
           }
       }
 
-      // Make the error message more user-friendly but still informative for debugging
-      const finalMessage = `I'm sorry, I hit a technical snag. The server reported the following error: "${detailedError}". This might be an issue with the API configuration or a temporary service outage.`;
+      // Make the error message user-facing but still informative for debugging
+      const finalMessage = `I'm sorry, I hit a technical snag. The server reported the following error: "${detailedError}". This might be an issue with the API configuration or a temporary service outage. A common cause is a missing GOOGLE_API_KEY in your .env file.`;
       
       return {
         response: finalMessage,
