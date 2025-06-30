@@ -4,13 +4,12 @@
  */
 
 import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
 import type { StudyAssistantChatInput, StudyAssistantChatOutput } from '@/types';
 
 export async function askStudyAssistant(input: StudyAssistantChatInput): Promise<StudyAssistantChatOutput> {
   try {
      const llmResponse = await ai.generate({
-      model: 'googleai/gemini-pro',
+      model: 'googleai/gemini-1.5-flash-latest', // Use a reliable, general-purpose model
       prompt: `You are a friendly and helpful study assistant for the "Broadrange AI" application.
 Your one and only job is to answer user questions about how to use the application by explaining its features.
 You must not attempt to perform actions or navigate. You only provide helpful, explanatory information.
