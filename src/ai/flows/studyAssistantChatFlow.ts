@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview A helpful study assistant chatbot with knowledge of the application.
@@ -7,7 +6,7 @@
  * - StudyAssistantChatOutput - The return type for the chat function.
  */
 
-import { ai } from '@/ai/genkit'; // Standard import
+import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
 export const StudyAssistantChatInputSchema = z.object({
@@ -20,16 +19,12 @@ export const StudyAssistantChatOutputSchema = z.object({
 });
 export type StudyAssistantChatOutput = z.infer<typeof StudyAssistantChatOutputSchema>;
 
-// Define the flow at the top level, which is more conventional.
-const studyAssistantChatFlow = ai.defineFlow(
-  {
-    name: 'studyAssistantChatFlow',
-    inputSchema: StudyAssistantChatInputSchema,
-    outputSchema: StudyAssistantChatOutputSchema,
-  },
-  async (flowInput) => {
-    const llmResponse = await ai.generate({
-      model: 'googleai/gemini-pro',
+
+// The exported function is now a simple wrapper with robust error handling.
+export async function askStudyAssistant(input: StudyAssistantChatInput): Promise<StudyAssistantChatOutput> {
+  try {
+     const llmResponse = await ai.generate({
+      model: 'googleai/gemini-pro', // Explicitly define model
       system: `You are a friendly and helpful study assistant for the "Broadrange AI" application.
 Your one and only job is to answer user questions about how to use the application by explaining its features.
 You must not attempt to perform actions or navigate. You only provide helpful, explanatory information.
@@ -54,21 +49,15 @@ When a user asks a question, use this information to provide a clear and concise
 
 *   User: "What is the analytics page for?"
 *   You: "The Analytics page helps you understand your study habits! It shows charts on your performance and, for completed plans, provides an AI-generated reflection on your consistency and offers suggestions for your next plan."`,
-      prompt: flowInput.query,
+      prompt: input.query,
     });
 
     return {
       response: llmResponse.text,
     };
-  }
-);
 
-// The exported function is now a simple wrapper with robust error handling.
-export async function askStudyAssistant(input: StudyAssistantChatInput): Promise<StudyAssistantChatOutput> {
-  try {
-    return await studyAssistantChatFlow(input);
   } catch (e) {
-    console.error("FATAL Error in askStudyAssistant flow execution:", e);
+    console.error("FATAL Error in askStudyAssistant execution:", e);
     
     let detailedError = "An unknown error occurred.";
     if (e instanceof Error) {
@@ -83,8 +72,11 @@ export async function askStudyAssistant(input: StudyAssistantChatInput): Promise
         }
     }
 
-    const finalMessage = `I'm sorry, I have encountered a critical error. The server reported the following: "${detailedError}". This is likely an issue with the backend configuration (e.g., a missing or invalid GOOGLE_API_KEY in the .env file, or billing not enabled for the project). Please check the server logs for more details.`;
+    // This is the message that will be returned to the client.
+    const finalMessage = `I've encountered a critical server error. Please check your setup. The error is: "${detailedError}". This could be due to a missing or invalid GOOGLE_API_KEY in your .env file, or billing not being enabled for your Google Cloud project.`;
     
+    // We are now returning the error message inside a *successful* promise resolution.
+    // This prevents the client from hitting its own catch block.
     return {
       response: finalMessage,
     };
