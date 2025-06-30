@@ -95,7 +95,7 @@ export default function RegisterStep1Page() {
 
   return (
     <div className="w-full min-h-screen flex items-center justify-center p-4 bg-muted/30">
-        <Card className="mx-auto max-w-sm w-full">
+        <Card className="mx-auto max-w-md w-full">
             <CardHeader className="text-center">
                 <Link href="/" className="flex justify-center items-center gap-2 text-2xl font-bold text-primary mb-2">
                     <Image src="https://www.broadrange.ai/images/broadrange-logo.jpg" alt="Broadrange AI Logo" width={93} height={24} className="h-8 w-auto rounded-lg" />
