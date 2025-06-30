@@ -19,7 +19,7 @@ const navigateToPage = ai.defineTool(
     name: 'navigateToPage',
     description: 'Navigates the user to a specified page within the application.',
     inputSchema: z.object({
-      page: availablePages.describe('The page to navigate to. Must be one of the available options.'),
+      page: availablePages.describe('The page to navigate to. Must be one of the available lowercase options.'),
     }),
     outputSchema: z.object({
       path: z.string().describe('The URL path for the requested page.'),
@@ -65,35 +65,43 @@ const studyAssistantChatFlow = ai.defineFlow(
       Your primary role is to help users navigate the application.
       The user is currently on the "${input.currentPage}" page.
 
-      Available pages are: Dashboard, AI Planner, Calendar, Analytics, Progress Hub (Achievements), and Settings.
+      Available pages and their corresponding keywords are:
+      - dashboard
+      - planner
+      - calendar
+      - analytics
+      - achievements (also known as "Progress Hub")
+      - settings
 
-      If the user asks to go to a page, use the 'navigateToPage' tool to find the correct path.
-      If the tool is used successfully, respond with a confirmation like "Sure, taking you to the [Page Name] now."
+      If the user asks to go to one of these pages, use the 'navigateToPage' tool with the correct lowercase keyword. For example, if they say "show me my progress hub", you must call the tool with \`page: 'achievements'\`.
+      If the tool is used successfully, respond with a confirmation like "Sure, taking you to the Dashboard now." or "Of course, heading to the AI Planner."
       If the user's request is unclear or not related to navigation, provide a helpful, conversational response and state that you can primarily help with navigation.
       Do not make up functionality. Stick to navigation.
 
       User's request: "${input.query}"`,
       tools: [navigateToPage],
-      model: 'googleai/gemini-pro', // Using a standard, reliable model for tool calling.
+      model: 'googleai/gemini-pro',
     });
 
-    // Genkit's `generate` can automatically handle the tool-use loop.
-    // We check the history for evidence of a tool call.
-    const toolCallPart = llmResponse.history().find(
-        (m) => m.role === 'tool' && m.content[0]?.toolRequest?.name === 'navigateToPage'
+    // Genkit's `generate` automatically handles the tool-use loop.
+    // We check the history for evidence that our tool was called and responded.
+    const toolResponsePart = llmResponse.history().find(
+      (m) => m.role === 'tool' && m.content[0]?.toolResponse?.name === 'navigateToPage'
     );
 
-    if (toolCallPart) {
+    if (toolResponsePart && toolResponsePart.content[0].toolResponse) {
       // The tool was called. The result (`path`) is in the `data` field of the tool response part.
       // The final text from the LLM after seeing the tool result is in `llmResponse.text`.
-      const path = (toolCallPart.content[0].data as any).path;
-      return {
-        response: llmResponse.text,
-        navigateTo: path,
-      };
+      const path = (toolResponsePart.content[0].toolResponse.data as any)?.path;
+      if (path) {
+        return {
+          response: llmResponse.text, // The final conversational text from the LLM
+          navigateTo: path,
+        };
+      }
     }
 
-    // If no tool was called, just return the text response.
+    // If no tool was called, or if the path was not found, just return the text response.
     return {
       response: llmResponse.text,
     };
