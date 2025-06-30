@@ -9,7 +9,7 @@ import type { StudyAssistantChatInput, StudyAssistantChatOutput } from '@/types'
 export async function askStudyAssistant(input: StudyAssistantChatInput): Promise<StudyAssistantChatOutput> {
   try {
      const llmResponse = await ai.generate({
-      model: 'googleai/gemini-1.5-flash-latest', // Use a reliable, general-purpose model
+      model: 'googleai/gemini-1.5-flash-latest',
       prompt: `You are a friendly and helpful study assistant for the "Broadrange AI" application.
 Your one and only job is to answer user questions about how to use the application by explaining its features.
 You must not attempt to perform actions or navigate. You only provide helpful, explanatory information.
@@ -43,7 +43,7 @@ User's Question: "${input.query}"`,
       response: llmResponse.text,
     };
 
-  } catch (e) {
+  } catch (e: unknown) {
     console.error("FATAL Error in askStudyAssistant execution:", e);
     
     let detailedError = "An unknown error occurred.";
@@ -59,7 +59,7 @@ User's Question: "${input.query}"`,
         }
     }
 
-    const finalMessage = `I've encountered a critical server error. Please check your setup. The error is: "${detailedError}". This could be due to a missing or invalid GOOGLE_API_KEY in your .env file, or billing not being enabled for your Google Cloud project.`;
+    const finalMessage = `I've encountered a critical server error. The error is: "${detailedError}". This is likely due to a missing or invalid GEMINI_API_KEY in your .env file, or a billing issue with your Google Cloud project.`;
     
     return {
       response: finalMessage,
