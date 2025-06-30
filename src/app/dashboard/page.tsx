@@ -14,7 +14,7 @@ import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { generatePlanReflection, type GeneratePlanReflectionInput, type GeneratePlanReflectionOutput } from "@/ai/flows/generate-plan-reflection";
 import { Badge } from "@/components/ui/badge";
-import { parseISO, isValid } from "date-fns";
+import { parseISO, isValid, differenceInDays, format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 
 
@@ -64,6 +64,7 @@ export default function DashboardPage() {
   const { toast } = useToast();
   const [agents, setAgents] = useState<AgentDisplayData[]>(sampleAgentData);
   const [activeStudyPlan, setActiveStudyPlan] = useState<ScheduleData | null>(null);
+  const [allUserPlans, setAllUserPlans] = useState<ScheduleData[]>([]);
   const [parsedTasksForActivePlan, setParsedTasksForActivePlan] = useState<ScheduleTask[]>([]);
   const [planReflection, setPlanReflection] = useState<GeneratePlanReflectionOutput | null>(null);
   const [isGeneratingReflection, setIsGeneratingReflection] = useState(false);
@@ -75,6 +76,7 @@ export default function DashboardPage() {
     if (!currentUser?.id) {
       setActiveStudyPlan(null);
       setParsedTasksForActivePlan([]);
+      setAllUserPlans([]);
       setPlanReflection(null);
       setIsLoadingPlanData(false);
       return;
@@ -99,30 +101,37 @@ export default function DashboardPage() {
         toast({ title: "Error Loading Plan Data", description: `${apiErrorMessage} ${apiErrorDetails}`, variant: "destructive" });
         setActiveStudyPlan(null);
         setParsedTasksForActivePlan([]);
+        setAllUserPlans([]);
         setPlanReflection(null);
         setIsLoadingPlanData(false); 
         return;
       }
       
       const allPlans: ScheduleData[] = await response.json();
+      const processedPlans = allPlans.map(p => ({
+        ...p,
+        tasks: ensureTaskStructure(p.tasks, p.id),
+      }));
+      setAllUserPlans(processedPlans);
+
       let currentPlanToDisplay: ScheduleData | null = null;
 
-      if (allPlans && allPlans.length > 0) {
-        const activePlans = allPlans.filter(p => p.status === 'active').sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+      if (processedPlans && processedPlans.length > 0) {
+        const activePlans = processedPlans.filter(p => p.status === 'active').sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
         if (activePlans.length > 0) {
           currentPlanToDisplay = activePlans[0];
         } else {
-          const completedPlans = allPlans.filter(p => p.status === 'completed').sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+          const completedPlans = processedPlans.filter(p => p.status === 'completed').sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
           if (completedPlans.length > 0) {
             currentPlanToDisplay = completedPlans[0];
           } else {
-            currentPlanToDisplay = allPlans.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
+            currentPlanToDisplay = processedPlans.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
           }
         }
       }
       
       if (currentPlanToDisplay) {
-        const tasks = ensureTaskStructure(currentPlanToDisplay.tasks, currentPlanToDisplay.id);
+        const tasks = currentPlanToDisplay.tasks;
         setActiveStudyPlan({...currentPlanToDisplay, tasks });
         setParsedTasksForActivePlan(tasks);
       } else {
@@ -136,6 +145,7 @@ export default function DashboardPage() {
       toast({ title: "Network Error", description: `Could not connect to fetch plans. ${(error as Error).message}`, variant: "destructive" });
       setActiveStudyPlan(null);
       setParsedTasksForActivePlan([]);
+      setAllUserPlans([]);
       setPlanReflection(null);
     } finally {
       setIsLoadingPlanData(false);
@@ -242,6 +252,48 @@ export default function DashboardPage() {
     const totalScore = attemptedQuizzes.reduce((sum, task) => sum + (task.quizScore || 0), 0);
     return Math.round(totalScore / attemptedQuizzes.length);
   }, [parsedTasksForActivePlan]);
+
+  const studyStreak = useMemo(() => {
+    if (!allUserPlans || allUserPlans.length === 0) return 0;
+
+    const allCompletedDates = allUserPlans
+      .flatMap(plan => plan.tasks || [])
+      .filter(task => task.completed && task.date && isValid(parseISO(task.date)))
+      .map(task => format(parseISO(task.date), 'yyyy-MM-dd'));
+
+    if (allCompletedDates.length === 0) return 0;
+
+    const uniqueDates = [...new Set(allCompletedDates)].sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+    
+    if (uniqueDates.length === 0) return 0;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const mostRecentStudyDate = parseISO(uniqueDates[0]);
+    mostRecentStudyDate.setHours(0, 0, 0, 0);
+
+    const diffDays = differenceInDays(today, mostRecentStudyDate);
+
+    if (diffDays > 1) {
+      return 0; // Streak is broken if the last study day was not today or yesterday
+    }
+
+    let currentStreak = 1;
+    for (let i = 0; i < uniqueDates.length - 1; i++) {
+      const currentDate = parseISO(uniqueDates[i]);
+      const previousDate = parseISO(uniqueDates[i + 1]);
+      currentDate.setHours(0,0,0,0);
+      previousDate.setHours(0,0,0,0);
+      
+      if (differenceInDays(currentDate, previousDate) === 1) {
+        currentStreak++;
+      } else {
+        break; // Streak is broken
+      }
+    }
+
+    return currentStreak;
+  }, [allUserPlans]);
 
   if (isLoadingPlanData) {
     return (
@@ -353,8 +405,8 @@ export default function DashboardPage() {
                 <Flame className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">0</div>
-                <p className="text-xs text-muted-foreground">Streak tracking soon!</p>
+                <div className="text-2xl font-bold">{studyStreak}</div>
+                <p className="text-xs text-muted-foreground">{studyStreak > 0 ? "Consecutive days studied" : "Complete a task to start!"}</p>
               </CardContent>
             </Card>
             <Card>
