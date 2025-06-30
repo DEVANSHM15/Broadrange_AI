@@ -120,7 +120,8 @@ const reflectionPrompt = ai.definePrompt({
   name: 'generatePlanReflectionPrompt',
   input: { schema: GeneratePlanReflectionInputSchema },
   output: { schema: GeneratePlanReflectionOutputSchema },
-  tools: [analyzeTaskPatternsTool], 
+  tools: [analyzeTaskPatternsTool],
+  model: 'googleai/gemini-1.5-flash-latest',
   prompt: `You are a friendly and insightful AI study coach. The user has just completed a study plan.
 Your goal is to provide a concise and encouraging reflection.
 
@@ -192,4 +193,3 @@ export async function generatePlanReflection(
 ): Promise<GeneratePlanReflectionOutput> {
   return generatePlanReflectionFlow(input);
 }
-

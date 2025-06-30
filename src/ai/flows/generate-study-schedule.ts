@@ -54,6 +54,7 @@ const prompt = ai.definePrompt({
   name: 'generateStudySchedulePrompt',
   input: {schema: GenerateStudyScheduleInputSchema},
   output: {schema: GenerateStudyScheduleOutputSchema},
+  model: 'googleai/gemini-1.5-flash-latest',
   prompt: `You are an AI study planner. Generate a personalized study schedule based on the user's inputs.
 
   Subjects: {{{subjects}}}
@@ -109,4 +110,3 @@ const generateStudyScheduleFlow = ai.defineFlow(
     return output!;
   }
 );
-
