@@ -22,6 +22,16 @@ const step1Schema = z.object({
 
 type Step1FormData = z.infer<typeof step1Schema>;
 
+const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg role="img" viewBox="0 0 24 24" {...props}>
+        <path
+        fill="currentColor"
+        d="M12.48 10.92v3.28h7.84c-.24 1.84-.85 3.18-1.73 4.1-1.02 1.02-2.62 1.98-4.66 1.98-3.57 0-6.47-2.9-6.47-6.47s2.9-6.47 6.47-6.47c1.98 0 3.33.83 4.1 1.59l2.42-2.42C18.13 2.56 15.79 1.5 12.48 1.5c-5.46 0-9.92 4.46-9.92 9.92s4.46 9.92 9.92 9.92c5.29 0 9.4-3.69 9.4-9.59 0-.6-.05-1.18-.16-1.72h-9.24z"
+        />
+    </svg>
+);
+
+
 export default function RegisterStep1Page() {
   const router = useRouter();
   const { currentUser, isLoading: authLoading } = useAuth();
@@ -86,7 +96,7 @@ export default function RegisterStep1Page() {
     <div className="w-full min-h-screen flex items-center justify-center p-4 bg-muted/30">
         <Card className="mx-auto max-w-sm w-full">
             <CardHeader className="text-center">
-                <Link href="/" className="flex justify-center items-center gap-2 text-2xl font-bold text-primary mb-4">
+                <Link href="/" className="flex justify-center items-center gap-2 text-2xl font-bold text-primary mb-2">
                     <BookOpen className="h-8 w-8" />
                     <span>CodeXStudy</span>
                 </Link>
@@ -174,6 +184,20 @@ export default function RegisterStep1Page() {
                         )}
                     </div>
                     <Button type="submit" className="w-full">Continue to Step 2</Button>
+                     <div className="relative my-2">
+                        <div className="absolute inset-0 flex items-center">
+                            <span className="w-full border-t" />
+                        </div>
+                        <div className="relative flex justify-center text-xs uppercase">
+                            <span className="bg-card px-2 text-muted-foreground">
+                            Or continue with
+                            </span>
+                        </div>
+                    </div>
+                    <Button variant="outline" className="w-full" type="button">
+                        <GoogleIcon className="mr-2 h-4 w-4" />
+                        Sign up with Google
+                    </Button>
                 </form>
             </CardContent>
              <CardFooter className="justify-center">

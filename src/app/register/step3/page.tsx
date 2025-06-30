@@ -139,7 +139,7 @@ export default function RegisterStep3Page() {
     <div className="w-full min-h-screen flex items-center justify-center p-4 bg-muted/30">
         <Card className="mx-auto max-w-sm w-full">
             <CardHeader className="text-center">
-                 <Link href="/" className="flex justify-center items-center gap-2 text-2xl font-bold text-primary mb-2">
+                <Link href="/" className="flex justify-center items-center gap-2 text-2xl font-bold text-primary mb-2">
                     <BookOpen className="h-8 w-8" />
                     <span>CodeXStudy</span>
                 </Link>

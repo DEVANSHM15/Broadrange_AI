@@ -214,7 +214,7 @@ export default function ForgotPasswordPage() {
         );
       case "passwordResetDone":
         return (
-            <CardContent className="text-center grid gap-4">
+            <CardContent className="text-center grid gap-4 pt-8">
               <h1 className="text-3xl font-bold flex items-center justify-center gap-2">
                 <CheckCircle className="h-8 w-8 text-green-500"/> Password Reset!
               </h1>
@@ -228,7 +228,7 @@ export default function ForgotPasswordPage() {
         );
       case "noRecovery":
         return (
-            <CardContent className="text-center grid gap-4">
+            <CardContent className="text-center grid gap-4 pt-8">
               <h1 className="text-3xl font-bold">Recovery Not Set Up</h1>
               <p className="text-muted-foreground">
                 Password recovery is not available for this account.
@@ -246,14 +246,14 @@ export default function ForgotPasswordPage() {
   return (
     <div className="w-full min-h-screen flex items-center justify-center p-4 bg-muted/30">
         <Card className="mx-auto max-w-sm w-full">
-            <div className="grid gap-2 text-center pt-6">
-                 <Link href="/" className="flex justify-center items-center gap-2 text-2xl font-bold text-primary mb-4">
+             <CardHeader className="text-center">
+                <Link href="/" className="flex justify-center items-center gap-2 text-2xl font-bold text-primary mb-2">
                     <BookOpen className="h-8 w-8" />
                     <span>CodeXStudy</span>
                 </Link>
-            </div>
+            </CardHeader>
             {renderContent()}
-            <CardFooter className="justify-center">
+            <CardFooter className="justify-center pt-4">
                  <div className="text-sm">
                     {step !== "passwordResetDone" && (
                         <Link href="/login" className="underline">
