@@ -28,10 +28,11 @@ const studyAssistantChatFlow = ai.defineFlow(
     outputSchema: StudyAssistantChatOutputSchema,
   },
   async (input) => {
-    try {
-      const llmResponse = await ai.generate({
-        model: 'googleai/gemini-pro',
-        system: `You are a friendly and helpful study assistant for the "Broadrange AI" application.
+    // Note: The primary try/catch is now in the exported wrapper function
+    // to catch any and all errors, including Genkit initialization issues.
+    const llmResponse = await ai.generate({
+      model: 'googleai/gemini-pro',
+      system: `You are a friendly and helpful study assistant for the "Broadrange AI" application.
 Your one and only job is to answer user questions about how to use the application by explaining its features.
 You must not attempt to perform actions or navigate. You only provide helpful, explanatory information.
 
@@ -57,39 +58,47 @@ When a user asks a question, use this information to provide a clear and concise
 
 *   User: "What is the analytics page for?"
 *   You: "The Analytics page helps you understand your study habits! It shows charts on your performance and, for completed plans, provides an AI-generated reflection on your consistency and offers suggestions for your next plan."`,
-        prompt: input.query,
-      });
+      prompt: input.query,
+    });
 
-      return {
-        response: llmResponse.text,
-      };
-    } catch (e) {
-      console.error("FATAL Error in studyAssistantChatFlow:", e);
-      
-      let detailedError = "An unknown error occurred.";
-      if (e instanceof Error) {
-          detailedError = e.message;
-      } else if (typeof e === 'string') {
-          detailedError = e;
-      } else {
-          try {
-              detailedError = JSON.stringify(e);
-          } catch {
-              detailedError = "A non-serializable error occurred."
-          }
-      }
-
-      // Make the error message user-facing but still informative for debugging
-      const finalMessage = `I'm sorry, I hit a technical snag. The server reported the following error: "${detailedError}". This might be an issue with the API configuration or a temporary service outage. A common cause is a missing GOOGLE_API_KEY in your .env file.`;
-      
-      return {
-        response: finalMessage,
-      };
-    }
+    return {
+      response: llmResponse.text,
+    };
   }
 );
 
 // Export a wrapper function to be called from the client.
+// This wrapper includes robust error handling to prevent the client from
+// receiving unhandled promise rejections.
 export async function askStudyAssistant(input: StudyAssistantChatInput): Promise<StudyAssistantChatOutput> {
-  return await studyAssistantChatFlow(input);
+  try {
+    // Execute the defined Genkit flow.
+    return await studyAssistantChatFlow(input);
+  } catch (e) {
+    // If ANY error occurs during the flow execution, catch it here.
+    console.error("FATAL Error in studyAssistantChatFlow execution:", e);
+    
+    // Determine the detailed error message.
+    let detailedError = "An unknown error occurred.";
+    if (e instanceof Error) {
+        detailedError = e.message;
+    } else if (typeof e === 'string') {
+        detailedError = e;
+    } else {
+        try {
+            detailedError = JSON.stringify(e);
+        } catch {
+            detailedError = "A non-serializable error object was thrown."
+        }
+    }
+
+    // Create a user-facing error message that includes the technical details.
+    const finalMessage = `I'm sorry, I have encountered a critical error. The server reported the following: "${detailedError}". This is likely an issue with the backend configuration (e.g., a missing or invalid GOOGLE_API_KEY in the .env file, or billing not enabled for the project). Please check the server logs for more details.`;
+    
+    // Return a valid output object containing the error message,
+    // so the client-side code doesn't hit its own generic 'catch' block.
+    return {
+      response: finalMessage,
+    };
+  }
 }
