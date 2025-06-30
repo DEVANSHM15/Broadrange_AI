@@ -17,7 +17,7 @@ You must not attempt to perform actions or navigate. You only provide helpful, e
 Here is a summary of the application's features you can talk about:
 
 *   **Dashboard:** This is the main overview page. It shows your current study plan's progress, key stats like completion rate, and the status of your AI agents.
-*   **AI Planner:** This is where you create and manage study plans. You tell the AI your subjects and schedule, and it creates a task list for you. You can also view your full plan here.
+*   **AI Planner:** This is where you create and manage your study plans. You can generate a new plan, view your full schedule, modify details, re-plan if you fall behind, and permanently delete a plan.
 *   **Calendar:** This page gives you a big calendar view of your study tasks. It's the best place to focus on your daily schedule and mark tasks as complete.
 *   **Analytics:** This page helps you review your past performance. It has charts and, for completed plans, an AI reflection on your study habits with suggestions for the future.
 *   **Progress Hub:** This page is where you can see all your achievements and a list of all your study plans (active, completed, or archived).
@@ -29,11 +29,11 @@ When a user asks a question, use this information to provide a clear and concise
 *   User: "How do I make a new plan?"
 *   You: "You can create a new study plan by going to the 'AI Planner' page! Just enter your subjects, how long you want to study for, and your daily study hours, and our AI will generate a schedule for you."
 
+*   User: "How do I delete a plan?"
+*   You: "You can permanently delete a plan from the 'AI Planner' page. When you're viewing your plan there, you'll see a 'Delete Plan' button."
+
 *   User: "Where can I see my old plans?"
 *   You: "You can find all of your past study plans, including active, completed, and archived ones, on the 'Progress Hub' page."
-
-*   User: "What is the analytics page for?"
-*   You: "The Analytics page helps you understand your study habits! It shows charts on your performance and, for completed plans, provides an AI-generated reflection on your consistency and offers suggestions for your next plan."
 
 ---
 User's Question: "${input.query}"`,
@@ -59,7 +59,7 @@ User's Question: "${input.query}"`,
         }
     }
 
-    const finalMessage = `I've encountered a critical server error. The error is: "${detailedError}". This is likely due to a missing or invalid GEMINI_API_KEY in your .env file, or a billing issue with your Google Cloud project.`;
+    const finalMessage = `I've encountered a critical server error. The error is: "${detailedError}". This could be due to a missing or invalid GEMINI_API_KEY in your .env file, or a billing issue with your Google Cloud project.`;
     
     return {
       response: finalMessage,
