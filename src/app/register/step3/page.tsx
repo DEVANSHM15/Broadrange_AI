@@ -206,13 +206,13 @@ export default function RegisterStep3Page() {
                 </Form>
             </div>
         </div>
-        <div className="hidden lg:block animate-in fade-in-0 duration-1000">
+        <div className="hidden bg-muted lg:flex items-center justify-center p-8 animate-in fade-in-0 duration-1000">
             <Image
                 src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRdItPl3rsdORxFVIZUfCoF7GLU1QG9IHn1pQ&s"
                 alt="A modern, well-lit study setup"
                 width={1920}
                 height={1280}
-                className="h-full w-full object-cover"
+                className="h-auto w-full max-w-md rounded-xl shadow-2xl"
                 data-ai-hint="study setup"
                 priority
             />
