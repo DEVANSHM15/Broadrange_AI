@@ -11,10 +11,10 @@ export async function POST(req: Request) {
   const msg = {
     to: email,
     from: 'devanshm.btech23@rvu.edu.in ', // Must match your SendGrid sender
-    subject: `🎉 Welcome to Broadrange AI, ${name}!`,
+    subject: `🎉 Welcome to CodeXStudy, ${name}!`,
     html: `
       <h2>Hi ${name},</h2>
-      <p>Welcome to <strong>Broadrange AI</strong> – your productivity companion.</p>
+      <p>Welcome to <strong>CodeXStudy</strong> – your productivity companion.</p>
       <p>You're now ready to take control of your study goals 🚀</p>
     `,
   };
@@ -34,3 +34,4 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: false, error: "Failed to send welcome email." }, { status: 500 });
   }
 }
+

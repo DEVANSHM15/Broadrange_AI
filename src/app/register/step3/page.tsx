@@ -93,7 +93,7 @@ export default function RegisterStep3Page() {
       if (result.success) {
         toast({
           title: "Registration Successful!",
-          description: "Welcome to Broadrange AI! Your study assistant is ready.",
+          description: "Welcome to CodeXStudy! Your study assistant is ready.",
           action: <CheckCircle className="text-green-500" />
         });
         sessionStorage.removeItem("registrationStep1Data");
@@ -140,14 +140,14 @@ export default function RegisterStep3Page() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
       <div className="flex items-center gap-2 mb-8 text-2xl font-semibold text-primary">
-        <span className="flex items-center justify-center h-8 w-8 bg-primary text-primary-foreground rounded-full font-bold text-xl">B</span>
-        <span>Broadrange AI</span>
+        <span className="flex items-center justify-center h-8 w-8 bg-primary text-primary-foreground rounded-full font-bold text-xl">C</span>
+        <span>CodeXStudy</span>
       </div>
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="text-2xl text-center">AI Agent Setup</CardTitle>
           <CardDescription className="text-center">
-            Step 3 of 3: Configure your Broadrange AI assistants.
+            Step 3 of 3: Configure your CodeXStudy assistants.
           </CardDescription>
           <div className="flex justify-center gap-2 pt-2">
             {[1,2,3].map(step => (

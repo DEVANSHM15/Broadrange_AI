@@ -72,8 +72,8 @@ export function AppHeader() {
       <div className="container flex h-14 items-center">
         <Link href={currentUser ? "/dashboard" : "/"} className="mr-6 flex items-center space-x-2 text-primary">
           {/* Logo Placeholder: Replace with your actual logo image component */}
-          <span className="flex items-center justify-center h-7 w-7 bg-primary text-primary-foreground rounded-full font-bold text-md">B</span>
-          <span className="font-bold sm:inline-block">Broadrange AI</span>
+          <span className="flex items-center justify-center h-7 w-7 bg-primary text-primary-foreground rounded-full font-bold text-md">C</span>
+          <span className="font-bold sm:inline-block">CodeXStudy</span>
         </Link>
         
         {currentUser && (

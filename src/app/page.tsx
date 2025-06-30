@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -24,7 +25,7 @@ export default function LandingPage() {
         <div className="container flex h-14 max-w-screen-2xl items-center">
           <Link href="/" className="mr-6 flex items-center space-x-2">
             <BookOpen className="h-6 w-6 text-primary" />
-            <span className="font-bold sm:inline-block">Broadrange AI</span>
+            <span className="font-bold sm:inline-block">CodeXStudy</span>
           </Link>
           <div className="flex flex-1 items-center justify-end space-x-2">
             <nav className="flex items-center gap-4">
@@ -58,7 +59,7 @@ export default function LandingPage() {
                     Revolutionize Your Study Habits
                   </h1>
                   <p className="max-w-[600px] text-muted-foreground md:text-xl">
-                    Broadrange AI transforms your study routine with intelligent, adaptive plans tailored just for you. Stop guessing, start achieving.
+                    CodeXStudy transforms your study routine with intelligent, adaptive plans tailored just for you. Stop guessing, start achieving.
                   </p>
                 </div>
                 <div className="flex flex-col gap-2 min-[400px]:flex-row">
@@ -175,7 +176,7 @@ export default function LandingPage() {
             <div className="space-y-3">
               <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight">Ready to Ace Your Studies?</h2>
               <p className="mx-auto max-w-[600px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                Join Broadrange AI today and unlock your full academic potential. Your personalized study journey awaits.
+                Join CodeXStudy today and unlock your full academic potential. Your personalized study journey awaits.
               </p>
             </div>
             <div className="mx-auto w-full max-w-sm space-y-2">
