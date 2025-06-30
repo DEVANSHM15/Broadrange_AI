@@ -61,6 +61,7 @@ const studyAssistantChatFlow = ai.defineFlow(
   async (input) => {
     try {
       const llmResponse = await ai.generate({
+        model: 'googleai/gemini-pro', // Explicitly specify a model that supports tool use well.
         system: `You are a friendly and helpful study assistant chatbot for the "Broadrange AI" app.
         Your primary role is to help users navigate the application.
         
@@ -105,6 +106,8 @@ const studyAssistantChatFlow = ai.defineFlow(
             errorMessage = "Sorry, I'm a bit busy right now due to high demand. Please try again in a moment.";
         } else if (e.message.toLowerCase().includes("api key not valid")) {
             errorMessage = "There seems to be an issue with the API configuration. Please contact support.";
+        } else if (e.message.length < 150) { // Return specific error if it's short
+            errorMessage = e.message;
         }
       }
       return {

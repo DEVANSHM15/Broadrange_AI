@@ -5,5 +5,6 @@ export const ai = genkit({
   plugins: [
     googleAI(), // Use GoogleAI plugin exclusively
   ],
-  model: 'googleai/gemini-pro', // Set default model to gemini-pro for better tool use
+  // The 'model' option is not valid here in Genkit 1.x and has been removed.
+  // Models should be specified directly in the 'ai.generate' or 'prompt' calls.
 });
