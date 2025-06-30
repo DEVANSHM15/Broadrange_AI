@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -187,12 +186,12 @@ export default function RegisterStep1Page() {
         </div>
         <div className="hidden bg-muted lg:flex lg:items-center lg:justify-center lg:p-12 animate-in fade-in-0 duration-1000">
             <Image
-                src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTnhMZxaknowE4DkGwaUx-kpyrcIGbVkJxTSA&s"
-                alt="A student studying with books and a laptop"
+                src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRIzZN2Rc3_YicRjfyFtRrgrXTQyjZGb90NHg&s"
+                alt="A modern, well-lit study setup"
                 width={1920}
                 height={1280}
                 className="h-auto w-full max-w-md rounded-lg object-contain shadow-2xl"
-                data-ai-hint="student studying"
+                data-ai-hint="study setup"
                 priority
             />
         </div>
