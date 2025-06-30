@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -15,6 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormField, FormItem, FormControl, FormMessage } from "@/components/ui/form"; 
+import Image from "next/image";
 
 const step3Schema = z.object({
   plannerBotEnabled: z.boolean().default(true),
@@ -140,7 +140,7 @@ export default function RegisterStep3Page() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
       <div className="flex items-center gap-2 mb-8 text-2xl font-semibold text-primary">
-        <span className="flex items-center justify-center h-8 w-8 bg-primary text-primary-foreground rounded-full font-bold text-xl">C</span>
+        <Image src="https://www.broadrange.ai/images/broadrange-logo.jpg" alt="Broadrange AI Logo" width={124} height={32} />
         <span>CodeXStudy</span>
       </div>
       <Card className="w-full max-w-md">

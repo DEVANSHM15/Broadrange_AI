@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect } from "react";
@@ -17,6 +16,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormField, FormItem, FormControl, FormMessage, FormDescription } from "@/components/ui/form"; // Added FormDescription
+import Image from "next/image";
 
 const step2Schema = z.object({
   studyLevel: z.string().min(1, "Please select your study level."),
@@ -97,7 +97,7 @@ export default function RegisterStep2Page() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
       <div className="flex items-center gap-2 mb-8 text-2xl font-semibold text-primary">
-        <span className="flex items-center justify-center h-8 w-8 bg-primary text-primary-foreground rounded-full font-bold text-xl">C</span>
+        <Image src="https://www.broadrange.ai/images/broadrange-logo.jpg" alt="Broadrange AI Logo" width={124} height={32} />
         <span>CodeXStudy</span>
       </div>
       <Card className="w-full max-w-md">

@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -14,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import Image from "next/image";
 
 const step1Schema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
@@ -87,8 +87,7 @@ export default function RegisterStep1Page() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
       <div className="flex items-center gap-2 mb-8 text-2xl font-semibold text-primary">
-        {/* Logo Placeholder: Replace with your actual logo image component */}
-        <span className="flex items-center justify-center h-8 w-8 bg-primary text-primary-foreground rounded-full font-bold text-xl">C</span>
+        <Image src="https://www.broadrange.ai/images/broadrange-logo.jpg" alt="Broadrange AI Logo" width={124} height={32} />
         <span>CodeXStudy</span>
       </div>
       <Card className="w-full max-w-md">

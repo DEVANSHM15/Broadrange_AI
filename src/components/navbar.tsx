@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -16,6 +15,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import Image from "next/image";
 
 export function AppHeader() {
   const { currentUser, logout, isLoading } = useAuth();
@@ -71,8 +71,7 @@ export function AppHeader() {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-14 items-center">
         <Link href={currentUser ? "/dashboard" : "/"} className="mr-6 flex items-center space-x-2 text-primary">
-          {/* Logo Placeholder: Replace with your actual logo image component */}
-          <span className="flex items-center justify-center h-7 w-7 bg-primary text-primary-foreground rounded-full font-bold text-md">C</span>
+          <Image src="https://www.broadrange.ai/images/broadrange-logo.jpg" alt="Broadrange AI Logo" width={108} height={28} />
           <span className="font-bold sm:inline-block">CodeXStudy</span>
         </Link>
         
