@@ -14,8 +14,11 @@ export async function POST(req: Request) {
     subject: `🎉 Welcome to CodeXStudy, ${name}!`,
     html: `
       <h2>Hi ${name},</h2>
-      <p>Welcome to <strong>CodeXStudy</strong> – your productivity companion.</p>
+      <p>Welcome to <strong>CodeXStudy</strong> – your new productivity companion from the team at Broadrange AI.</p>
       <p>You're now ready to take control of your study goals 🚀</p>
+      <br />
+      <p>Happy studying!</p>
+      <p><strong>The Broadrange AI Team</strong></p>
     `,
   };
 
@@ -34,4 +37,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: false, error: "Failed to send welcome email." }, { status: 500 });
   }
 }
-

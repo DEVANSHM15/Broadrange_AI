@@ -32,7 +32,7 @@ export default function RootLayout({
           <Toaster />
           <footer className="py-6 md:py-8 border-t bg-background">
             <div className="container mx-auto text-center text-muted-foreground text-sm">
-              &copy; {new Date().getFullYear()} CodeXStudy. All rights reserved.
+              &copy; {new Date().getFullYear()} Broadrange AI. All rights reserved.
             </div>
           </footer>
         </AppProviders>
