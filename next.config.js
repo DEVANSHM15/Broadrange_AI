@@ -17,13 +17,19 @@ const nextConfig = {
       },
       {
         protocol: 'https',
-        hostname: '**.vecteezy.com',
+        hostname: 'www.broadrange.ai',
         port: '',
         pathname: '/**',
       },
       {
         protocol: 'https',
-        hostname: 'www.broadrange.ai',
+        hostname: 'encrypted-tbn0.gstatic.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'static.vecteezy.com',
         port: '',
         pathname: '/**',
       },

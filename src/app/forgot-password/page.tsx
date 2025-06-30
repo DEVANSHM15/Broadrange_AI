@@ -11,9 +11,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, ShieldCheck, CheckCircle, BookOpen } from "lucide-react";
+import { Loader2, ShieldCheck, CheckCircle, BookOpen, Mail, KeyRound, Lock } from "lucide-react";
 import type { StoredUser } from "@/types";
+import Image from "next/image";
 
 const LOCAL_STORAGE_USERS_KEY = "studyMindAiUsers_v2";
 
@@ -117,123 +117,123 @@ export default function ForgotPasswordPage() {
     switch (step) {
       case "emailInput":
         return (
-          <>
-            <CardHeader>
-              <CardTitle className="text-2xl text-center">Forgot Your Password?</CardTitle>
-              <CardDescription className="text-center">
-                Enter your email address to start the recovery process.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={emailForm.handleSubmit(handleEmailSubmit)} className="space-y-4">
-                <div className="space-y-1">
-                  <Label htmlFor="email">Email Address</Label>
-                  <Input
-                    type="email"
-                    id="email"
-                    className={`${emailForm.formState.errors.email ? "border-destructive" : ""}`}
-                    {...emailForm.register("email")}
-                    required
-                    placeholder="you@example.com"
-                  />
-                  {emailForm.formState.errors.email && <p className="text-xs text-destructive mt-1">{emailForm.formState.errors.email.message}</p>}
+            <>
+                <div className="grid gap-2 text-center">
+                    <h1 className="text-3xl font-bold">Forgot Password?</h1>
+                    <p className="text-balance text-muted-foreground">
+                        Enter your email to start the recovery process.
+                    </p>
                 </div>
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "Continue"}
-                </Button>
-              </form>
-            </CardContent>
-          </>
+                <form onSubmit={emailForm.handleSubmit(handleEmailSubmit)} className="grid gap-4">
+                    <div className="grid gap-2">
+                        <Label htmlFor="email">Email</Label>
+                        <div className="relative">
+                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                type="email"
+                                id="email"
+                                className={`pl-10 ${emailForm.formState.errors.email ? "border-destructive" : ""}`}
+                                {...emailForm.register("email")}
+                                required
+                                placeholder="you@example.com"
+                            />
+                        </div>
+                        {emailForm.formState.errors.email && <p className="text-xs text-destructive mt-1">{emailForm.formState.errors.email.message}</p>}
+                    </div>
+                    <Button type="submit" className="w-full" disabled={isLoading}>
+                        {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "Continue"}
+                    </Button>
+                </form>
+            </>
         );
       case "securityCheck":
         return (
-          <>
-            <CardHeader>
-              <CardTitle className="text-2xl text-center flex items-center justify-center gap-2"><ShieldCheck className="h-6 w-6 text-primary"/> Security Check</CardTitle>
-              <CardDescription className="text-center">
-                Answer your security question to reset your password.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground mb-3">Your security question:</p>
-              <p className="font-semibold mb-4 p-3 bg-muted rounded-md">{securityQuestionToDisplay}</p>
-              <form onSubmit={resetForm.handleSubmit(handleResetSubmit)} className="space-y-4">
-                <div className="space-y-1">
-                  <Label htmlFor="securityAnswer">Your Answer</Label>
-                  <Input
-                    type="text"
-                    id="securityAnswer"
-                    className={`${resetForm.formState.errors.securityAnswer ? "border-destructive" : ""}`}
-                    {...resetForm.register("securityAnswer")}
-                    required
-                    placeholder="Your secret answer"
-                  />
-                  {resetForm.formState.errors.securityAnswer && <p className="text-xs text-destructive mt-1">{resetForm.formState.errors.securityAnswer.message}</p>}
+            <>
+                <div className="grid gap-2 text-center">
+                    <h1 className="text-3xl font-bold flex items-center justify-center gap-2"><ShieldCheck className="h-7 w-7 text-primary"/>Security Check</h1>
+                    <p className="text-balance text-muted-foreground">
+                        Answer your security question to reset your password.
+                    </p>
                 </div>
-                <div className="space-y-1">
-                  <Label htmlFor="newPassword">New Password</Label>
-                  <Input
-                    type="password"
-                    id="newPassword"
-                    className={`${resetForm.formState.errors.newPassword ? "border-destructive" : ""}`}
-                    {...resetForm.register("newPassword")}
-                    required
-                    placeholder="••••••••"
-                  />
-                  {resetForm.formState.errors.newPassword && <p className="text-xs text-destructive mt-1">{resetForm.formState.errors.newPassword.message}</p>}
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="confirmNewPassword">Confirm New Password</Label>
-                  <Input
-                    type="password"
-                    id="confirmNewPassword"
-                    className={`${resetForm.formState.errors.confirmNewPassword ? "border-destructive" : ""}`}
-                    {...resetForm.register("confirmNewPassword")}
-                    required
-                    placeholder="••••••••"
-                  />
-                  {resetForm.formState.errors.confirmNewPassword && <p className="text-xs text-destructive mt-1">{resetForm.formState.errors.confirmNewPassword.message}</p>}
-                </div>
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "Reset Password"}
-                </Button>
-              </form>
-            </CardContent>
-          </>
+                <p className="text-sm text-center text-muted-foreground mb-1">Your security question is:</p>
+                <p className="font-semibold mb-3 p-3 bg-muted rounded-md text-center">{securityQuestionToDisplay}</p>
+                <form onSubmit={resetForm.handleSubmit(handleResetSubmit)} className="grid gap-4">
+                    <div className="grid gap-2">
+                        <Label htmlFor="securityAnswer">Your Answer</Label>
+                        <div className="relative">
+                            <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                type="text"
+                                id="securityAnswer"
+                                className={`pl-10 ${resetForm.formState.errors.securityAnswer ? "border-destructive" : ""}`}
+                                {...resetForm.register("securityAnswer")}
+                                required
+                                placeholder="Your secret answer"
+                            />
+                        </div>
+                        {resetForm.formState.errors.securityAnswer && <p className="text-xs text-destructive mt-1">{resetForm.formState.errors.securityAnswer.message}</p>}
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="newPassword">New Password</Label>
+                        <div className="relative">
+                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                type="password"
+                                id="newPassword"
+                                className={`pl-10 ${resetForm.formState.errors.newPassword ? "border-destructive" : ""}`}
+                                {...resetForm.register("newPassword")}
+                                required
+                                placeholder="••••••••"
+                            />
+                        </div>
+                        {resetForm.formState.errors.newPassword && <p className="text-xs text-destructive mt-1">{resetForm.formState.errors.newPassword.message}</p>}
+                    </div>
+                    <div className="grid gap-2">
+                        <Label htmlFor="confirmNewPassword">Confirm New Password</Label>
+                        <div className="relative">
+                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                type="password"
+                                id="confirmNewPassword"
+                                className={`pl-10 ${resetForm.formState.errors.confirmNewPassword ? "border-destructive" : ""}`}
+                                {...resetForm.register("confirmNewPassword")}
+                                required
+                                placeholder="••••••••"
+                            />
+                        </div>
+                        {resetForm.formState.errors.confirmNewPassword && <p className="text-xs text-destructive mt-1">{resetForm.formState.errors.confirmNewPassword.message}</p>}
+                    </div>
+                    <Button type="submit" className="w-full" disabled={isLoading}>
+                        {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "Reset Password"}
+                    </Button>
+                </form>
+            </>
         );
       case "passwordResetDone":
         return (
-          <>
-            <CardHeader>
-              <CardTitle className="text-2xl text-center flex items-center justify-center gap-2">
-                <CheckCircle className="h-7 w-7 text-green-500"/> Password Reset!
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="text-center">
-              <p className="text-muted-foreground mb-6">
-                Your password has been successfully updated. You can now sign in with your new credentials.
+            <div className="text-center grid gap-4">
+              <h1 className="text-3xl font-bold flex items-center justify-center gap-2">
+                <CheckCircle className="h-8 w-8 text-green-500"/> Password Reset!
+              </h1>
+              <p className="text-muted-foreground">
+                Your password has been successfully updated.
               </p>
               <Button asChild className="w-full">
                 <Link href="/login">Back to Sign In</Link>
               </Button>
-            </CardContent>
-          </>
+            </div>
         );
       case "noRecovery":
         return (
-          <>
-            <CardHeader>
-              <CardTitle className="text-2xl text-center">Recovery Not Set Up</CardTitle>
-            </CardHeader>
-            <CardContent className="text-center">
-              <p className="text-muted-foreground mb-6">
-                Password recovery via security question is not available for this account because it was not configured during registration.
+            <div className="text-center grid gap-4">
+              <h1 className="text-3xl font-bold">Recovery Not Set Up</h1>
+              <p className="text-muted-foreground">
+                Password recovery is not available for this account.
               </p>
               <Button asChild className="w-full">
                 <Link href="/login">Back to Sign In</Link>
               </Button>
-            </CardContent>
-          </>
+            </div>
         );
       default:
         return null;
@@ -241,25 +241,36 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen py-12 px-4 animate-in fade-in-0 duration-1000">
-      <div className="w-full max-w-md mx-auto">
-        <div className="grid gap-2 text-center mb-6">
-          <Link href="/" className="flex justify-center items-center gap-2 text-2xl font-bold text-primary">
-            <BookOpen className="h-8 w-8" />
-            <span>CodeXStudy</span>
-          </Link>
+    <div className="w-full min-h-screen lg:grid lg:grid-cols-2">
+        <div className="flex items-center justify-center py-12 animate-in fade-in-0 slide-in-from-left-24 duration-1000">
+            <div className="mx-auto grid w-[380px] gap-6">
+                <div className="grid gap-2 text-center">
+                    <Link href="/" className="flex justify-center items-center gap-2 text-2xl font-bold text-primary mb-4">
+                        <BookOpen className="h-8 w-8" />
+                        <span>CodeXStudy</span>
+                    </Link>
+                </div>
+                {renderContent()}
+                <div className="mt-4 text-center text-sm">
+                    {step !== "passwordResetDone" && (
+                        <Link href="/login" className="underline">
+                            Remember your password? Sign In
+                        </Link>
+                    )}
+                </div>
+            </div>
         </div>
-        <Card>
-          {renderContent()}
-          <CardFooter className="flex flex-col items-center text-sm pt-4">
-            {step !== "passwordResetDone" && (
-              <Link href="/login" className="text-primary hover:underline">
-                Remember your password? Sign In
-              </Link>
-            )}
-          </CardFooter>
-        </Card>
-      </div>
+        <div className="hidden bg-muted lg:block animate-in fade-in-0 duration-1000">
+            <div className="relative h-full w-full">
+                <Image
+                    src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTnhMZxaknowE4DkGwaUx-kpyrcIGbVkJxTSA&s"
+                    alt="A student studying with books and a laptop"
+                    fill
+                    className="object-cover dark:brightness-[0.7]"
+                    data-ai-hint="student studying"
+                />
+            </div>
+        </div>
     </div>
   );
 }

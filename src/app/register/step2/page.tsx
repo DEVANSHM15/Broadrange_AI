@@ -8,7 +8,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAuth } from "@/contexts/auth-context";
-import { Loader2, BookOpen } from "lucide-react";
+import { Loader2, BookOpen, ShieldQuestion, KeyRound } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormField, FormItem, FormControl, FormMessage, FormDescription } from "@/components/ui/form";
-import { Card, CardContent } from "@/components/ui/card";
+import Image from "next/image";
 
 const step2Schema = z.object({
   studyLevel: z.string().min(1, "Please select your study level."),
@@ -92,143 +92,158 @@ export default function RegisterStep2Page() {
    if (currentUser) return null;
 
   return (
-    <div className="flex items-center justify-center min-h-screen py-12 px-4 animate-in fade-in-0 duration-1000">
-      <div className="w-full max-w-md mx-auto">
-        <div className="grid gap-2 text-center mb-6">
-          <Link href="/" className="flex justify-center items-center gap-2 text-2xl font-bold text-primary">
-            <BookOpen className="h-8 w-8" />
-            <span>CodeXStudy</span>
-          </Link>
-          <h1 className="text-3xl font-bold">Study & Security Setup</h1>
-          <p className="text-balance text-muted-foreground">
-            Step 2 of 3: Preferences and security for password recovery.
-          </p>
-          <div className="flex justify-center gap-2 pt-2">
-            {[1,2,3].map(step => (
-              <div key={step} className={`h-2 w-8 rounded-full ${step === 2 ? 'bg-primary' : (step < 2 ? 'bg-primary/50' : 'bg-muted')}`}></div>
-            ))}
-          </div>
-        </div>
-        <Card>
-          <CardContent className="pt-6">
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmitStep2)} className="space-y-6">
-                <FormField
-                  control={form.control}
-                  name="studyLevel"
-                  render={({ field }) => (
-                    <FormItem>
-                      <Label>Study Level</Label>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger className={`${form.formState.errors.studyLevel ? "border-destructive" : ""}`}>
-                            <SelectValue placeholder="Select your study level" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="high-school">High School</SelectItem>
-                          <SelectItem value="undergraduate">Undergraduate</SelectItem>
-                          <SelectItem value="graduate">Graduate</SelectItem>
-                          <SelectItem value="professional">Professional Certification</SelectItem>
-                          <SelectItem value="lifelong-learner">Lifelong Learner</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="preferredStudyTime"
-                  render={({ field }) => (
-                    <FormItem className="space-y-3">
-                      <Label>Preferred Study Time</Label>
-                      <FormControl>
-                        <RadioGroup
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                          className="grid grid-cols-2 gap-4"
-                        >
-                          {studyTimeOptions.map((option) => (
-                            <FormItem key={option.value} className="flex items-center space-x-2">
-                               <Label
-                                htmlFor={`time-${option.value}`}
-                                className={`flex items-center justify-center p-3 border rounded-md cursor-pointer transition-colors hover:bg-accent hover:text-accent-foreground w-full
-                                            ${field.value === option.value ? 'border-primary bg-primary/10 text-primary' : 'border-input'}`}
-                              >
-                                <FormControl>
-                                   <RadioGroupItem value={option.value} id={`time-${option.value}`} className="sr-only" />
-                                </FormControl>
-                                {option.label}
-                              </Label>
-                            </FormItem>
-                          ))}
-                        </RadioGroup>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="securityQuestion"
-                  render={({ field }) => (
-                    <FormItem>
-                      <Label htmlFor="securityQuestion">Security Question</Label>
-                      <FormControl>
-                        <Input 
-                          id="securityQuestion" 
-                          placeholder="e.g., What is your mother's maiden name?" 
-                          {...field} 
-                          className={`${form.formState.errors.securityQuestion ? "border-destructive" : ""}`}
-                        />
-                      </FormControl>
-                      <FormDescription>This will be used for password recovery.</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="securityAnswer"
-                  render={({ field }) => (
-                    <FormItem>
-                      <Label htmlFor="securityAnswer">Security Answer</Label>
-                      <FormControl>
-                        <Input 
-                          id="securityAnswer" 
-                          type="password" 
-                          placeholder="Your secret answer" 
-                          {...field} 
-                          className={`${form.formState.errors.securityAnswer ? "border-destructive" : ""}`}
-                        />
-                      </FormControl>
-                      <FormDescription>Keep this answer memorable and secure.</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="flex gap-4 pt-2">
-                  <Button 
-                    type="button" 
-                    variant="outline"
-                    className="w-full" 
-                    onClick={() => router.push('/register')}
-                  >
-                    Back
-                  </Button>
-                  <Button type="submit" className="w-full">Continue to Step 3</Button>
+    <div className="w-full min-h-screen lg:grid lg:grid-cols-2">
+        <div className="flex items-center justify-center py-12 animate-in fade-in-0 slide-in-from-left-24 duration-1000">
+            <div className="mx-auto grid w-[380px] gap-6">
+                <div className="grid gap-2 text-center">
+                    <Link href="/" className="flex justify-center items-center gap-2 text-2xl font-bold text-primary mb-2">
+                        <BookOpen className="h-8 w-8" />
+                        <span>CodeXStudy</span>
+                    </Link>
+                    <h1 className="text-3xl font-bold">Study & Security Setup</h1>
+                    <p className="text-balance text-muted-foreground">
+                        Step 2 of 3: Preferences and security.
+                    </p>
+                    <div className="flex justify-center gap-2 pt-2">
+                        {[1,2,3].map(step => (
+                        <div key={step} className={`h-2 w-8 rounded-full ${step === 2 ? 'bg-primary' : (step < 2 ? 'bg-primary/50' : 'bg-muted')}`}></div>
+                        ))}
+                    </div>
                 </div>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
-      </div>
+                <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmitStep2)} className="space-y-6">
+                        <FormField
+                        control={form.control}
+                        name="studyLevel"
+                        render={({ field }) => (
+                            <FormItem>
+                            <Label>Study Level</Label>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                <SelectTrigger className={`${form.formState.errors.studyLevel ? "border-destructive" : ""}`}>
+                                    <SelectValue placeholder="Select your study level" />
+                                </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                <SelectItem value="high-school">High School</SelectItem>
+                                <SelectItem value="undergraduate">Undergraduate</SelectItem>
+                                <SelectItem value="graduate">Graduate</SelectItem>
+                                <SelectItem value="professional">Professional Certification</SelectItem>
+                                <SelectItem value="lifelong-learner">Lifelong Learner</SelectItem>
+                                <SelectItem value="other">Other</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                        
+                        <FormField
+                        control={form.control}
+                        name="preferredStudyTime"
+                        render={({ field }) => (
+                            <FormItem className="space-y-3">
+                            <Label>Preferred Study Time</Label>
+                            <FormControl>
+                                <RadioGroup
+                                onValueChange={field.onChange}
+                                defaultValue={field.value}
+                                className="grid grid-cols-2 gap-4"
+                                >
+                                {studyTimeOptions.map((option) => (
+                                    <FormItem key={option.value} className="flex items-center space-x-2">
+                                    <Label
+                                        htmlFor={`time-${option.value}`}
+                                        className={`flex items-center justify-center p-3 border rounded-md cursor-pointer transition-colors hover:bg-accent hover:text-accent-foreground w-full
+                                                    ${field.value === option.value ? 'border-primary bg-primary/10 text-primary' : 'border-input'}`}
+                                    >
+                                        <FormControl>
+                                        <RadioGroupItem value={option.value} id={`time-${option.value}`} className="sr-only" />
+                                        </FormControl>
+                                        {option.label}
+                                    </Label>
+                                    </FormItem>
+                                ))}
+                                </RadioGroup>
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+
+                        <FormField
+                        control={form.control}
+                        name="securityQuestion"
+                        render={({ field }) => (
+                            <FormItem>
+                            <Label htmlFor="securityQuestion">Security Question</Label>
+                            <FormControl>
+                                <div className="relative">
+                                <ShieldQuestion className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input 
+                                    id="securityQuestion" 
+                                    placeholder="e.g., Your first pet's name?" 
+                                    {...field} 
+                                    className={`pl-10 ${form.formState.errors.securityQuestion ? "border-destructive" : ""}`}
+                                />
+                                </div>
+                            </FormControl>
+                            <FormDescription>This will be used for password recovery.</FormDescription>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+
+                        <FormField
+                        control={form.control}
+                        name="securityAnswer"
+                        render={({ field }) => (
+                            <FormItem>
+                            <Label htmlFor="securityAnswer">Security Answer</Label>
+                            <FormControl>
+                                <div className="relative">
+                                <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input 
+                                    id="securityAnswer" 
+                                    type="password" 
+                                    placeholder="Your secret answer" 
+                                    {...field} 
+                                    className={`pl-10 ${form.formState.errors.securityAnswer ? "border-destructive" : ""}`}
+                                />
+                                </div>
+                            </FormControl>
+                             <FormDescription>Keep this answer memorable and secure.</FormDescription>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+
+                        <div className="flex gap-4 pt-2">
+                        <Button 
+                            type="button" 
+                            variant="outline"
+                            className="w-full" 
+                            onClick={() => router.push('/register')}
+                        >
+                            Back
+                        </Button>
+                        <Button type="submit" className="w-full">Continue to Step 3</Button>
+                        </div>
+                    </form>
+                </Form>
+            </div>
+        </div>
+        <div className="hidden bg-muted lg:block animate-in fade-in-0 duration-1000">
+            <div className="relative h-full w-full">
+                <Image
+                    src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTnhMZxaknowE4DkGwaUx-kpyrcIGbVkJxTSA&s"
+                    alt="A student studying with books and a laptop"
+                    fill
+                    className="object-cover dark:brightness-[0.7]"
+                    data-ai-hint="student studying"
+                />
+            </div>
+        </div>
     </div>
   );
 }

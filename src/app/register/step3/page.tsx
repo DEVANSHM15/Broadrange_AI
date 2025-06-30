@@ -13,8 +13,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Form, FormField, FormItem, FormControl, FormMessage } from "@/components/ui/form"; 
-import { Card, CardContent } from "@/components/ui/card";
+import { Form, FormField, FormItem, FormControl } from "@/components/ui/form"; 
+import Image from "next/image";
 
 const step3Schema = z.object({
   plannerBotEnabled: z.boolean().default(true),
@@ -99,7 +99,6 @@ export default function RegisterStep3Page() {
         sessionStorage.removeItem("registrationStep1Data");
         sessionStorage.removeItem("registrationStep2Data");
         sessionStorage.removeItem("registrationStep3Data");
-        // Router push to dashboard is handled by useEffect watching currentUser
       } else {
         toast({
           variant: "destructive",
@@ -138,78 +137,87 @@ export default function RegisterStep3Page() {
 
 
   return (
-    <div className="flex items-center justify-center min-h-screen py-12 px-4 animate-in fade-in-0 duration-1000">
-      <div className="w-full max-w-md mx-auto">
-        <div className="grid gap-2 text-center mb-6">
-           <Link href="/" className="flex justify-center items-center gap-2 text-2xl font-bold text-primary">
-            <BookOpen className="h-8 w-8" />
-            <span>CodeXStudy</span>
-          </Link>
-          <h1 className="text-3xl font-bold">AI Agent Setup</h1>
-          <p className="text-balance text-muted-foreground">
-            Step 3 of 3: Configure your CodeXStudy assistants.
-          </p>
-           <div className="flex justify-center gap-2 pt-2">
-              {[1,2,3].map(step => (
-                <div key={step} className={`h-2 w-8 rounded-full ${step === 3 ? 'bg-primary' : 'bg-primary/50'}`}></div>
-              ))}
-          </div>
+    <div className="w-full min-h-screen lg:grid lg:grid-cols-2">
+        <div className="flex items-center justify-center py-12 animate-in fade-in-0 slide-in-from-left-24 duration-1000">
+            <div className="mx-auto grid w-[380px] gap-6">
+                <div className="grid gap-2 text-center">
+                    <Link href="/" className="flex justify-center items-center gap-2 text-2xl font-bold text-primary mb-2">
+                        <BookOpen className="h-8 w-8" />
+                        <span>CodeXStudy</span>
+                    </Link>
+                    <h1 className="text-3xl font-bold">AI Agent Setup</h1>
+                    <p className="text-balance text-muted-foreground">
+                        Step 3 of 3: Configure your CodeXStudy assistants.
+                    </p>
+                    <div className="flex justify-center gap-2 pt-2">
+                        {[1,2,3].map(step => (
+                            <div key={step} className={`h-2 w-8 rounded-full ${step === 3 ? 'bg-primary' : 'bg-primary/50'}`}></div>
+                        ))}
+                    </div>
+                </div>
+                <Form {...form}> 
+                <form onSubmit={form.handleSubmit(onFinalSubmit)} className="space-y-6"> 
+                    <div className="space-y-4">
+                    {agentSettingsFields.map((agent) => (
+                        <FormField
+                        key={agent.name}
+                        control={form.control} 
+                        name={agent.name}
+                        render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                            <div className="space-y-0.5">
+                                <Label htmlFor={agent.name} className="text-base flex items-center gap-2">
+                                <span className="text-xl">{agent.emoji}</span> {agent.title}
+                                </Label>
+                                <p className="text-sm text-muted-foreground pl-7">{agent.desc}</p>
+                            </div>
+                            <FormControl>
+                                <Switch
+                                id={agent.name}
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                                />
+                            </FormControl>
+                            </FormItem>
+                        )}
+                        />
+                    ))}
+                    </div>
+                    <div className="flex gap-4 pt-4">
+                    <Button 
+                        type="button" 
+                        variant="outline"
+                        className="w-full" 
+                        onClick={() => router.push('/register/step2')}
+                    >
+                        Back
+                    </Button>
+                    <Button type="submit" className="w-full" disabled={isSubmittingForm || authLoading}>
+                        {isSubmittingForm || authLoading ? (
+                        <>
+                            <Loader2 className="mr-2 h-5 w-5 animate-spin" /> 
+                            Completing Setup...
+                        </>
+                        ) : (
+                        "Complete Setup"
+                        )}
+                    </Button>
+                    </div>
+                </form>
+                </Form>
+            </div>
         </div>
-        <Card>
-          <CardContent className="pt-6">
-            <Form {...form}> 
-              <form onSubmit={form.handleSubmit(onFinalSubmit)} className="space-y-6"> 
-                <div className="space-y-4">
-                  {agentSettingsFields.map((agent) => (
-                    <FormField
-                      key={agent.name}
-                      control={form.control} 
-                      name={agent.name}
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                          <div className="space-y-0.5">
-                            <Label htmlFor={agent.name} className="text-base flex items-center gap-2">
-                               <span className="text-xl">{agent.emoji}</span> {agent.title}
-                            </Label>
-                            <p className="text-sm text-muted-foreground pl-7">{agent.desc}</p>
-                          </div>
-                          <FormControl>
-                            <Switch
-                              id={agent.name}
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                  ))}
-                </div>
-                <div className="flex gap-4 pt-4">
-                   <Button 
-                    type="button" 
-                    variant="outline"
-                    className="w-full" 
-                    onClick={() => router.push('/register/step2')}
-                  >
-                    Back
-                  </Button>
-                  <Button type="submit" className="w-full" disabled={isSubmittingForm || authLoading}>
-                    {isSubmittingForm || authLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-5 w-5 animate-spin" /> 
-                        Completing Setup...
-                      </>
-                    ) : (
-                      "Complete Setup"
-                    )}
-                  </Button>
-                </div>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
-      </div>
+        <div className="hidden bg-muted lg:block animate-in fade-in-0 duration-1000">
+            <div className="relative h-full w-full">
+                <Image
+                    src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTnhMZxaknowE4DkGwaUx-kpyrcIGbVkJxTSA&s"
+                    alt="A student studying with books and a laptop"
+                    fill
+                    className="object-cover dark:brightness-[0.7]"
+                    data-ai-hint="student studying"
+                />
+            </div>
+        </div>
     </div>
   );
 }
