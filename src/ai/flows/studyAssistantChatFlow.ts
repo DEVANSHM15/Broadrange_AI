@@ -10,7 +10,7 @@ export async function askStudyAssistant(input: StudyAssistantChatInput): Promise
   try {
      const llmResponse = await ai.generate({
       model: 'googleai/gemini-1.5-flash-latest',
-      prompt: `You are a friendly and helpful study assistant for the "Broadrange AI" application.
+      prompt: `You are a friendly and helpful study assistant for this application.
 Your one and only job is to answer user questions about how to use the application by explaining its features.
 You must not attempt to perform actions or navigate. You only provide helpful, explanatory information.
 

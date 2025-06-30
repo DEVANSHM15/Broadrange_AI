@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useRef, useEffect, type FormEvent } from 'react';
@@ -39,7 +38,7 @@ export function ChatbotModal({ isOpen, onClose }: ChatbotModalProps) {
   useEffect(() => {
     if (isOpen) {
       setMessages([
-        { sender: 'bot', text: "Hello! I'm your study assistant. Ask me anything about how to use the Broadrange AI app." },
+        { sender: 'bot', text: "Hello! I'm your study assistant. Ask me anything about how to use this application." },
       ]);
     }
   }, [isOpen]);
