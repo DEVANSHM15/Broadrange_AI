@@ -193,17 +193,18 @@ export default function DashboardPage() {
       } finally {
           setIsGeneratingReflection(false);
       }
-  }, [toast]); // Removed isGeneratingReflection from dependencies
+  }, [toast]);
 
   useEffect(() => {
     if (activeStudyPlan && activeStudyPlan.status === 'completed' && parsedTasksForActivePlan.length > 0) {
-      if (!isGeneratingReflection && planReflection === null) { // Only fetch if not already generating and no reflection exists
+      if (!isGeneratingReflection && planReflection === null) {
         fetchPlanReflection(activeStudyPlan, parsedTasksForActivePlan);
       }
-    } else if (planReflection !== null) { // If plan is not completed, clear any existing reflection
+    } else if (planReflection !== null) {
         setPlanReflection(null);
     }
-  }, [activeStudyPlan, parsedTasksForActivePlan, fetchPlanReflection, isGeneratingReflection, planReflection]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeStudyPlan, parsedTasksForActivePlan, fetchPlanReflection]);
 
 
   useEffect(() => {

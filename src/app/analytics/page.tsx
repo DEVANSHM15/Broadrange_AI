@@ -194,7 +194,6 @@ function AnalyticsPageContent() {
     if (!planToReflect.planDetails || !planToReflect.tasks || planToReflect.tasks.length === 0) {
         return;
     }
-    // Guard against re-entry is now primarily handled by the calling useEffect.
     
     setIsGeneratingReflection(true);
     if (forceRefetch) {
@@ -235,19 +234,18 @@ function AnalyticsPageContent() {
     } finally {
       setIsGeneratingReflection(false);
     }
-  }, [toast]); // Removed isGeneratingReflection from dependencies
+  }, [toast]);
 
   useEffect(() => {
     if (currentStudyPlanForAnalytics && currentStudyPlanForAnalytics.status === 'completed') {
-      // Only fetch if not already generating AND reflection is not already loaded
       if (!isGeneratingReflection && planReflection === null) {
         fetchPlanReflection(currentStudyPlanForAnalytics, false);
       }
     } else if (planReflection !== null) {
-      // If the current plan is not 'completed' but we have a reflection, clear it.
       setPlanReflection(null);
     }
-  }, [currentStudyPlanForAnalytics, fetchPlanReflection, isGeneratingReflection, planReflection]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentStudyPlanForAnalytics, fetchPlanReflection]);
 
 
   const performanceData = useMemo(() => {
@@ -709,4 +707,3 @@ export default function AnalyticsPage() {
     </Suspense>
   );
 }
-
