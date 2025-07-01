@@ -68,6 +68,7 @@ export default function DashboardPage() {
   const [parsedTasksForActivePlan, setParsedTasksForActivePlan] = useState<ScheduleTask[]>([]);
   const [planReflection, setPlanReflection] = useState<GeneratePlanReflectionOutput | null>(null);
   const [isGeneratingReflection, setIsGeneratingReflection] = useState(false);
+  const [reflectionError, setReflectionError] = useState<string | null>(null);
   const [isLoadingPlanData, setIsLoadingPlanData] = useState(true);
   const [currentTip, setCurrentTip] = useState("");
 
@@ -78,6 +79,7 @@ export default function DashboardPage() {
       setParsedTasksForActivePlan([]);
       setAllUserPlans([]);
       setPlanReflection(null);
+      setReflectionError(null);
       setIsLoadingPlanData(false);
       return;
     }
@@ -103,6 +105,7 @@ export default function DashboardPage() {
         setParsedTasksForActivePlan([]);
         setAllUserPlans([]);
         setPlanReflection(null);
+        setReflectionError(null);
         setIsLoadingPlanData(false); 
         return;
       }
@@ -138,7 +141,8 @@ export default function DashboardPage() {
         setActiveStudyPlan(null);
         setParsedTasksForActivePlan([]);
       }
-      setPlanReflection(null); // Reset reflection when new plan data is loaded
+      setPlanReflection(null);
+      setReflectionError(null);
 
     } catch (error) {
       console.error("Dashboard: Critical error fetching plans from API:", error);
@@ -147,6 +151,7 @@ export default function DashboardPage() {
       setParsedTasksForActivePlan([]);
       setAllUserPlans([]);
       setPlanReflection(null);
+      setReflectionError(null);
     } finally {
       setIsLoadingPlanData(false);
     }
@@ -168,7 +173,8 @@ export default function DashboardPage() {
           return;
       }
       setIsGeneratingReflection(true);
-      setPlanReflection(null); // Clear previous reflection
+      setPlanReflection(null);
+      setReflectionError(null);
       try {
           const input: GeneratePlanReflectionInput = {
               planDetails: planToReflect.planDetails,
@@ -180,20 +186,21 @@ export default function DashboardPage() {
       } catch (error) {
           console.error("Dashboard: Failed to generate plan reflection:", error);
           const detailMessage = error instanceof Error ? error.message : "An unknown error occurred while generating the reflection.";
-          toast({ title: "Reflection Error", description: detailMessage, variant: "destructive" });
+          setReflectionError(detailMessage);
           setPlanReflection(null);
       } finally {
           setIsGeneratingReflection(false);
       }
-  }, [toast]);
+  }, []);
 
   useEffect(() => {
     if (activeStudyPlan && activeStudyPlan.status === 'completed' && parsedTasksForActivePlan.length > 0) {
-      if (!isGeneratingReflection && planReflection === null) {
+      if (!isGeneratingReflection && planReflection === null && !reflectionError) {
         fetchPlanReflection(activeStudyPlan, parsedTasksForActivePlan);
       }
-    } else if (planReflection !== null) {
+    } else if (planReflection !== null || reflectionError !== null) {
         setPlanReflection(null);
+        setReflectionError(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeStudyPlan, parsedTasksForActivePlan]);
@@ -470,7 +477,14 @@ export default function DashboardPage() {
                 <p className="text-muted-foreground">ReflectionAI is analyzing...</p>
               </div>
             )}
-            {planReflection && !isGeneratingReflection && (
+            {reflectionError && !isGeneratingReflection && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Reflection Error</AlertTitle>
+                <AlertDescription>{reflectionError}</AlertDescription>
+              </Alert>
+            )}
+            {planReflection && !isGeneratingReflection && !reflectionError && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -505,12 +519,12 @@ export default function DashboardPage() {
                 </Card>
               </div>
             )}
-            {!planReflection && !isGeneratingReflection && activeStudyPlan?.status === 'completed' && (
-                <Alert variant="destructive">
+            {!planReflection && !isGeneratingReflection && !reflectionError && activeStudyPlan?.status === 'completed' && (
+                <Alert variant="default">
                     <AlertCircle className="h-4 w-4" />
                     <AlertTitle>Reflection Not Available</AlertTitle>
                     <AlertDescription>
-                        Could not generate a reflection for this plan.
+                        Could not generate a reflection for this plan at this time.
                     </AlertDescription>
                 </Alert>
             )}
@@ -553,5 +567,7 @@ export default function DashboardPage() {
     </AppLayout>
   );
 }
+
+    
 
     

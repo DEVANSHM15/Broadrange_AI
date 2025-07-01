@@ -65,6 +65,7 @@ function AnalyticsPageContent() {
   const [isLoadingPlan, setIsLoadingPlan] = useState(true);
   const [planReflection, setPlanReflection] = useState<GeneratePlanReflectionOutput | null>(null);
   const [isGeneratingReflection, setIsGeneratingReflection] = useState(false);
+  const [reflectionError, setReflectionError] = useState<string | null>(null);
   const [heatmapDisplayMonth, setHeatmapDisplayMonth] = useState<Date>(startOfMonth(new Date()));
 
   const reloadDataForAnalytics = useCallback(async (targetPlanId?: string) => {
@@ -143,6 +144,8 @@ function AnalyticsPageContent() {
       }
       
       setCurrentStudyPlanForAnalytics(planToAnalyze);
+      setPlanReflection(null);
+      setReflectionError(null);
 
     } catch (error) {
       console.error("Analytics: Failed to fetch or process plans:", error);
@@ -190,15 +193,14 @@ function AnalyticsPageContent() {
     return () => window.removeEventListener('studyPlanUpdated', handleStudyPlanUpdate);
   }, [reloadDataForAnalytics]);
 
- const fetchPlanReflection = useCallback(async (planToReflect: ScheduleData, forceRefetch: boolean = false) => {
+ const fetchPlanReflection = useCallback(async (planToReflect: ScheduleData) => {
     if (!planToReflect.planDetails || !planToReflect.tasks || planToReflect.tasks.length === 0) {
         return;
     }
     
     setIsGeneratingReflection(true);
-    if (forceRefetch) {
-        setPlanReflection(null);
-    }
+    setPlanReflection(null);
+    setReflectionError(null);
     
     try {
       const input: GeneratePlanReflectionInput = {
@@ -211,27 +213,24 @@ function AnalyticsPageContent() {
     } catch (error) {
       console.error("Failed to generate plan reflection for analytics:", error);
       const detailMessage = error instanceof Error ? error.message : "An unknown error occurred during reflection generation.";
-      toast({
-          title: "Reflection Generation Error",
-          description: detailMessage,
-          variant: "destructive"
-      });
+      setReflectionError(detailMessage);
       setPlanReflection(null); // Clear reflection on error
     } finally {
       setIsGeneratingReflection(false);
     }
-  }, [toast]);
+  }, []);
 
   useEffect(() => {
     if (currentStudyPlanForAnalytics && currentStudyPlanForAnalytics.status === 'completed') {
-      if (!isGeneratingReflection && planReflection === null) {
-        fetchPlanReflection(currentStudyPlanForAnalytics, false);
+      if (!isGeneratingReflection && planReflection === null && !reflectionError) {
+        fetchPlanReflection(currentStudyPlanForAnalytics);
       }
-    } else if (planReflection !== null) {
+    } else if (planReflection !== null || reflectionError !== null) {
       setPlanReflection(null);
+      setReflectionError(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentStudyPlanForAnalytics, fetchPlanReflection]);
+  }, [currentStudyPlanForAnalytics]);
 
 
   const performanceData = useMemo(() => {
@@ -613,6 +612,12 @@ function AnalyticsPageContent() {
                       <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
                       <p className="text-muted-foreground text-lg">ReflectionAI is thinking...</p>
                     </div>
+                  ) : reflectionError ? (
+                    <Alert variant="destructive" className="min-h-[200px] flex flex-col justify-center items-center text-center bg-destructive/10">
+                      <AlertCircleIcon className="h-8 w-8 mb-3" />
+                      <AlertTitle className="text-lg">Reflection Error</AlertTitle>
+                      <AlertDescription className="mt-1">{reflectionError}</AlertDescription>
+                    </Alert>
                   ) : planReflection ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <Card className="bg-background/50 shadow-sm hover:shadow-md transition-shadow">
@@ -645,11 +650,11 @@ function AnalyticsPageContent() {
                       </Card>
                     </div>
                   ) : (
-                    <Alert variant="destructive" className="min-h-[200px] flex flex-col justify-center items-center text-center bg-destructive/10">
+                    <Alert variant="default" className="min-h-[200px] flex flex-col justify-center items-center text-center bg-muted/20">
                       <AlertCircleIcon className="h-8 w-8 mb-3" />
                       <AlertTitle className="text-lg">Reflection Not Available</AlertTitle>
                       <AlertDescription className="mt-1">
-                          We couldn't generate a reflection for this completed plan. This might be due to insufficient task data or an AI processing error.
+                          We couldn't generate a reflection for this completed plan. This might be due to insufficient task data or a temporary AI processing error.
                       </AlertDescription>
                     </Alert>
                   )
@@ -693,3 +698,5 @@ export default function AnalyticsPage() {
     </Suspense>
   );
 }
+
+    
