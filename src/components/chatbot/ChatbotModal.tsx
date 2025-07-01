@@ -33,7 +33,9 @@ export function ChatbotModal({ isOpen, onClose }: ChatbotModalProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isThrottled, setIsThrottled] = useState(false); // New state for throttling
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const throttleTimerRef = useRef<NodeJS.Timeout | null>(null); // Ref to hold timer
 
   useEffect(() => {
     if (isOpen) {
@@ -41,6 +43,12 @@ export function ChatbotModal({ isOpen, onClose }: ChatbotModalProps) {
         { sender: 'bot', text: "Hello! I'm your study assistant. Ask me anything about how to use this application." },
       ]);
     }
+    // Cleanup timer on component unmount or modal close
+    return () => {
+        if (throttleTimerRef.current) {
+            clearTimeout(throttleTimerRef.current);
+        }
+    };
   }, [isOpen]);
 
   useEffect(() => {
@@ -55,12 +63,13 @@ export function ChatbotModal({ isOpen, onClose }: ChatbotModalProps) {
 
   const handleSendMessage = async (e: FormEvent) => {
     e.preventDefault();
-    if (!inputValue.trim() || isLoading) return;
+    if (!inputValue.trim() || isLoading || isThrottled) return;
 
     const userMessage: ChatMessage = { sender: 'user', text: inputValue };
     setMessages(prev => [...prev, userMessage]);
     setInputValue('');
     setIsLoading(true);
+    setIsThrottled(true); // Enable throttle
 
     try {
       const input: StudyAssistantChatInput = {
@@ -77,6 +86,11 @@ export function ChatbotModal({ isOpen, onClose }: ChatbotModalProps) {
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
+      // Set a timeout to end throttling after 5 seconds
+      throttleTimerRef.current = setTimeout(() => {
+        setIsThrottled(false);
+        throttleTimerRef.current = null;
+      }, 5000);
     }
   };
 
@@ -138,11 +152,11 @@ export function ChatbotModal({ isOpen, onClose }: ChatbotModalProps) {
             <Input
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              placeholder="e.g., 'How do I make a plan?'"
+              placeholder={isThrottled ? "Please wait a moment..." : "e.g., 'How do I make a plan?'"}
               autoComplete="off"
-              disabled={isLoading}
+              disabled={isLoading || isThrottled}
             />
-            <Button type="submit" size="icon" disabled={isLoading || !inputValue.trim()}>
+            <Button type="submit" size="icon" disabled={isLoading || !inputValue.trim() || isThrottled}>
               <Send className="h-4 w-4" />
             </Button>
           </form>

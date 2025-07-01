@@ -59,19 +59,27 @@ User's Question: "${input.query}"`,
     };
 
   } catch (e: unknown) {
-    console.error("FATAL Error in askStudyAssistant execution:", e);
+    console.error("Error in askStudyAssistant execution:", e);
     
     let detailedError = "An unknown error occurred.";
     if (e instanceof Error) {
         detailedError = e.message;
     } else if (typeof e === 'string') {
         detailedError = e;
-    } else {
-        try {
-            detailedError = JSON.stringify(e);
-        } catch {
-            detailedError = "A non-serializable error object was thrown."
-        }
+    }
+
+    // Check for the specific rate limit error
+    if (typeof detailedError === 'string' && (detailedError.includes('429') || detailedError.toLowerCase().includes('quota'))) {
+      return {
+        response: "It looks like I'm getting a lot of requests right now. Please try again in a minute. This is a temporary limit on the free plan."
+      }
+    }
+    
+    // Fallback for other errors
+    try {
+        detailedError = JSON.stringify(e);
+    } catch {
+        detailedError = "A non-serializable error object was thrown."
     }
 
     const finalMessage = `I've encountered a critical server error. Please check your setup. The error is: "${detailedError}". This could be due to a missing or invalid GOOGLE_API_KEY in your .env file, or billing not being enabled for your Google Cloud project.`;
