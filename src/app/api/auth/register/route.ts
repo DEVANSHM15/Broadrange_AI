@@ -118,4 +118,6 @@ export async function POST(req: Request) {
     if (error instanceof SyntaxError) { // Check for JSON parsing errors specifically
       return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
     }
-    return NextResponse.json({ error: 'An internal server error
+    return NextResponse.json({ error: 'An internal server error occurred' }, { status: 500 });
+  }
+}
