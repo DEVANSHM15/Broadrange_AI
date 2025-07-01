@@ -170,8 +170,10 @@ const generatePlanReflectionFlow = ai.defineFlow(
         let errorMessage = "An AI processing error occurred during reflection generation.";
         if (error instanceof Error) {
             const msgLower = error.message.toLowerCase();
-            if (msgLower.includes("[429") || msgLower.includes("quota") || msgLower.includes("rate limit")) {
-                errorMessage = "AI Reflection Error: API rate limit or quota exceeded. Please try again later.";
+            if (msgLower.includes("per day")) {
+                errorMessage = "AI Daily Limit Reached: You've exceeded the free daily quota for AI reflections. Please try again tomorrow.";
+            } else if (msgLower.includes("429") || msgLower.includes("rate limit")) {
+                errorMessage = "AI is Overloaded: Too many requests right now. Please wait a moment before trying again.";
             } else if (msgLower.includes("candidate was blocked")) {
                  errorMessage = "AI Reflection Error: Content was blocked by safety settings. Ensure plan data is appropriate.";
             } else if (error.message.length < 150) {

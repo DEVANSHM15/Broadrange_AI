@@ -179,15 +179,7 @@ export default function DashboardPage() {
           setPlanReflection(reflectionResult);
       } catch (error) {
           console.error("Dashboard: Failed to generate plan reflection:", error);
-          let detailMessage = "Could not generate plan reflection. Please try again later.";
-          if (error instanceof Error) {
-              const errorMessageLower = error.message.toLowerCase();
-              if (errorMessageLower.includes("429") || errorMessageLower.includes("quota") || errorMessageLower.includes("rate limit")) {
-                  detailMessage = "AI Reflection Error: API rate limit or quota exceeded. Please check your API plan or try again later.";
-              } else if (error.message.length < 150) {
-                  detailMessage = error.message;
-              }
-          }
+          const detailMessage = error instanceof Error ? error.message : "An unknown error occurred while generating the reflection.";
           toast({ title: "Reflection Error", description: detailMessage, variant: "destructive" });
           setPlanReflection(null);
       } finally {
@@ -204,7 +196,7 @@ export default function DashboardPage() {
         setPlanReflection(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeStudyPlan, parsedTasksForActivePlan, fetchPlanReflection]);
+  }, [activeStudyPlan, parsedTasksForActivePlan]);
 
 
   useEffect(() => {

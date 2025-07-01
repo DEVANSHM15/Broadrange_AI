@@ -210,21 +210,7 @@ function AnalyticsPageContent() {
       setPlanReflection(reflection);
     } catch (error) {
       console.error("Failed to generate plan reflection for analytics:", error);
-      let detailMessage = "An AI processing error occurred. Please try again later.";
-      if (error instanceof Error) {
-        const errorMessageLower = error.message.toLowerCase();
-        if (errorMessageLower.includes("429") || errorMessageLower.includes("quota") || errorMessageLower.includes("rate limit")) {
-          detailMessage = "AI Reflection Error: API rate limit or quota exceeded. Please check your API plan or try again later.";
-        } else if (error.message.includes("AI failed to generate a reflection") || error.message.includes("Output was null")) {
-          detailMessage = "The AI couldn't structure its response for reflection. This can sometimes happen. You might try again or check the plan data.";
-        } else if (error.message.includes("Plan details and tasks are required")) {
-          detailMessage = "Missing necessary plan data to generate the reflection.";
-        } else if (errorMessageLower.includes("schema validation failed") || errorMessageLower.includes("parse errors")) {
-           detailMessage = `Data sent to AI for reflection was not in the expected format. Details: ${error.message.substring(0,200)}`;
-        } else if (error.message.length < 150) {
-          detailMessage = error.message;
-        }
-      }
+      const detailMessage = error instanceof Error ? error.message : "An unknown error occurred during reflection generation.";
       toast({
           title: "Reflection Generation Error",
           description: detailMessage,
