@@ -344,8 +344,8 @@ export default function PlannerPage() {
   };
 
   const startAnalysisAndGeneratePlan = async () => {
-    if (!currentUser?.id) {
-      toast({ title: "User not authenticated", variant: "destructive" });
+    if (!currentUser?.id || !currentUser.name || !currentUser.email) {
+      toast({ title: "User not authenticated or missing details", variant: "destructive" });
       return;
     }
     const validationResult = validateInputs();
@@ -387,6 +387,18 @@ export default function PlannerPage() {
         }
         
         toast({ title: "Study Plan Generated!", description: "Your new study plan is ready.", variant: "default", action: <CheckCircle className="text-green-500"/> });
+        
+        // Send email notification
+        fetch('/api/send-plan-creation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: currentUser.email,
+            name: currentUser.name,
+            planDetails: newPlanData.planDetails
+          }),
+        }).catch(err => console.warn("Plan creation email failed to send:", err));
+
         await fetchUserPlans(); 
 
       } else {
@@ -529,7 +541,7 @@ export default function PlannerPage() {
   };
 
   const handleMarkPlanAsCompleted = async () => {
-    if (activePlan && currentUser?.id) {
+    if (activePlan && currentUser?.id && currentUser.email && currentUser.name) {
       const now = new Date().toISOString();
       const completedPlan: ScheduleData = {
         ...activePlan,
@@ -541,6 +553,16 @@ export default function PlannerPage() {
       const success = await saveActivePlanChanges(completedPlan);
       if (success) {
         toast({ title: "Plan Marked as Completed!", description: "Congratulations!", variant: "default" });
+        // Send completion email
+        fetch('/api/send-plan-completion', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                email: currentUser.email,
+                name: currentUser.name,
+                planDetails: completedPlan.planDetails
+            }),
+        }).catch(err => console.warn("Plan completion email failed to send:", err));
       } else {
         fetchUserPlans(); 
       }
@@ -881,3 +903,4 @@ export default function PlannerPage() {
 const ScrollArea = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className, children, ...props }, ref) => (
   <div ref={ref} className={cn("relative overflow-y-auto", className)} {...props}>{children}</div>));
 ScrollArea.displayName = "ScrollArea";
+
