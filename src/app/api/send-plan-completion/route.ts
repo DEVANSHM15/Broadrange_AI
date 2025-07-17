@@ -1,3 +1,4 @@
+
 // src/app/api/send-plan-completion/route.ts
 import { NextResponse } from "next/server";
 import sgMail from "@sendgrid/mail";
@@ -46,3 +47,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: false, error: "Failed to send plan completion email." }, { status: 500 });
   }
 }
+
+    

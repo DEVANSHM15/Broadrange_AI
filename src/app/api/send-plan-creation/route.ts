@@ -1,3 +1,4 @@
+
 // src/app/api/send-plan-creation/route.ts
 import { NextResponse } from "next/server";
 import sgMail from "@sendgrid/mail";
@@ -51,3 +52,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: false, error: "Failed to send plan creation email." }, { status: 500 });
   }
 }
+
+    

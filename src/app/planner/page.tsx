@@ -37,6 +37,7 @@ import { LogScorePopover } from '@/components/log-score-popover';
 import { QuizModal } from '@/components/quiz-modal';
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { useSearchParams } from 'next/navigation'; 
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 function parseTasksFromString(scheduleString: string, planId: string): ScheduleTask[] {
   try {
@@ -900,7 +901,4 @@ export default function PlannerPage() {
   );
 }
 
-const ScrollArea = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className, children, ...props }, ref) => (
-  <div ref={ref} className={cn("relative overflow-y-auto", className)} {...props}>{children}</div>));
-ScrollArea.displayName = "ScrollArea";
-
+    
