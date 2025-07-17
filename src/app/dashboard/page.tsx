@@ -168,6 +168,29 @@ export default function DashboardPage() {
     return () => window.removeEventListener('studyPlanUpdated', handleStudyPlanUpdate);
   }, [reloadDataFromApi]);
 
+  // UseEffect to check for missed day reminders on dashboard load
+  useEffect(() => {
+    const checkAndSendReminder = async () => {
+        if (activeStudyPlan && activeStudyPlan.status === 'active' && currentUser?.id) {
+            try {
+                await fetch('/api/reminders/send-missed-day', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: currentUser.id, planId: activeStudyPlan.id }),
+                });
+                // No toast here to avoid being intrusive. Logging handled on server.
+            } catch (error) {
+                console.warn("Could not check for reminder:", error);
+            }
+        }
+    };
+
+    if (!isLoadingPlanData) {
+        checkAndSendReminder();
+    }
+  }, [activeStudyPlan, currentUser, isLoadingPlanData]);
+
+
  const fetchPlanReflection = useCallback(async (planToReflect: ScheduleData, tasksToReflect: ScheduleTask[]) => {
       if (!planToReflect.planDetails || !tasksToReflect || tasksToReflect.length === 0) {
           return;
@@ -567,7 +590,3 @@ export default function DashboardPage() {
     </AppLayout>
   );
 }
-
-    
-
-    
