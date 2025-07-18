@@ -69,12 +69,12 @@ export async function POST(req: Request) {
           typedPlanData.id, // planId
           task.date,
           task.task,
-          task.completed, // Stored as 0 or 1 by SQLite driver if boolean
+          task.completed ? 1 : 0,
           task.youtubeSearchQuery,
           task.referenceSearchQuery,
           task.quizScore,
-          task.quizAttempted, // Stored as 0 or 1 by SQLite driver if boolean
-          task.notes // Added notes field
+          task.quizAttempted ? 1 : 0,
+          task.notes
         );
         // Note: Sub-tasks are not handled in this POST, they would be part of PUT or a separate endpoint
       }
