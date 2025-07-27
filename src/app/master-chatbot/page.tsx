@@ -49,10 +49,10 @@ export default function MasterChatbotPage() {
     const initialMessageHTML = `
       <p>Hello! I'm your study assistant. How can I help you get started? You can ask me a question, or use one of these quick actions:</p>
       <div class="mt-4 grid grid-cols-2 gap-2">
-        <a href="/planner" class="w-full text-center px-4 py-2 text-sm font-medium rounded-md border border-primary/20 bg-primary/10 text-primary hover:bg-primary/20 no-underline transition-colors">AI Planner</a>
-        <a href="/calendar" class="w-full text-center px-4 py-2 text-sm font-medium rounded-md border border-primary/20 bg-primary/10 text-primary hover:bg-primary/20 no-underline transition-colors">Calendar</a>
-        <a href="/analytics" class="w-full text-center px-4 py-2 text-sm font-medium rounded-md border border-primary/20 bg-primary/10 text-primary hover:bg-primary/20 no-underline transition-colors">Analytics</a>
-        <a href="/achievements" class="w-full text-center px-4 py-2 text-sm font-medium rounded-md border border-primary/20 bg-primary/10 text-primary hover:bg-primary/20 no-underline transition-colors">Progress Hub</a>
+        <a href="/planner" class="w-full text-center px-4 py-2 text-sm font-medium rounded-md border border-primary/30 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-card to-card text-primary-foreground hover:bg-primary/20 no-underline transition-all hover:scale-105">AI Planner</a>
+        <a href="/calendar" class="w-full text-center px-4 py-2 text-sm font-medium rounded-md border border-primary/30 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-card to-card text-primary-foreground hover:bg-primary/20 no-underline transition-all hover:scale-105">Calendar</a>
+        <a href="/analytics" class="w-full text-center px-4 py-2 text-sm font-medium rounded-md border border-primary/30 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-card to-card text-primary-foreground hover:bg-primary/20 no-underline transition-all hover:scale-105">Analytics</a>
+        <a href="/achievements" class="w-full text-center px-4 py-2 text-sm font-medium rounded-md border border-primary/30 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-card to-card text-primary-foreground hover:bg-primary/20 no-underline transition-all hover:scale-105">Progress Hub</a>
       </div>
     `;
 
