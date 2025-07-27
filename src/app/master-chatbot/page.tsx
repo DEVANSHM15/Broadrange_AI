@@ -9,22 +9,24 @@ import {
   CalendarDaysIcon,
   Bot,
   Sparkles,
+  ChevronRight,
 } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const features = [
   {
     href: "/planner",
     label: "AI Planner",
-    description: "Create and manage your study plans.",
+    description: "Create, view, or adapt your study plan.",
     icon: BookOpen,
   },
   {
     href: "/calendar",
     label: "Calendar",
-    description: "View your daily schedule and tasks.",
+    description: "Manage daily tasks and log progress.",
     icon: CalendarDaysIcon,
   },
   {
@@ -36,7 +38,7 @@ const features = [
   {
     href: "/achievements",
     label: "Progress Hub",
-    description: "View achievements and all plans.",
+    description: "View achievements and all your plans.",
     icon: ListChecks,
   },
 ];
@@ -44,40 +46,44 @@ const features = [
 export default function MasterChatbotPage() {
   return (
     <AppLayout>
-      <div className="container mx-auto max-w-4xl py-12 px-4 md:px-6">
-        <div className="text-center space-y-4 mb-12">
-          <Bot className="mx-auto h-16 w-16 text-primary" />
-          <h1 className="text-4xl font-bold tracking-tight">
-            👋 Welcome to your all-in-one assistant!
-          </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            I'm here to help you access all the features of CodeXStudy.
-            Select an option below to get started.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {features.map((feature) => (
-            <Link href={feature.href} key={feature.href} legacyBehavior>
-              <a className="block h-full">
-                <Card className="h-full hover:border-primary hover:bg-primary/5 transition-all duration-200 ease-in-out cursor-pointer flex flex-col">
-                  <CardHeader className="flex flex-row items-center gap-4">
-                    <div className="p-3 rounded-full bg-primary/10 text-primary">
-                      <feature.icon className="h-6 w-6" />
+      <div className="container mx-auto max-w-3xl flex-grow flex flex-col justify-center py-12 px-4 md:px-6">
+        <div className="flex items-start space-x-4">
+          <Avatar className="h-10 w-10 border">
+            <AvatarFallback>
+              <Bot />
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1 space-y-4">
+            <div className="bg-muted p-4 rounded-lg rounded-tl-none">
+              <p className="font-semibold">CodeXStudy Assistant</p>
+              <p className="text-muted-foreground">
+                Hello! I'm here to help you navigate the app. What would you like to do today?
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {features.map((feature) => (
+                <Link href={feature.href} key={feature.href} passHref>
+                  <Button
+                    variant="outline"
+                    className="w-full h-auto justify-start p-4 text-left"
+                  >
+                    <div className="flex items-center w-full">
+                      <div className="mr-4">
+                        <feature.icon className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="flex-grow">
+                        <p className="font-semibold">{feature.label}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {feature.description}
+                        </p>
+                      </div>
+                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
                     </div>
-                    <div>
-                      <CardTitle className="text-xl">{feature.label}</CardTitle>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="flex-grow">
-                    <p className="text-muted-foreground">
-                      {feature.description}
-                    </p>
-                  </CardContent>
-                </Card>
-              </a>
-            </Link>
-          ))}
+                  </Button>
+                </Link>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </AppLayout>
