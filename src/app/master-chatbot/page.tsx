@@ -7,13 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Send, Loader2, BookOpen, BarChartBig, Calendar, Sparkles, Layers, BarChart, BookOpenCheck } from 'lucide-react';
+import { Send, Loader2, Layers, BarChart, BookOpenCheck, Sparkles } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { askStudyAssistant } from '@/ai/flows/studyAssistantChatFlow';
 import type { StudyAssistantChatInput } from '@/types';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/auth-context';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
 interface ChatMessage {
   sender: 'user' | 'bot';
@@ -173,7 +173,7 @@ export default function MasterChatbotPage() {
               </div>
           </div>
           {/* Right Sidebar */}
-          <div className="hidden lg:block bg-card border rounded-lg shadow-lg p-6 overflow-y-auto">
+          <div className="hidden lg:flex flex-col bg-card border rounded-lg shadow-lg p-6">
             <h2 className="text-xl font-bold text-primary mb-2">Feature Spotlight</h2>
             <p className="text-sm text-muted-foreground mb-6">Discover what you can do. Ask me for more details on any feature!</p>
             <div className="space-y-4">
