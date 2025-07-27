@@ -66,8 +66,18 @@ export default function MasterChatbotPage() {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Enhanced initial message with HTML and buttons
+    const initialMessageHTML = `
+      <p>Hello! I'm your study assistant. How can I help you get started? You can ask me a question, or use one of these quick actions:</p>
+      <div class="mt-4 flex flex-col sm:flex-row gap-2">
+        <a href="/planner" class="w-full text-center px-4 py-2 text-sm font-medium rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground no-underline">AI Planner</a>
+        <a href="/analytics" class="w-full text-center px-4 py-2 text-sm font-medium rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground no-underline">View Analytics</a>
+        <a href="/calendar" class="w-full text-center px-4 py-2 text-sm font-medium rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground no-underline">Manage Calendar</a>
+      </div>
+    `;
+
     setMessages([
-      { sender: 'bot', text: "Hello! I'm your study assistant. Ask me anything about how to use the application.", isHtml: false },
+      { sender: 'bot', text: initialMessageHTML, isHtml: true },
     ]);
   }, []);
 
@@ -174,24 +184,48 @@ export default function MasterChatbotPage() {
           </div>
           {/* Right Sidebar */}
           <div className="hidden lg:flex flex-col bg-card border rounded-lg shadow-lg p-6">
-            <h2 className="text-xl font-bold text-primary mb-2">Feature Spotlight</h2>
-            <p className="text-sm text-muted-foreground mb-6">Discover what you can do. Ask me for more details on any feature!</p>
+            <h2 className="text-xl font-bold text-primary mb-2">Core Features</h2>
+            <p className="text-sm text-muted-foreground mb-6">Explore the app's capabilities. Ask me for more details on any feature!</p>
             <div className="space-y-6">
-              {featureCards.map((card, index) => (
-                <Link href={card.href} key={index} passHref>
+               <Link href="/planner" passHref>
                   <Card className="text-center bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-card to-card hover:-translate-y-1 transition-transform duration-300 cursor-pointer">
                     <CardHeader className="items-center pb-2 pt-4">
-                      <div className="p-3 rounded-full bg-primary/10 text-primary border border-primary/20">
-                        <card.icon className="h-5 w-5" />
+                      <div className="p-3.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                        <Layers className="h-7 w-7" />
                       </div>
-                      <CardTitle className="mt-2 text-sm font-semibold">{card.title}</CardTitle>
+                      <CardTitle className="mt-2 text-sm font-semibold">Personalized Plans</CardTitle>
                     </CardHeader>
                     <CardContent className="pb-4">
-                      <p className="text-xs text-muted-foreground">{card.description}</p>
+                      <p className="text-xs text-muted-foreground">Optimal study schedules based on your goals.</p>
                     </CardContent>
                   </Card>
                 </Link>
-              ))}
+                <Link href="/analytics" passHref>
+                  <Card className="text-center bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-card to-card hover:-translate-y-1 transition-transform duration-300 cursor-pointer">
+                    <CardHeader className="items-center pb-2 pt-4">
+                       <div className="p-3.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                        <BarChart className="h-7 w-7" />
+                      </div>
+                      <CardTitle className="mt-2 text-sm font-semibold">Advanced Analytics</CardTitle>
+                    </CardHeader>
+                    <CardContent className="pb-4">
+                      <p className="text-xs text-muted-foreground">Visualize your progress with insightful analytics.</p>
+                    </CardContent>
+                  </Card>
+                </Link>
+                <Link href="/calendar" passHref>
+                  <Card className="text-center bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-card to-card hover:-translate-y-1 transition-transform duration-300 cursor-pointer">
+                    <CardHeader className="items-center pb-2 pt-4">
+                       <div className="p-3.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                        <BookOpenCheck className="h-7 w-7" />
+                      </div>
+                      <CardTitle className="mt-2 text-sm font-semibold">AI-Powered Quizzes</CardTitle>
+                    </CardHeader>
+                    <CardContent className="pb-4">
+                      <p className="text-xs text-muted-foreground">Reinforce learning with on-demand quizzes.</p>
+                    </CardContent>
+                  </Card>
+                </Link>
             </div>
           </div>
         </div>
