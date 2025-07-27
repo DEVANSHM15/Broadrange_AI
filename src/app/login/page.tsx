@@ -93,7 +93,7 @@ export default function LoginPage() {
 
   return (
     <div className="w-full min-h-screen flex items-center justify-center p-4 bg-background">
-        <Card className="mx-auto max-w-md w-full border-border/50 shadow-2xl shadow-black/20">
+        <Card className="mx-auto max-w-md w-full border-border/50 shadow-2xl shadow-primary/10">
             <CardHeader className="text-center">
                 <Link href="/" className="flex justify-center items-center gap-2 text-2xl font-bold text-foreground mb-4">
                     <Image src="https://www.broadrange.ai/images/broadrange-logo.jpg" alt="Broadrange AI Logo" width={93} height={24} className="h-8 w-auto rounded-lg" />
@@ -113,7 +113,7 @@ export default function LoginPage() {
                             <Input
                             type="email"
                             id="email"
-                            className={`pl-10 h-11 bg-secondary/50 border-border focus:bg-secondary/90 ${errors.email ? "border-destructive" : ""}`}
+                            className={`pl-10 h-11 bg-input border-border focus:bg-accent/30 ${errors.email ? "border-destructive" : ""}`}
                             {...register("email")}
                             required
                             placeholder="you@example.com"
@@ -127,7 +127,7 @@ export default function LoginPage() {
                              <Button
                                 type="button"
                                 variant="link"
-                                className="ml-auto inline-block text-sm underline h-auto p-0"
+                                className="ml-auto inline-block text-sm underline h-auto p-0 text-primary/80"
                                 onClick={handleForgotPassword}
                             >
                                 Forgot password?
@@ -138,7 +138,7 @@ export default function LoginPage() {
                             <Input
                             type="password"
                             id="password"
-                            className={`pl-10 h-11 bg-secondary/50 border-border focus:bg-secondary/90 ${errors.password ? "border-destructive" : ""}`}
+                            className={`pl-10 h-11 bg-input border-border focus:bg-accent/30 ${errors.password ? "border-destructive" : ""}`}
                             {...register("password")}
                             required
                             placeholder="••••••••"

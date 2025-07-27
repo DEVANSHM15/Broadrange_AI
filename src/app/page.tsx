@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -52,54 +51,38 @@ export default function LandingPage() {
 
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="w-full py-20 md:py-28 lg:py-32 relative">
-          <div className="absolute inset-0 bg-grid-slate-900/[0.04] bg-[bottom_1px_center] dark:bg-grid-slate-400/[0.05] dark:bg-bottom dark:border-b dark:border-slate-100/5 [mask-image:linear-gradient(to_bottom,transparent,black)]"></div>
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent"></div>
-
+        <section className="w-full py-20 md:py-28 lg:py-32 relative overflow-hidden">
+          {/* Background decoration */}
+          <div className="absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] md:w-[500px] md:h-[500px] bg-primary/20 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute bottom-0 right-0 translate-x-1/2 translate-y-1/2 w-[300px] h-[300px] md:w-[500px] md:h-[500px] bg-secondary rounded-full blur-3xl animate-pulse delay-1000"></div>
+          
           <div className="container px-4 md:px-6 relative z-10">
-            <div className="grid md:grid-cols-2 gap-10 items-center">
-              <div className="flex flex-col items-start space-y-6">
-                 <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl/none text-left">
-                    Transforming Ideas into Reality with AI
+            <div className="flex flex-col items-center space-y-6 text-center">
+                 <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl/none text-center">
+                    Use AI To Meet All Your Needs And Desires
                   </h1>
-                  <p className="max-w-[600px] text-muted-foreground md:text-xl text-left">
-                    Experience the future of personalized education. Our intelligent agents deliver tailored study plans and insights to help you achieve your academic goals.
+                  <p className="max-w-[700px] text-muted-foreground md:text-xl text-center">
+                    Our intelligent agents deliver tailored study plans and insights to help you achieve your academic goals, faster and smarter than ever before.
                   </p>
                   <div className="flex gap-4">
-                    <Button asChild size="lg" className="text-lg px-8 py-6">
+                    <Button asChild size="lg" className="text-lg px-8 py-6 shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-shadow">
                         <Link href={currentUser ? "/dashboard" : "/register"}>
-                          {currentUser ? "Open Dashboard" : "Get Started"}
+                          {currentUser ? "Open Dashboard" : "Get Started For Free"}
                           <ArrowRight className="ml-2 h-5 w-5" />
                         </Link>
                     </Button>
-                     <Button asChild size="lg" className="text-lg px-8 py-6" variant="outline">
-                        <Link href={currentUser ? "/master-chatbot" : "/register"}>
-                          Chat with AI
-                        </Link>
-                    </Button>
                   </div>
-              </div>
-              <div className="relative w-full h-full min-h-[300px] md:min-h-[400px]">
-                <Image
-                  src="https://blog.cdn.cmarix.com/blog/wp-content/uploads/2022/05/Blog-1-2.png"
-                  alt="E-learning and online study illustration"
-                  layout="fill"
-                  objectFit="contain"
-                  className="rounded-xl"
-                  data-ai-hint="e-learning online study"
-                />
-              </div>
             </div>
           </div>
         </section>
 
         {/* Features Section */}
-        <section className="w-full py-16 md:py-24 lg:py-28 bg-card/40">
+        <section className="w-full py-16 md:py-24 lg:py-28 bg-background/50">
           <div className="container px-4 md:px-6">
             <div className="flex flex-col items-center justify-center space-y-4 text-center">
               <div className="space-y-2">
-                <div className="inline-block rounded-lg bg-primary/10 px-3 py-1 text-sm text-primary font-semibold">ABOUT US</div>
-                <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">We build for you</h2>
+                <div className="inline-block rounded-lg bg-primary/10 px-3 py-1 text-sm text-primary font-semibold">Core Features</div>
+                <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">Smart AI for Everyday Learning</h2>
                 <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
                   Our platform is packed with features designed to enhance your learning experience and boost your productivity.
                 </p>
@@ -147,7 +130,7 @@ export default function LandingPage() {
               </p>
             </div>
             <div className="mx-auto w-full max-w-sm space-y-2">
-              <Button asChild size="lg">
+              <Button asChild size="lg" className="shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-shadow">
                 <Link href={currentUser ? "/dashboard" : "/register"}>
                   {currentUser ? "Back to Dashboard" : "Sign Up Now"}
                   <Sparkles className="ml-2 h-5 w-5" />

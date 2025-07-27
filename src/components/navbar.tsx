@@ -106,7 +106,7 @@ export function AppHeader() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                   <Avatar className="h-8 w-8">
-                    <AvatarFallback>{getInitials(currentUser.name)}</AvatarFallback>
+                    <AvatarFallback className="bg-primary/20">{getInitials(currentUser.name)}</AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>

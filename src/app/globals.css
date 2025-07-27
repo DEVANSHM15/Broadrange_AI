@@ -4,41 +4,41 @@
 
 @layer base {
   :root {
-    --background: 0 0% 8%; /* Very dark grey, almost black */
-    --foreground: 0 0% 98%; /* White */
+    --background: 8 8% 10%; /* Very dark, almost black with a hint of warmth */
+    --foreground: 240 5% 96%; /* Off-white */
 
-    --card: 0 0% 12%; /* Slightly lighter dark for cards */
-    --card-foreground: 0 0% 98%;
+    --card: 240 4% 14%; /* Slightly lighter dark for cards */
+    --card-foreground: 240 5% 96%;
 
-    --popover: 0 0% 8%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 8 8% 8%;
+    --popover-foreground: 240 5% 96%;
 
-    --primary: 48 96% 53%; /* Vibrant Yellow */
-    --primary-foreground: 0 0% 10%; /* Dark text for yellow buttons */
+    --primary: 262 88% 66%; /* Vibrant Purple */
+    --primary-foreground: 240 5% 98%; /* White text on purple buttons */
 
-    --secondary: 0 0% 14%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 240 4% 18%;
+    --secondary-foreground: 240 5% 98%;
 
-    --muted: 0 0% 14%;
-    --muted-foreground: 0 0% 60%;
+    --muted: 240 4% 18%;
+    --muted-foreground: 240 4% 65%;
 
-    --accent: 0 0% 14%;
-    --accent-foreground: 0 0% 98%;
+    --accent: 240 4% 22%;
+    --accent-foreground: 240 5% 98%;
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 0 0% 18%; /* Subtle border */
-    --input: 0 0% 18%;
-    --ring: 48 96% 53%; /* Ring color is primary yellow */
+    --border: 240 4% 22%; /* Subtle border */
+    --input: 240 4% 16%;
+    --ring: 262 88% 70%; /* Ring color is a lighter purple */
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
     /* Chart colors */
-    --chart-1: 48 96% 53%;   /* primary yellow */
+    --chart-1: 262 88% 66%;
     --chart-2: 172.8 80% 40%;
     --chart-3: 0 70% 60%;
-    --chart-4: 262.1 83.3% 57.8%;
+    --chart-4: 210 90% 55%;
     --chart-5: 280 80% 65%;
   }
 
@@ -52,8 +52,8 @@
     --popover: 0 0% 100%;
     --popover-foreground: 240 10% 3.9%;
 
-    --primary: 45 95% 51%; /* Vibrant Yellow */
-    --primary-foreground: 240 10% 3.9%; /* Dark text for yellow buttons */
+    --primary: 262 80% 55%; /* Vibrant Purple */
+    --primary-foreground: 240 10% 99%;
 
     --secondary: 240 4.8% 95.9%;
     --secondary-foreground: 240 5.9% 10%;
@@ -69,13 +69,13 @@
 
     --border: 240 5.9% 90%;
     --input: 240 5.9% 90%;
-    --ring: 45 95% 51%;
+    --ring: 262 80% 55%;
     
     /* Chart colors for light theme */
-    --chart-1: 45 95% 51%;
+    --chart-1: 262 80% 55%;
     --chart-2: 172.8 80% 40%;
     --chart-3: 0 70% 60%;
-    --chart-4: 262.1 83.3% 57.8%;
+    --chart-4: 210 90% 55%;
     --chart-5: 280 80% 65%;
   }
 }
