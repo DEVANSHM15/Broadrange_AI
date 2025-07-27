@@ -49,10 +49,10 @@ export default function MasterChatbotPage() {
     const initialMessageHTML = `
       <p>Hello! I'm your study assistant. How can I help you get started? You can ask me a question, or use one of these quick actions:</p>
       <div class="mt-4 grid grid-cols-2 gap-2">
-        <a href="/planner" class="w-full text-center px-4 py-2 text-sm font-medium rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground no-underline">AI Planner</a>
-        <a href="/calendar" class="w-full text-center px-4 py-2 text-sm font-medium rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground no-underline">Calendar</a>
-        <a href="/analytics" class="w-full text-center px-4 py-2 text-sm font-medium rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground no-underline">Analytics</a>
-        <a href="/achievements" class="w-full text-center px-4 py-2 text-sm font-medium rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground no-underline">Progress Hub</a>
+        <a href="/planner" class="w-full text-center px-4 py-2 text-sm font-medium rounded-md border border-primary/20 bg-primary/10 text-primary hover:bg-primary/20 no-underline transition-colors">AI Planner</a>
+        <a href="/calendar" class="w-full text-center px-4 py-2 text-sm font-medium rounded-md border border-primary/20 bg-primary/10 text-primary hover:bg-primary/20 no-underline transition-colors">Calendar</a>
+        <a href="/analytics" class="w-full text-center px-4 py-2 text-sm font-medium rounded-md border border-primary/20 bg-primary/10 text-primary hover:bg-primary/20 no-underline transition-colors">Analytics</a>
+        <a href="/achievements" class="w-full text-center px-4 py-2 text-sm font-medium rounded-md border border-primary/20 bg-primary/10 text-primary hover:bg-primary/20 no-underline transition-colors">Progress Hub</a>
       </div>
     `;
 
