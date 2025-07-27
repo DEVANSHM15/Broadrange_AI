@@ -89,3 +89,12 @@
     min-height: 100vh;
   }
 }
+
+@layer utilities {
+  .glowing-btn {
+    @apply shadow-lg shadow-primary/20 transition-all duration-300;
+  }
+  .glowing-btn:hover {
+    @apply shadow-2xl shadow-primary/30;
+  }
+}

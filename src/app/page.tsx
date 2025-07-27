@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -63,7 +62,7 @@ export default function LandingPage() {
                     Our intelligent agents deliver tailored study plans and insights to help you achieve your academic goals, faster and smarter than ever before.
                   </p>
                   <div className="flex gap-4">
-                    <Button asChild size="lg" className="text-lg px-8 py-6 shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-shadow">
+                    <Button asChild size="lg" className="text-lg px-8 py-6 glowing-btn">
                         <Link href={currentUser ? "/dashboard" : "/register"}>
                           {currentUser ? "Open Dashboard" : "Get Started For Free"}
                           <ArrowRight className="ml-2 h-5 w-5" />
@@ -151,7 +150,7 @@ export default function LandingPage() {
                 </p>
               </div>
               <div className="mx-auto w-full max-w-sm space-y-2">
-                <Button asChild size="lg" className="shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-shadow">
+                <Button asChild size="lg" className="glowing-btn">
                   <Link href={currentUser ? "/dashboard" : "/register"}>
                     {currentUser ? "Back to Dashboard" : "Sign Up Now"}
                     <Sparkles className="ml-2 h-5 w-5" />
