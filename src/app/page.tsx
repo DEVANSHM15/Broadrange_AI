@@ -81,12 +81,12 @@ export default function LandingPage() {
               </div>
               <div className="relative w-full h-full min-h-[300px] md:min-h-[400px]">
                 <Image
-                  src="https://placehold.co/800x600.png"
-                  alt="Abstract technology visualization"
+                  src="https://static.vecteezy.com/system/resources/previews/001/879/420/original/vector-illustration-of-e-learning-makes-it-easy-for-student-to-learn-distance-learning-with-laptop-and-internet-online-home-work-courses-and-study-for-open-knowledge-stationery-and-stack-of-book-vector.jpg"
+                  alt="E-learning and online study illustration"
                   layout="fill"
                   objectFit="cover"
                   className="rounded-xl shadow-2xl shadow-primary/20"
-                  data-ai-hint="abstract technology"
+                  data-ai-hint="e-learning online study"
                 />
               </div>
             </div>
