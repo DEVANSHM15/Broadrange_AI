@@ -25,8 +25,7 @@ export function AppHeader() {
   const router = useRouter();
 
   useEffect(() => {
-    const storedTheme = localStorage.getItem("theme_StudyPlannerAI") || 
-                        (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+    const storedTheme = localStorage.getItem("theme_StudyPlannerAI") || 'dark';
     setTheme(storedTheme);
     if (storedTheme === 'light') {
         document.documentElement.classList.add('light');
@@ -72,9 +71,9 @@ export function AppHeader() {
   ];
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-14 items-center">
-        <Link href={currentUser ? "/dashboard" : "/"} className="mr-6 flex items-center space-x-2 text-primary">
+        <Link href={currentUser ? "/dashboard" : "/"} className="mr-6 flex items-center space-x-2">
           <Image src="https://www.broadrange.ai/images/broadrange-logo.jpg" alt="Broadrange AI Logo" width={93} height={24} className="h-8 w-auto rounded-lg"/>
           <span className="font-bold sm:inline-block">CodeXStudy</span>
         </Link>

@@ -93,7 +93,7 @@ export default function LoginPage() {
 
   return (
     <div className="w-full min-h-screen flex items-center justify-center p-4 bg-background">
-        <Card className="mx-auto max-w-md w-full border-primary/20 shadow-lg shadow-primary/10">
+        <Card className="mx-auto max-w-md w-full border-border/50 shadow-2xl shadow-black/20">
             <CardHeader className="text-center">
                 <Link href="/" className="flex justify-center items-center gap-2 text-2xl font-bold text-foreground mb-4">
                     <Image src="https://www.broadrange.ai/images/broadrange-logo.jpg" alt="Broadrange AI Logo" width={93} height={24} className="h-8 w-auto rounded-lg" />
@@ -147,7 +147,7 @@ export default function LoginPage() {
                         {errors.password && <p className="text-xs text-destructive mt-1">{errors.password.message}</p>}
                     </div>
                     
-                    <Button type="submit" className="w-full h-11 text-base" disabled={isSubmittingForm}>
+                    <Button type="submit" className="w-full h-11 text-base font-semibold" disabled={isSubmittingForm}>
                         {isSubmittingForm ? (
                             <>
                             <Loader2 className="mr-2 h-5 w-5 animate-spin" />

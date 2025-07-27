@@ -9,6 +9,9 @@ import {
   CalendarCheck,
   ArrowRight,
   Sparkles,
+  Layers,
+  BarChart,
+  BookOpenCheck
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -49,33 +52,41 @@ export default function LandingPage() {
 
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="w-full py-20 md:py-28 lg:py-32">
-          <div className="container px-4 md:px-6">
-            <div className="flex flex-col items-center space-y-8 text-center">
-              <div className="space-y-4">
-                 <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl/none bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
-                    Accelerate Your Learning
+        <section className="w-full py-20 md:py-28 lg:py-32 relative">
+          <div className="absolute inset-0 bg-grid-slate-900/[0.04] bg-[bottom_1px_center] dark:bg-grid-slate-400/[0.05] dark:bg-bottom dark:border-b dark:border-slate-100/5 [mask-image:linear-gradient(to_bottom,transparent,black)]"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent"></div>
+
+          <div className="container px-4 md:px-6 relative z-10">
+            <div className="grid md:grid-cols-2 gap-10 items-center">
+              <div className="flex flex-col items-start space-y-6">
+                 <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl/none text-left">
+                    Transforming Ideas into Reality with AI
                   </h1>
-                  <p className="mx-auto max-w-[700px] text-muted-foreground md:text-xl">
-                    Highly personalized study plans, expertly curated to meet your objectives and drive your academic success forward.
+                  <p className="max-w-[600px] text-muted-foreground md:text-xl text-left">
+                    Experience the future of personalized education. Our intelligent agents deliver tailored study plans and insights to help you achieve your academic goals.
                   </p>
+                  <div className="flex gap-4">
+                    <Button asChild size="lg" className="text-lg px-8 py-6">
+                        <Link href={currentUser ? "/dashboard" : "/register"}>
+                          {currentUser ? "Open Dashboard" : "Get Started"}
+                          <ArrowRight className="ml-2 h-5 w-5" />
+                        </Link>
+                    </Button>
+                     <Button asChild size="lg" className="text-lg px-8 py-6" variant="outline">
+                        <Link href={currentUser ? "/master-chatbot" : "/register"}>
+                          Chat with AI
+                        </Link>
+                    </Button>
+                  </div>
               </div>
-              <div className="space-x-4">
-                <Button asChild size="lg" className="text-lg px-8 py-6">
-                    <Link href={currentUser ? "/dashboard" : "/register"}>
-                      {currentUser ? "Open Dashboard" : "Get Started"}
-                      <ArrowRight className="ml-2 h-5 w-5" />
-                    </Link>
-                  </Button>
-              </div>
-               <div className="w-full max-w-5xl pt-8">
+              <div className="relative w-full h-full min-h-[300px] md:min-h-[400px]">
                 <Image
-                  src="https://miro.medium.com/v2/resize:fit:1400/1*4Z29u97MqjK-A_jCcrV2RQ.jpeg"
-                  alt="AI Study Planner Dashboard"
-                  width={1200}
-                  height={600}
+                  src="https://placehold.co/800x600.png"
+                  alt="Abstract technology visualization"
+                  layout="fill"
+                  objectFit="cover"
                   className="rounded-xl shadow-2xl shadow-primary/20"
-                  data-ai-hint="dashboard analytics"
+                  data-ai-hint="abstract technology"
                 />
               </div>
             </div>
@@ -83,44 +94,44 @@ export default function LandingPage() {
         </section>
 
         {/* Features Section */}
-        <section className="w-full py-12 md:py-16 lg:py-20 bg-secondary/40">
+        <section className="w-full py-16 md:py-24 lg:py-28 bg-card/40">
           <div className="container px-4 md:px-6">
             <div className="flex flex-col items-center justify-center space-y-4 text-center">
               <div className="space-y-2">
-                <div className="inline-block rounded-lg bg-primary/10 px-3 py-1 text-sm text-primary">Key Features</div>
-                <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">Everything You Need to Succeed</h2>
+                <div className="inline-block rounded-lg bg-primary/10 px-3 py-1 text-sm text-primary font-semibold">ABOUT US</div>
+                <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">We build for you</h2>
                 <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
                   Our platform is packed with features designed to enhance your learning experience and boost your productivity.
                 </p>
               </div>
             </div>
             <div className="mx-auto grid max-w-5xl items-start gap-8 sm:grid-cols-2 md:grid-cols-3 lg:gap-12 mt-12">
-              <div className="grid gap-1 text-center">
-                <div className="flex justify-center items-center mb-4">
-                    <div className="p-3 rounded-full bg-primary/10 text-primary">
-                        <BrainCircuit className="h-8 w-8" />
+              <div className="grid gap-2 text-center items-center justify-center">
+                <div className="flex justify-center items-center mb-3">
+                    <div className="p-3.5 rounded-lg bg-secondary text-primary border border-border">
+                        <Layers className="h-7 w-7" />
                     </div>
                 </div>
-                <h3 className="text-lg font-bold">AI-Powered Planning</h3>
-                <p className="text-sm text-muted-foreground">Intelligent agents create optimal study schedules based on your subjects and goals.</p>
+                <h3 className="text-lg font-bold">Personalized Plans</h3>
+                <p className="text-sm text-muted-foreground">Optimal study schedules based on your goals.</p>
               </div>
-              <div className="grid gap-1 text-center">
-                 <div className="flex justify-center items-center mb-4">
-                    <div className="p-3 rounded-full bg-primary/10 text-primary">
-                        <TrendingUp className="h-8 w-8" />
+              <div className="grid gap-2 text-center items-center justify-center">
+                 <div className="flex justify-center items-center mb-3">
+                    <div className="p-3.5 rounded-lg bg-secondary text-primary border border-border">
+                        <BarChart className="h-7 w-7" />
                     </div>
                 </div>
-                <h3 className="text-lg font-bold">Adaptive Learning</h3>
-                <p className="text-sm text-muted-foreground">The system adjusts your plan based on your progress and performance, keeping you on track.</p>
+                <h3 className="text-lg font-bold">Advanced Analytics</h3>
+                <p className="text-sm text-muted-foreground">Visualize your progress with insightful analytics.</p>
               </div>
-              <div className="grid gap-1 text-center">
-                 <div className="flex justify-center items-center mb-4">
-                    <div className="p-3 rounded-full bg-primary/10 text-primary">
-                        <CalendarCheck className="h-8 w-8" />
+              <div className="grid gap-2 text-center items-center justify-center">
+                 <div className="flex justify-center items-center mb-3">
+                    <div className="p-3.5 rounded-lg bg-secondary text-primary border border-border">
+                        <BookOpenCheck className="h-7 w-7" />
                     </div>
                 </div>
-                <h3 className="text-lg font-bold">Progress Tracking</h3>
-                <p className="text-sm text-muted-foreground">Visualize your progress with insightful analytics and stay motivated with achievements.</p>
+                <h3 className="text-lg font-bold">AI-Powered Quizzes</h3>
+                <p className="text-sm text-muted-foreground">Reinforce learning with on-demand quizzes.</p>
               </div>
             </div>
           </div>
