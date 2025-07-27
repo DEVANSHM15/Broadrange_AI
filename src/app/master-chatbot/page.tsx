@@ -65,7 +65,7 @@ export default function MasterChatbotPage() {
   const [isSending, setIsSending] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [chatToDelete, setChatToDelete] = useState<Chat | null>(null);
-  const [isSidebarVisible, setIsSidebarVisible] = useState(true);
+  const [isSidebarVisible, setIsSidebarVisible] = useState(false); // Default to hidden on desktop
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -247,7 +247,7 @@ export default function MasterChatbotPage() {
         {/* Main Chat Area */}
         <main className="flex-1 flex flex-col h-full bg-background">
           <div className="flex items-center justify-between p-2 border-b">
-              <Button variant="ghost" size="icon" onClick={() => setIsSidebarVisible(!isSidebarVisible)} className="md:hidden">
+              <Button variant="ghost" size="icon" onClick={() => setIsSidebarVisible(!isSidebarVisible)}>
                   {isSidebarVisible ? <PanelLeftClose /> : <PanelLeftOpen />}
               </Button>
               <div className="flex-grow text-center font-semibold">Master Agent</div>
@@ -313,34 +313,50 @@ export default function MasterChatbotPage() {
         {/* Right Sidebar for Quick Actions */}
         <aside className="w-72 flex-shrink-0 bg-card border-l hidden lg:flex flex-col p-4 space-y-6">
             <div className="space-y-2">
-                <h3 className="text-lg font-semibold flex items-center gap-2"><Sparkles className="text-primary h-5 w-5" /> Core Features</h3>
-                <p className="text-sm text-muted-foreground">An overview of the app's capabilities.</p>
+                <h3 className="text-lg font-semibold flex items-center gap-2"><Sparkles className="text-primary h-5 w-5" /> Quick Actions</h3>
+                <p className="text-sm text-muted-foreground">Navigate to key app features.</p>
             </div>
             <div className="space-y-4">
-                 <Card className="text-center bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-card to-card">
-                  <CardHeader className="items-center p-4">
-                    <div className="p-2.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-                      <Layers className="h-6 w-6" />
-                    </div>
-                    <CardTitle className="mt-2 text-base">Personalized Plans</CardTitle>
-                  </CardHeader>
-                </Card>
-                <Card className="text-center bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-card to-card">
-                  <CardHeader className="items-center p-4">
-                     <div className="p-2.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-                      <AreaChart className="h-6 w-6" />
-                    </div>
-                    <CardTitle className="mt-2 text-base">Advanced Analytics</CardTitle>
-                  </CardHeader>
-                </Card>
-                <Card className="text-center bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-card to-card">
-                  <CardHeader className="items-center p-4">
-                     <div className="p-2.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-                      <BookOpen className="h-6 w-6" />
-                    </div>
-                    <CardTitle className="mt-2 text-base">AI-Powered Quizzes</CardTitle>
-                  </CardHeader>
-                </Card>
+                 <Link href="/planner" className="block">
+                    <Card className="text-center bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-card to-card hover:-translate-y-1 transition-transform duration-300">
+                      <CardHeader className="items-center p-4">
+                        <div className="p-2.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                          <BookOpen className="h-6 w-6" />
+                        </div>
+                        <CardTitle className="mt-2 text-base">AI Planner</CardTitle>
+                      </CardHeader>
+                    </Card>
+                 </Link>
+                 <Link href="/calendar" className="block">
+                    <Card className="text-center bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-card to-card hover:-translate-y-1 transition-transform duration-300">
+                      <CardHeader className="items-center p-4">
+                         <div className="p-2.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                          <Calendar className="h-6 w-6" />
+                        </div>
+                        <CardTitle className="mt-2 text-base">Calendar</CardTitle>
+                      </CardHeader>
+                    </Card>
+                 </Link>
+                 <Link href="/analytics" className="block">
+                    <Card className="text-center bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-card to-card hover:-translate-y-1 transition-transform duration-300">
+                      <CardHeader className="items-center p-4">
+                         <div className="p-2.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                          <AreaChart className="h-6 w-6" />
+                        </div>
+                        <CardTitle className="mt-2 text-base">Analytics</CardTitle>
+                      </CardHeader>
+                    </Card>
+                 </Link>
+                 <Link href="/achievements" className="block">
+                    <Card className="text-center bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-card to-card hover:-translate-y-1 transition-transform duration-300">
+                      <CardHeader className="items-center p-4">
+                         <div className="p-2.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                          <Award className="h-6 w-6" />
+                        </div>
+                        <CardTitle className="mt-2 text-base">Progress Hub</CardTitle>
+                      </CardHeader>
+                    </Card>
+                 </Link>
             </div>
         </aside>
       </div>
@@ -362,4 +378,3 @@ export default function MasterChatbotPage() {
     </AppLayout>
   );
 }
-
