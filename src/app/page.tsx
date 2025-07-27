@@ -73,6 +73,18 @@ export default function LandingPage() {
                     </Button>
                   </div>
             </div>
+            <div className="mt-12 lg:mt-16 w-full max-w-4xl mx-auto">
+                <div className="relative" style={{ paddingTop: '56.25%' }}> {/* 16:9 Aspect Ratio */}
+                  <Image
+                      src="https://blog.cdn.cmarix.com/blog/wp-content/uploads/2022/05/Blog-1-2.png"
+                      alt="AI Study Planner Dashboard"
+                      layout="fill"
+                      objectFit="contain"
+                      className="rounded-xl border shadow-2xl shadow-primary/20"
+                      data-ai-hint="dashboard planning"
+                  />
+                </div>
+              </div>
           </div>
         </section>
 
