@@ -81,11 +81,11 @@ export default function LandingPage() {
               </div>
               <div className="relative w-full h-full min-h-[300px] md:min-h-[400px]">
                 <Image
-                  src="https://static.vecteezy.com/system/resources/previews/001/879/420/original/vector-illustration-of-e-learning-makes-it-easy-for-student-to-learn-distance-learning-with-laptop-and-internet-online-home-work-courses-and-study-for-open-knowledge-stationery-and-stack-of-book-vector.jpg"
+                  src="https://blog.cdn.cmarix.com/blog/wp-content/uploads/2022/05/Blog-1-2.png"
                   alt="E-learning and online study illustration"
                   layout="fill"
-                  objectFit="cover"
-                  className="rounded-xl shadow-2xl shadow-primary/20"
+                  objectFit="contain"
+                  className="rounded-xl"
                   data-ai-hint="e-learning online study"
                 />
               </div>
