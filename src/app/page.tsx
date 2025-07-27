@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -89,33 +90,39 @@ export default function LandingPage() {
               </div>
             </div>
             <div className="mx-auto grid max-w-5xl items-start gap-8 sm:grid-cols-2 md:grid-cols-3 lg:gap-12 mt-12">
-              <div className="grid gap-2 text-center items-center justify-center">
-                <div className="flex justify-center items-center mb-3">
-                    <div className="p-3.5 rounded-lg bg-secondary text-primary border border-border">
-                        <Layers className="h-7 w-7" />
-                    </div>
-                </div>
-                <h3 className="text-lg font-bold">Personalized Plans</h3>
-                <p className="text-sm text-muted-foreground">Optimal study schedules based on your goals.</p>
-              </div>
-              <div className="grid gap-2 text-center items-center justify-center">
-                 <div className="flex justify-center items-center mb-3">
-                    <div className="p-3.5 rounded-lg bg-secondary text-primary border border-border">
-                        <BarChart className="h-7 w-7" />
-                    </div>
-                </div>
-                <h3 className="text-lg font-bold">Advanced Analytics</h3>
-                <p className="text-sm text-muted-foreground">Visualize your progress with insightful analytics.</p>
-              </div>
-              <div className="grid gap-2 text-center items-center justify-center">
-                 <div className="flex justify-center items-center mb-3">
-                    <div className="p-3.5 rounded-lg bg-secondary text-primary border border-border">
-                        <BookOpenCheck className="h-7 w-7" />
-                    </div>
-                </div>
-                <h3 className="text-lg font-bold">AI-Powered Quizzes</h3>
-                <p className="text-sm text-muted-foreground">Reinforce learning with on-demand quizzes.</p>
-              </div>
+              <Card className="text-center bg-card/50 shadow-lg shadow-primary/10 hover:shadow-primary/20 hover:-translate-y-2 transition-all duration-300">
+                <CardHeader className="items-center">
+                  <div className="p-3.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                    <Layers className="h-7 w-7" />
+                  </div>
+                  <CardTitle className="mt-2">Personalized Plans</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">Optimal study schedules based on your goals.</p>
+                </CardContent>
+              </Card>
+              <Card className="text-center bg-card/50 shadow-lg shadow-primary/10 hover:shadow-primary/20 hover:-translate-y-2 transition-all duration-300">
+                <CardHeader className="items-center">
+                   <div className="p-3.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                    <BarChart className="h-7 w-7" />
+                  </div>
+                  <CardTitle className="mt-2">Advanced Analytics</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">Visualize your progress with insightful analytics.</p>
+                </CardContent>
+              </Card>
+              <Card className="text-center bg-card/50 shadow-lg shadow-primary/10 hover:shadow-primary/20 hover:-translate-y-2 transition-all duration-300">
+                <CardHeader className="items-center">
+                   <div className="p-3.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                    <BookOpenCheck className="h-7 w-7" />
+                  </div>
+                  <CardTitle className="mt-2">AI-Powered Quizzes</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">Reinforce learning with on-demand quizzes.</p>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </section>
