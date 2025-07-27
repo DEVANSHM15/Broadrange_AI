@@ -51,7 +51,7 @@ export default function LandingPage() {
         {/* Hero Section */}
         <section className="w-full py-20 md:py-28 lg:py-32">
           <div className="container px-4 md:px-6">
-            <div className="flex flex-col items-center space-y-4 text-center">
+            <div className="flex flex-col items-center space-y-8 text-center">
               <div className="space-y-4">
                  <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl/none bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
                     Accelerate Your Learning
@@ -67,6 +67,16 @@ export default function LandingPage() {
                       <ArrowRight className="ml-2 h-5 w-5" />
                     </Link>
                   </Button>
+              </div>
+               <div className="w-full max-w-5xl pt-8">
+                <Image
+                  src="https://placehold.co/1200x600.png"
+                  alt="AI Study Planner Dashboard"
+                  width={1200}
+                  height={600}
+                  className="rounded-xl shadow-2xl shadow-primary/20"
+                  data-ai-hint="dashboard analytics"
+                />
               </div>
             </div>
           </div>
