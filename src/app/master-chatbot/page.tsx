@@ -6,12 +6,13 @@ import AppLayout from "@/components/AppLayout";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Send, Loader2 } from 'lucide-react';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Send, Loader2, BookOpen, BarChart3, CalendarDaysIcon, ListChecks } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { askStudyAssistant } from '@/ai/flows/studyAssistantChatFlow';
 import type { StudyAssistantChatInput } from '@/types';
 import Link from 'next/link';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface ChatMessage {
   sender: 'user' | 'bot';
@@ -25,6 +26,25 @@ const features = [
   { href: "/analytics", label: "Analytics" },
   { href: "/achievements", label: "Progress Hub" },
 ];
+
+const featureSpotlights = [
+  {
+    icon: BookOpen,
+    title: "AI Planner",
+    description: "Generate personalized study schedules in seconds.",
+  },
+  {
+    icon: BarChart3,
+    title: "Analytics",
+    description: "Track your performance and get AI-driven reflections.",
+  },
+  {
+    icon: CalendarDaysIcon,
+    title: "Calendar View",
+    description: "Manage daily tasks, sub-tasks, and quizzes.",
+  },
+];
+
 
 const BotAvatar = () => (
     <Avatar className="h-8 w-8 border-2 border-primary/50">
@@ -126,8 +146,10 @@ export default function MasterChatbotPage() {
 
   return (
     <AppLayout>
-      <div className="container mx-auto h-[calc(100vh-120px)] max-w-3xl flex flex-col py-6 px-4 md:px-6">
-        <div className="flex-grow flex flex-col bg-card border rounded-lg shadow-lg overflow-hidden">
+      <div className="container mx-auto h-[calc(100vh-120px)] flex flex-col md:flex-row py-6 px-4 md:px-6 gap-6">
+        
+        {/* Main Chat Area */}
+        <div className="flex-grow flex flex-col bg-card border rounded-lg shadow-lg overflow-hidden lg:w-2/3">
           <ScrollArea className="flex-grow p-6" ref={scrollAreaRef}>
             <div className="space-y-6">
               {messages.map((message, index) => (
@@ -199,7 +221,34 @@ export default function MasterChatbotPage() {
             </form>
           </div>
         </div>
+
+        {/* Sidebar / Feature Spotlight */}
+        <aside className="hidden lg:block w-1/3 p-4">
+            <div className="bg-card border rounded-lg shadow-lg p-6 space-y-6 h-full">
+                <h3 className="text-xl font-semibold text-primary">Feature Spotlight</h3>
+                <p className="text-sm text-muted-foreground">
+                    Discover what you can do. Ask the chatbot for more details on any feature!
+                </p>
+                <div className="space-y-4">
+                    {featureSpotlights.map((spotlight) => (
+                        <Card key={spotlight.title} className="bg-muted/50">
+                            <CardHeader className="flex-row items-center gap-4 space-y-0 pb-2">
+                                <div className="p-2 bg-primary/10 rounded-full">
+                                    <spotlight.icon className="w-5 h-5 text-primary" />
+                                </div>
+                                <CardTitle className="text-base">{spotlight.title}</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-sm text-muted-foreground pl-12">{spotlight.description}</p>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+            </div>
+        </aside>
+
       </div>
     </AppLayout>
   );
 }
+
