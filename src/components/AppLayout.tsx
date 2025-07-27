@@ -2,14 +2,11 @@
 "use client";
 
 import type { ReactNode } from 'react';
-import { AppHeader, AppSidebar } from '@/components/navbar';
+import { AppHeader } from '@/components/navbar';
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
-import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import { PomodoroTimerModal } from './pomodoro-timer';
-
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -17,7 +14,7 @@ interface AppLayoutProps {
 
 const PUBLIC_PATHS = ['/', '/login', '/register', '/register/step2', '/register/step3', '/forgot-password'];
 
-function AppLayoutContent({ children }: AppLayoutProps) {
+export default function AppLayout({ children }: AppLayoutProps) {
   const { currentUser, isLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -32,51 +29,41 @@ function AppLayoutContent({ children }: AppLayoutProps) {
 
   if (isLoading && !PUBLIC_PATHS.includes(pathname)) {
     return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-background text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-primary" />
-          <p className="mt-3 text-muted-foreground">Verifying your session...</p>
-        </div>
-      );
-  }
-
-  const isPublicPage = PUBLIC_PATHS.includes(pathname);
-
-  if (isPublicPage) {
-     return (
-        <div className="flex flex-col flex-grow min-h-0">
-          <AppHeader/>
-          <main className="flex-grow">{children}</main>
-        </div>
-      );
-  }
-
-  if (!currentUser) {
-     return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-background text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-primary" />
-          <p className="mt-3 text-muted-foreground">Redirecting to login...</p>
-        </div>
-      );
-  }
-
-  // User is logged in, show the full sidebar layout
-  return (
-    <div className="flex w-full h-svh">
-      <AppSidebar />
-      <div className="flex-1 flex flex-col h-svh">
-        <main className="flex-grow overflow-y-auto">
-            {children}
-        </main>
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
+    );
+  }
+
+  // Allow public pages to render without redirecting
+  if (isPublicPage(pathname)) {
+    return (
+      <>
+        <AppHeader />
+        <main>{children}</main>
+      </>
+    );
+  }
+
+  // If loading is done and we are on a private page without a user,
+  // this will show briefly before the useEffect redirects.
+  if (!currentUser) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // User is logged in, show the full app layout
+  return (
+    <div className="flex flex-col min-h-screen">
+      <AppHeader />
+      <main className="flex-grow">{children}</main>
     </div>
   );
 }
 
-
-export default function AppLayout({ children }: AppLayoutProps) {
-    return (
-        <SidebarProvider>
-            <AppLayoutContent>{children}</AppLayoutContent>
-        </SidebarProvider>
-    );
+function isPublicPage(pathname: string): boolean {
+  return PUBLIC_PATHS.includes(pathname);
 }

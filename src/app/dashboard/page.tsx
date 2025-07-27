@@ -4,7 +4,7 @@
 import AppLayout from "@/components/AppLayout";
 import Link from "next/link";
 import { useAuth } from "@/contexts/auth-context";
-import { Zap, Brain, Settings as SettingsIcon, PlusCircle, ListChecks, Edit, HelpCircle, Lightbulb, CheckCircle2, Loader2, AlertCircle, BarChart3, BookOpen, CalendarDaysIcon, Target, MessageCircle, Repeat, Sparkles, Hourglass, Flame, Gauge, Star, BookCopy, Award, PanelLeft, Bell } from "lucide-react";
+import { Zap, Brain, Settings as SettingsIcon, PlusCircle, ListChecks, Edit, HelpCircle, Lightbulb, CheckCircle2, Loader2, AlertCircle, BarChart3, BookOpen, CalendarDaysIcon, Target, MessageCircle, Repeat, Sparkles, Hourglass, Flame, Gauge, Star, BookCopy, Award } from "lucide-react";
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { PomodoroTimerModal } from "@/components/pomodoro-timer";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -16,9 +16,6 @@ import { generatePlanReflection, type GeneratePlanReflectionInput, type Generate
 import { Badge } from "@/components/ui/badge";
 import { parseISO, isValid, differenceInDays, format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
-import Image from "next/image";
-import { SidebarTrigger } from "@/components/ui/sidebar";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 function ensureTaskStructure(tasks: ScheduleTask[] | undefined, planId: string): ScheduleTask[] {
   if (!tasks) return [];
@@ -33,26 +30,6 @@ function ensureTaskStructure(tasks: ScheduleTask[] | undefined, planId: string):
   }));
 }
 
-const studyTips = [
-  "Break down large tasks into smaller, manageable chunks.",
-  "Use the Pomodoro Technique to maintain focus.",
-  "Teach what you learn to someone else to solidify understanding.",
-  "Test yourself regularly, don't just re-read notes.",
-  "Take short breaks every hour to stay refreshed.",
-  "Stay hydrated and get enough sleep for optimal brain function.",
-  "Find a dedicated study space free from distractions.",
-  "Reward yourself after completing a challenging task or study session.",
-  "Review material regularly, not just before an exam (spaced repetition).",
-  "Set specific, measurable, achievable, relevant, and time-bound (SMART) goals.",
-  "Don't be afraid to ask for help if you're stuck on a topic.",
-  "Visualize your success and stay positive!",
-  "Active recall (retrieving information from memory) is more effective than passive review.",
-  "Mix up your study subjects to keep things fresh and improve retention (interleaving).",
-  "Practice explaining concepts in your own words, as if teaching someone else.",
-  "Get adequate sleep; it's crucial for memory consolidation.",
-  "Create a study schedule and stick to it as much as possible.",
-];
-
 export default function DashboardPage() {
   const { currentUser } = useAuth();
   const { toast } = useToast();
@@ -65,8 +42,6 @@ export default function DashboardPage() {
   const [reflectionError, setReflectionError] = useState<string | null>(null);
   
   const [isLoadingPlanData, setIsLoadingPlanData] = useState(true);
-  const [currentTip, setCurrentTip] = useState("");
-
 
   const reloadDataFromApi = useCallback(async () => {
     if (!currentUser?.id) {
@@ -81,7 +56,16 @@ export default function DashboardPage() {
       const response = await fetch(`/api/plans?userId=${currentUser.id}`);
       
       if (!response.ok) {
-        toast({ title: "Error Loading Plan Data", description: "Failed to fetch plans from server.", variant: "destructive" });
+        let apiErrorMessage = "Failed to fetch plans from server.";
+        let apiErrorDetails = `Server responded with status: ${response.status}.`;
+        try {
+            const errorData = await response.json();
+            apiErrorMessage = String(errorData.error || apiErrorMessage);
+            apiErrorDetails = String(errorData.details || apiErrorDetails);
+        } catch (parseError) {
+            apiErrorDetails = `Server returned status ${response.status} but the error message was not in the expected JSON format. Please check server logs. (${response.statusText})`;
+        }
+        toast({ title: "Error Loading Plan Data", description: `${apiErrorMessage} ${apiErrorDetails}`, variant: "destructive" });
         setIsLoadingPlanData(false); 
         return;
       }
@@ -96,36 +80,34 @@ export default function DashboardPage() {
       let currentPlanToDisplay: ScheduleData | null = null;
       if (processedPlans.length > 0) {
         const activePlans = processedPlans.filter(p => p.status === 'active').sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-        currentPlanToDisplay = activePlans.length > 0 ? activePlans[0] : null;
+        if (activePlans.length > 0) {
+            currentPlanToDisplay = activePlans[0];
+        } else {
+            const completedPlans = processedPlans.filter(p => p.status === 'completed').sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+            currentPlanToDisplay = completedPlans.length > 0 ? completedPlans[0] : null;
+        }
       }
       setActiveStudyPlan(currentPlanToDisplay);
       setPlanReflection(null);
       setReflectionError(null);
 
     } catch (error) {
+      console.error("Dashboard: Error fetching plans:", error);
       toast({ title: "Network Error", description: `Could not connect to fetch plans. ${(error as Error).message}`, variant: "destructive" });
     } finally {
       setIsLoadingPlanData(false);
     }
   }, [currentUser, toast]);
 
+
   useEffect(() => {
     reloadDataFromApi();
     const handleStudyPlanUpdate = () => reloadDataFromApi();
     window.addEventListener('studyPlanUpdated', handleStudyPlanUpdate);
-    
-    setCurrentTip(studyTips[Math.floor(Math.random() * studyTips.length)]);
-    const tipInterval = setInterval(() => {
-      setCurrentTip(studyTips[Math.floor(Math.random() * studyTips.length)]);
-    }, 30000);
-    
-    return () => {
-      window.removeEventListener('studyPlanUpdated', handleStudyPlanUpdate);
-      clearInterval(tipInterval);
-    };
+    return () => window.removeEventListener('studyPlanUpdated', handleStudyPlanUpdate);
   }, [reloadDataFromApi]);
 
-  const fetchPlanReflection = useCallback(async () => {
+ const fetchPlanReflection = useCallback(async () => {
       const lastCompletedPlan = allUserPlans
         .filter(p => p.status === 'completed' && p.tasks.length > 0)
         .sort((a,b) => new Date(b.completionDate!).getTime() - new Date(a.completionDate!).getTime())[0];
@@ -150,6 +132,7 @@ export default function DashboardPage() {
       }
   }, [allUserPlans]);
 
+
   useEffect(() => {
     if (allUserPlans.length > 0) {
         fetchPlanReflection();
@@ -157,13 +140,19 @@ export default function DashboardPage() {
   }, [allUserPlans, fetchPlanReflection]);
 
 
-  const { completedTasksCount, totalTasksCount, progressPercentage } = useMemo(() => {
-    if (!activeStudyPlan) return { completedTasksCount: 0, totalTasksCount: 0, progressPercentage: 0 };
+  const { completedTasksCount, totalTasksCount, progressPercentage, averageQuizScore } = useMemo(() => {
+    if (!activeStudyPlan) return { completedTasksCount: 0, totalTasksCount: 0, progressPercentage: 0, averageQuizScore: 0 };
     const tasks = activeStudyPlan.tasks;
     const total = tasks.length;
     const completed = tasks.filter(t => t.completed).length;
     const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
-    return { completedTasksCount: completed, totalTasksCount: total, progressPercentage: progress };
+    
+    const quizedTasks = tasks.filter(t => t.quizAttempted && typeof t.quizScore === 'number');
+    const avgScore = quizedTasks.length > 0 
+      ? Math.round(quizedTasks.reduce((sum, task) => sum + task.quizScore!, 0) / quizedTasks.length) 
+      : 0;
+
+    return { completedTasksCount: completed, totalTasksCount: total, progressPercentage: progress, averageQuizScore: avgScore };
   }, [activeStudyPlan]);
 
 
@@ -179,128 +168,171 @@ export default function DashboardPage() {
 
   return (
     <AppLayout>
-      <div className="h-full w-full flex">
-        <div className="flex-grow h-full overflow-y-auto">
-            <div className="p-6 space-y-8">
-              <header className="flex items-center justify-between">
-                <div>
-                  <h1 className="text-2xl font-bold tracking-tight">Hi, {currentUser?.name?.split(' ')[0] || 'User'}!</h1>
-                  <p className="text-muted-foreground">Welcome back, let's get studying.</p>
-                </div>
-                 <div className="flex items-center gap-2">
-                    <PomodoroTimerModal />
-                </div>
-              </header>
+      <div className="container mx-auto py-6 px-4 md:px-6">
+        <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Welcome back, {currentUser?.name?.split(' ')[0] || 'User'}!</h1>
+            <p className="text-muted-foreground">Here's your study dashboard overview.</p>
+          </div>
+           <div className="flex items-center gap-2 mt-3 sm:mt-0">
+              <PomodoroTimerModal />
+              <Button asChild variant="default">
+                <Link href="/planner">
+                  <BookOpen className="mr-2 h-4 w-4" /> AI Planner
+                </Link>
+              </Button>
+            </div>
+        </header>
 
-              <section>
-                 <h2 className="text-xl font-semibold mb-3">Current Plan</h2>
-                 {activeStudyPlan ? (
-                    <Card className="bg-primary/10 border-primary/20">
-                      <CardContent className="p-4 flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                        <div className="flex-grow space-y-2">
-                            <CardTitle className="text-lg">{activeStudyPlan.planDetails.subjects}</CardTitle>
-                             <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                                <span>{activeStudyPlan.planDetails.studyDurationDays} days</span>
-                                <span>&bull;</span>
-                                <span>{activeStudyPlan.planDetails.dailyStudyHours} hrs/day</span>
-                             </div>
-                             {totalTasksCount > 0 && (
-                                <div>
-                                    <div className="flex justify-between text-xs mb-1">
-                                        <span>Progress</span>
-                                        <span>{completedTasksCount} / {totalTasksCount}</span>
-                                    </div>
-                                    <Progress value={progressPercentage} className="h-2" />
-                                </div>
-                             )}
-                        </div>
-                        <Button asChild><Link href={`/planner?planId=${activeStudyPlan.id}`}>View Plan <Edit className="ml-2 h-4 w-4"/></Link></Button>
-                      </CardContent>
-                    </Card>
-                 ) : (
-                    <Alert>
-                        <HelpCircle className="h-4 w-4" />
-                        <AlertTitle>No Active Study Plan</AlertTitle>
-                        <AlertDescription>
-                        Create an AI-powered study plan to get started.
-                        <Button asChild variant="link" className="p-0 h-auto ml-1"><Link href="/planner">Create Plan</Link></Button>
-                        </AlertDescription>
-                    </Alert>
-                 )}
-              </section>
-
-              <section>
-                <h2 className="text-xl font-semibold mb-3">Your Stats</h2>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <Card><CardHeader><CardTitle className="text-sm font-medium">Streak</CardTitle><Flame className="h-4 w-4 text-muted-foreground"/></CardHeader><CardContent><div className="text-2xl font-bold">0</div></CardContent></Card>
-                    <Card><CardHeader><CardTitle className="text-sm font-medium">Tasks Done</CardTitle><CheckCircle2 className="h-4 w-4 text-muted-foreground"/></CardHeader><CardContent><div className="text-2xl font-bold">{completedTasksCount}</div></CardContent></Card>
-                    <Card><CardHeader><CardTitle className="text-sm font-medium">Achievements</CardTitle><Award className="h-4 w-4 text-muted-foreground"/></CardHeader><CardContent><div className="text-2xl font-bold">{allUserPlans.length > 0 ? 1 : 0}</div></CardContent></Card>
-                    <Card><CardHeader><CardTitle className="text-sm font-medium">Plans Made</CardTitle><ListChecks className="h-4 w-4 text-muted-foreground"/></CardHeader><CardContent><div className="text-2xl font-bold">{allUserPlans.length}</div></CardContent></Card>
-                </div>
-              </section>
-
-              <section>
-                 <h2 className="text-xl font-semibold mb-3">Recently Completed Plans</h2>
-                 <ScrollArea className="h-48">
-                    <div className="space-y-3 pr-4">
-                        {allUserPlans.filter(p => p.status === 'completed').length > 0 ? (
-                             allUserPlans.filter(p => p.status === 'completed').map(plan => (
-                                <Card key={plan.id} className="bg-card/50">
-                                    <CardContent className="p-3 flex justify-between items-center">
-                                        <div className="flex-grow">
-                                            <p className="font-semibold">{plan.planDetails.subjects}</p>
-                                            <p className="text-xs text-muted-foreground">Completed: {format(parseISO(plan.completionDate!), 'PP')}</p>
-                                        </div>
-                                        <Button asChild variant="secondary" size="sm"><Link href={`/analytics?planId=${plan.id}`}>Analyze</Link></Button>
-                                    </CardContent>
-                                </Card>
-                            ))
-                        ) : (
-                            <p className="text-sm text-muted-foreground text-center pt-8">No completed plans yet. Finish one to see it here!</p>
-                        )}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main content column */}
+          <div className="lg:col-span-2 space-y-8">
+            <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><ListChecks className="text-primary"/> Current Study Plan</CardTitle>
+                 <CardDescription>
+                  {activeStudyPlan ? `Plan: ${activeStudyPlan.planDetails.subjects}` : "No active plan found."}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {activeStudyPlan ? (
+                  <div className="space-y-4">
+                    <div className="flex justify-between text-sm">
+                      <span>Progress</span>
+                      <span>{completedTasksCount} / {totalTasksCount} tasks</span>
                     </div>
-                 </ScrollArea>
-              </section>
-            </div>
-        </div>
-        <aside className="hidden lg:block w-[350px] flex-shrink-0 border-l bg-muted/20 h-full">
-           <ScrollArea className="h-full">
-            <div className="p-6 space-y-6">
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-lg">
-                             <Lightbulb className="text-yellow-400" /> Study Wisdom
-                        </CardTitle>
-                    </CardHeader>
-                     <CardContent>
-                        <p className="text-sm text-muted-foreground italic">
-                            "{currentTip}"
-                        </p>
-                    </CardContent>
-                </Card>
-                
-                 <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2 text-lg"><Sparkles className="text-primary"/> AI Reflection</CardTitle>
-                        <CardDescription>Insights from your last completed plan.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                        {isGeneratingReflection ? <Loader2 className="mx-auto h-6 w-6 animate-spin"/> :
-                         reflectionError ? <p className="text-xs text-destructive">{reflectionError}</p> :
-                         planReflection ? (
-                            <>
-                                <p className="text-sm"><strong>Consistency:</strong> {planReflection.consistencyObservation}</p>
-                                <p className="text-sm"><strong>Suggestion:</strong> {planReflection.suggestionForNextPlan}</p>
-                                <Button variant="link" size="sm" asChild className="p-0"><Link href="/analytics">View Full Analytics</Link></Button>
-                            </>
-                         ) : <p className="text-sm text-muted-foreground">Complete a plan to get AI reflections.</p>
-                        }
-                    </CardContent>
-                 </Card>
+                    <Progress value={progressPercentage} className="h-2" />
+                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 text-center">
+                        <div>
+                          <p className="text-2xl font-bold">{totalTasksCount}</p>
+                          <p className="text-xs text-muted-foreground">Total Tasks</p>
+                        </div>
+                         <div>
+                          <p className="text-2xl font-bold">{completedTasksCount}</p>
+                          <p className="text-xs text-muted-foreground">Completed</p>
+                        </div>
+                        <div>
+                          <p className="text-2xl font-bold">{totalTasksCount - completedTasksCount}</p>
+                          <p className="text-xs text-muted-foreground">Pending</p>
+                        </div>
+                        <div>
+                          <p className="text-2xl font-bold">{averageQuizScore}%</p>
+                          <p className="text-xs text-muted-foreground">Avg. Quiz Score</p>
+                        </div>
+                    </div>
+                  </div>
+                ) : (
+                  <Alert>
+                    <HelpCircle className="h-4 w-4" />
+                    <AlertTitle>No Active Plan</AlertTitle>
+                    <AlertDescription>
+                      You don't have an active study plan. Go to the AI Planner to create one.
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </CardContent>
+               <CardFooter className="flex gap-2">
+                  <Button asChild variant="default" className="w-full sm:w-auto">
+                      <Link href="/planner" className="flex-grow text-center"><Edit className="mr-2 h-4 w-4"/> {activeStudyPlan ? "View/Edit Plan" : "Create Plan"} </Link>
+                  </Button>
+                   <Button asChild variant="outline" className="w-full sm:w-auto">
+                      <Link href="/calendar" className="flex-grow text-center"><CalendarDaysIcon className="mr-2 h-4 w-4"/> View Calendar</Link>
+                  </Button>
+              </CardFooter>
+            </Card>
 
-            </div>
-           </ScrollArea>
-        </aside>
+             <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Sparkles className="text-primary"/> AI Reflection</CardTitle>
+                <CardDescription>Insights from your last completed study plan.</CardDescription>
+              </CardHeader>
+               <CardContent>
+                 {isGeneratingReflection ? (
+                    <div className="flex items-center justify-center p-6"><Loader2 className="h-8 w-8 animate-spin text-primary"/></div>
+                 ) : reflectionError ? (
+                     <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{reflectionError}</AlertDescription></Alert>
+                 ) : planReflection ? (
+                    <div className="space-y-3 text-sm">
+                      <p><strong>Overall Performance:</strong> {planReflection.mainReflection}</p>
+                      <p><strong>Consistency:</strong> {planReflection.consistencyObservation}</p>
+                      <p><strong>Suggestion:</strong> {planReflection.suggestionForNextPlan}</p>
+                    </div>
+                 ) : (
+                     <p className="text-sm text-muted-foreground text-center py-4">Complete a study plan to unlock AI-powered reflections on your performance.</p>
+                 )}
+               </CardContent>
+               <CardFooter>
+                  <Button asChild variant="link" className="p-0 h-auto">
+                      <Link href="/analytics">Go to Full Analytics <BarChart3 className="ml-2 h-4 w-4"/></Link>
+                  </Button>
+               </CardFooter>
+            </Card>
+
+          </div>
+
+          {/* Right sidebar content */}
+          <div className="space-y-8">
+             <Card className="shadow-lg">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2"><Star className="text-yellow-400"/> Quick Stats</CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-2 gap-4">
+                  <div className="text-center p-2 rounded-lg bg-muted/50">
+                    <p className="text-3xl font-bold">0</p>
+                    <p className="text-xs text-muted-foreground">Study Streak</p>
+                  </div>
+                  <div className="text-center p-2 rounded-lg bg-muted/50">
+                    <p className="text-3xl font-bold">{allUserPlans.length}</p>
+                    <p className="text-xs text-muted-foreground">Plans Created</p>
+                  </div>
+                   <div className="text-center p-2 rounded-lg bg-muted/50">
+                    <p className="text-3xl font-bold">{allUserPlans.filter(p => p.status === 'completed').length}</p>
+                    <p className="text-xs text-muted-foreground">Plans Done</p>
+                  </div>
+                   <div className="text-center p-2 rounded-lg bg-muted/50">
+                    <p className="text-3xl font-bold">{allUserPlans.length > 0 ? 1 : 0}+</p>
+                    <p className="text-xs text-muted-foreground">Achievements</p>
+                  </div>
+                </CardContent>
+                <CardFooter>
+                   <Button asChild variant="secondary" className="w-full">
+                        <Link href="/achievements"><Award className="mr-2 h-4 w-4"/> View Progress Hub</Link>
+                   </Button>
+                </CardFooter>
+              </Card>
+
+            <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><SettingsIcon className="text-primary"/> AI Agents Status</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                 <div className="flex items-center justify-between text-sm">
+                    <span className="flex items-center gap-2"><Zap className="h-4 w-4 text-green-500"/> PlannerBot</span>
+                    <Badge variant={currentUser?.aiSettings?.plannerBotEnabled ?? true ? "default" : "secondary"} className={currentUser?.aiSettings?.plannerBotEnabled ?? true ? "bg-green-600" : ""}>
+                      {currentUser?.aiSettings?.plannerBotEnabled ?? true ? "Active" : "Disabled"}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="flex items-center gap-2"><Brain className="h-4 w-4 text-green-500"/> ReflectionAI</span>
+                     <Badge variant={currentUser?.aiSettings?.reflectionAiEnabled ?? true ? "default" : "secondary"} className={currentUser?.aiSettings?.reflectionAiEnabled ?? true ? "bg-green-600" : ""}>
+                      {currentUser?.aiSettings?.reflectionAiEnabled ?? true ? "Active" : "Disabled"}
+                    </Badge>
+                  </div>
+                   <div className="flex items-center justify-between text-sm">
+                    <span className="flex items-center gap-2"><Repeat className="h-4 w-4 text-green-500"/> AdaptiveAI</span>
+                     <Badge variant={currentUser?.aiSettings?.adaptiveAiEnabled ?? true ? "default" : "secondary"} className={currentUser?.aiSettings?.adaptiveAiEnabled ?? true ? "bg-green-600" : ""}>
+                      {currentUser?.aiSettings?.adaptiveAiEnabled ?? true ? "Active" : "Disabled"}
+                    </Badge>
+                  </div>
+              </CardContent>
+              <CardFooter>
+                 <Button asChild variant="outline" className="w-full">
+                    <Link href="/settings"><SettingsIcon className="mr-2 h-4 w-4"/> Manage Agents</Link>
+                 </Button>
+              </CardFooter>
+            </Card>
+          </div>
+        </div>
       </div>
     </AppLayout>
   );
