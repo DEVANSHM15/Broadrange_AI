@@ -6,7 +6,6 @@ import { useAuth } from '@/contexts/auth-context';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
-import { ChatbotIcon } from '@/components/chatbot/ChatbotIcon';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -61,10 +60,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
   return (
     <div className="flex flex-col flex-grow min-h-0">
       {showAppHeader && <AppHeader />}
-      <main className={`flex-grow ${showAppHeader ? 'pt-4 md:pt-6' : ''}`}>
+      <main className={`flex-grow ${showAppHeader ? 'pt-0' : ''}`}>
         {children}
       </main>
-      {showAppHeader && <ChatbotIcon />}
+      {/* The ChatbotIcon has been removed from here */}
     </div>
   );
 }
