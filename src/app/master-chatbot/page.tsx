@@ -40,20 +40,20 @@ const BotAvatar = () => (
 const featureCards = [
     {
         icon: Layers,
-        title: "Personalized Plans",
-        description: "Optimal study schedules based on your goals.",
+        title: "AI Planner",
+        description: "Generate optimal study schedules.",
         href: "/planner"
     },
     {
         icon: BarChart,
-        title: "Advanced Analytics",
-        description: "Visualize your progress with insightful analytics.",
+        title: "Analytics",
+        description: "Visualize your progress & insights.",
         href: "/analytics"
     },
     {
         icon: BookOpenCheck,
-        title: "AI-Powered Quizzes",
-        description: "Reinforce learning with on-demand quizzes.",
+        title: "Calendar",
+        description: "Manage tasks & take AI quizzes.",
         href: "/calendar"
     }
 ];
@@ -176,17 +176,17 @@ export default function MasterChatbotPage() {
           <div className="hidden lg:flex flex-col bg-card border rounded-lg shadow-lg p-6">
             <h2 className="text-xl font-bold text-primary mb-2">Feature Spotlight</h2>
             <p className="text-sm text-muted-foreground mb-6">Discover what you can do. Ask me for more details on any feature!</p>
-            <div className="space-y-4">
+            <div className="space-y-6">
               {featureCards.map((card, index) => (
                 <Link href={card.href} key={index} passHref>
                   <Card className="text-center bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-card to-card hover:-translate-y-1 transition-transform duration-300 cursor-pointer">
-                    <CardHeader className="items-center pb-2">
+                    <CardHeader className="items-center pb-2 pt-4">
                       <div className="p-3 rounded-full bg-primary/10 text-primary border border-primary/20">
-                        <card.icon className="h-6 w-6" />
+                        <card.icon className="h-5 w-5" />
                       </div>
-                      <CardTitle className="mt-2 text-base">{card.title}</CardTitle>
+                      <CardTitle className="mt-2 text-sm font-semibold">{card.title}</CardTitle>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="pb-4">
                       <p className="text-xs text-muted-foreground">{card.description}</p>
                     </CardContent>
                   </Card>
