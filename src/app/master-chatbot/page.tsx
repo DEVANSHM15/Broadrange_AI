@@ -128,7 +128,8 @@ export default function MasterChatbotPage() {
     setIsSending(true);
 
     const userMessage: ChatMessage = { chatId: activeChatId || 'temp', role: 'user', content: query, createdAt: new Date().toISOString() };
-    setMessages(prev => [...prev, userMessage]);
+    const newMessages = [...messages, userMessage];
+    setMessages(newMessages);
     
     let currentChatId = activeChatId;
 
@@ -146,7 +147,7 @@ export default function MasterChatbotPage() {
             setChats(prev => [newChat, ...prev]);
         }
 
-        const historyForAI = messages.map(m => ({
+        const historyForAI = newMessages.map(m => ({
           role: m.role === 'user' ? 'user' : 'model',
           parts: [{ text: m.content }]
         })) as { role: 'user' | 'model'; parts: { text: string }[] }[];
@@ -160,7 +161,7 @@ export default function MasterChatbotPage() {
         if (!response.ok) throw new Error("Failed to get response from AI");
 
         const botMessage: ChatMessage = await response.json();
-        setMessages(prev => [...prev.filter(m => m.chatId !== 'temp'), botMessage]);
+        setMessages(prev => [...prev.map(m => m.chatId === 'temp' ? {...m, chatId: currentChatId!} : m), botMessage]);
         
     } catch (error) {
       console.error("Chatbot error:", error);
@@ -303,3 +304,5 @@ export default function MasterChatbotPage() {
     </AppLayout>
   );
 }
+
+    
