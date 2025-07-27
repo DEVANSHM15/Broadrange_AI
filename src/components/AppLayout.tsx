@@ -42,7 +42,7 @@ function AppLayoutContent({ children }: AppLayoutProps) {
   if (isPublicPage) {
      return (
         <div className="flex flex-col flex-grow min-h-0">
-          <AppHeader />
+          {/* Public pages do not need the full sidebar, but AppHeader might have a mobile trigger */}
           <main className="flex-grow">{children}</main>
         </div>
       );
@@ -57,7 +57,7 @@ function AppLayoutContent({ children }: AppLayoutProps) {
       );
   }
 
-  // User is logged in, show sidebar layout
+  // User is logged in, show the full sidebar layout
   return (
     <div className="flex w-full h-svh">
       <AppSidebar />
@@ -72,11 +72,22 @@ function AppLayoutContent({ children }: AppLayoutProps) {
 
 
 export default function AppLayout({ children }: AppLayoutProps) {
-    // By placing SidebarProvider here, it wraps all possible child layouts,
-    // ensuring the context is always available when useSidebar is called.
+    const pathname = usePathname();
+    const isPublicPage = PUBLIC_PATHS.includes(pathname);
+    
+    // The SidebarProvider now wraps everything unconditionally.
+    // This ensures that any component calling useSidebar (like SidebarTrigger in AppHeader)
+    // will always have the context it needs, regardless of the page being public or private.
     return (
         <SidebarProvider>
-            <AppLayoutContent>{children}</AppLayoutContent>
+            {isPublicPage ? (
+                <>
+                  <AppHeader/>
+                  <AppLayoutContent>{children}</AppLayoutContent>
+                </>
+            ) : (
+                <AppLayoutContent>{children}</AppLayoutContent>
+            )}
         </SidebarProvider>
     );
 }
