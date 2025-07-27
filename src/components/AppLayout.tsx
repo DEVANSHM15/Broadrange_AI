@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { ReactNode } from 'react';
@@ -27,15 +28,13 @@ function AppLayoutContent({ children }: AppLayoutProps) {
     }
   }, [currentUser, isLoading, router, pathname]);
 
-  if (isLoading) {
-    if (!PUBLIC_PATHS.includes(pathname)) {
-      return (
+  if (isLoading && !PUBLIC_PATHS.includes(pathname)) {
+    return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-background text-center">
           <Loader2 className="h-12 w-12 animate-spin text-primary" />
           <p className="mt-3 text-muted-foreground">Verifying your session...</p>
         </div>
       );
-    }
   }
 
   const isPublicPage = PUBLIC_PATHS.includes(pathname);
@@ -60,17 +59,21 @@ function AppLayoutContent({ children }: AppLayoutProps) {
 
   // User is logged in, show sidebar layout
   return (
-    <>
+    <div className="flex w-full h-svh">
       <AppSidebar />
-      <main className="flex-grow">
-        {children}
-      </main>
-    </>
+      <div className="flex-1 flex flex-col h-svh">
+        <main className="flex-grow overflow-y-auto">
+            {children}
+        </main>
+      </div>
+    </div>
   );
 }
 
 
 export default function AppLayout({ children }: AppLayoutProps) {
+    // By placing SidebarProvider here, it wraps all possible child layouts,
+    // ensuring the context is always available when useSidebar is called.
     return (
         <SidebarProvider>
             <AppLayoutContent>{children}</AppLayoutContent>
