@@ -16,6 +16,7 @@ import Link from 'next/link';
 interface ChatMessage {
   sender: 'user' | 'bot';
   text: string;
+  isHtml?: boolean;
 }
 
 const features = [
@@ -34,12 +35,11 @@ export default function MasterChatbotPage() {
 
   useEffect(() => {
     setMessages([
-      { sender: 'bot', text: "Hello! I'm your study assistant. Ask me anything about how to use the application, or use the shortcuts below to navigate." },
+      { sender: 'bot', text: "Hello! I'm your study assistant. Ask me anything about how to use the application, or use the shortcuts below to navigate.", isHtml: false },
     ]);
   }, []);
 
   useEffect(() => {
-    // Auto-scroll to the bottom when new messages are added
     if (scrollAreaRef.current) {
         const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
         if (viewport) {
@@ -63,12 +63,12 @@ export default function MasterChatbotPage() {
       };
       const result = await askStudyAssistant(input);
 
-      const botMessage: ChatMessage = { sender: 'bot', text: result.response };
+      const botMessage: ChatMessage = { sender: 'bot', text: result.response, isHtml: true };
       setMessages(prev => [...prev, botMessage]);
 
     } catch (error) {
       console.error("Chatbot error:", error);
-      const errorMessage: ChatMessage = { sender: 'bot', text: "Sorry, I'm having trouble connecting. Please try again later." };
+      const errorMessage: ChatMessage = { sender: 'bot', text: "Sorry, I'm having trouble connecting. Please try again later.", isHtml: false };
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
@@ -99,15 +99,20 @@ export default function MasterChatbotPage() {
                   <div
                     className={cn(
                       "max-w-[85%] rounded-lg px-4 py-2",
+                      "prose prose-sm dark:prose-invert prose-p:my-2 prose-ul:my-2 prose-li:my-0",
                       message.sender === 'user'
                         ? "bg-primary text-primary-foreground"
                         : "bg-muted"
                     )}
                   >
-                    <p style={{ whiteSpace: 'pre-wrap' }}>{message.text}</p>
-                    {/* Render navigation buttons only on the initial bot message */}
+                    {message.isHtml ? (
+                      <div dangerouslySetInnerHTML={{ __html: message.text }} />
+                    ) : (
+                       <p>{message.text}</p>
+                    )}
+                    
                     {message.sender === 'bot' && index === 0 && (
-                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
+                       <div className="not-prose grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
                         {features.map((feature) => (
                             <Link href={feature.href} key={feature.href} passHref>
                                 <Button variant="outline" className="w-full justify-start bg-background">

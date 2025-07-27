@@ -65,8 +65,6 @@ export default {
       },
       fontFamily: {
         sans: ['var(--font-sans, Inter)', 'system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', '"Helvetica Neue"', 'Arial', '"Noto Sans"', 'sans-serif', '"Apple Color Emoji"', '"Segoe UI Emoji"', '"Segoe UI Symbol"', '"Noto Color Emoji"'],
-        // Add FKGroteskNeue if it's primary and Inter is fallback
-        // fk: ['"FKGroteskNeue"', 'Inter', 'sans-serif'],
       },
       keyframes: {
         'accordion-down': {
@@ -84,5 +82,5 @@ export default {
       },
     },
   },
-  plugins: [require('tailwindcss-animate')],
+  plugins: [require('tailwindcss-animate'), require('@tailwindcss/typography')],
 } satisfies Config;
