@@ -60,7 +60,7 @@ export default function LandingPage() {
           <div className="container px-4 md:px-6 relative z-10">
             <div className="grid lg:grid-cols-2 gap-10 items-center">
               <div className="flex flex-col items-start space-y-6 text-left">
-                  <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl/none">
+                  <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl/none bg-clip-text text-transparent bg-gradient-to-br from-primary via-primary/80 to-foreground">
                       Supercharge Your Studies with AI
                   </h1>
                   <p className="max-w-[700px] text-muted-foreground md:text-xl">
@@ -75,17 +75,15 @@ export default function LandingPage() {
                     </Button>
                   </div>
               </div>
-              <div className="w-full max-w-xl mx-auto lg:mx-0">
-                  <div className="relative" style={{ paddingTop: '56.25%' }}> {/* 16:9 Aspect Ratio */}
-                    <Image
-                        src="https://blog.cdn.cmarix.com/blog/wp-content/uploads/2022/05/Blog-1-2.png"
-                        alt="AI Study Planner Dashboard"
-                        layout="fill"
-                        objectFit="contain"
-                        className="rounded-xl border shadow-2xl shadow-primary/20"
-                        data-ai-hint="dashboard planning"
-                    />
-                  </div>
+              <div className="w-full max-w-md mx-auto lg:mx-0">
+                  <Image
+                      src="https://blog.cdn.cmarix.com/blog/wp-content/uploads/2022/05/Blog-1-2.png"
+                      alt="AI Study Planner Dashboard"
+                      width={800}
+                      height={600}
+                      className="rounded-xl border shadow-2xl shadow-primary/20"
+                      data-ai-hint="dashboard planning"
+                  />
               </div>
             </div>
           </div>
@@ -104,7 +102,7 @@ export default function LandingPage() {
               </div>
             </div>
             <div className="mx-auto grid max-w-5xl items-start gap-8 sm:grid-cols-2 md:grid-cols-3 lg:gap-12 mt-12">
-              <Card className="text-center bg-card/50 shadow-lg shadow-primary/10 hover:shadow-primary/20 hover:-translate-y-2 transition-all duration-300" style={{'--tw-shadow-color': 'hsl(262 88% 66% / 0.15)'} as React.CSSProperties}>
+              <Card className="text-center bg-card/50 shadow-lg hover:-translate-y-2 transition-all duration-300" style={{'--tw-shadow-color': 'hsl(var(--primary) / 0.15)', boxShadow: '0 10px 30px -15px var(--tw-shadow-color)'} as React.CSSProperties}>
                 <CardHeader className="items-center">
                   <div className="p-3.5 rounded-full bg-primary/10 text-primary border border-primary/20">
                     <Layers className="h-7 w-7" />
@@ -115,7 +113,7 @@ export default function LandingPage() {
                   <p className="text-sm text-muted-foreground">Optimal study schedules based on your goals.</p>
                 </CardContent>
               </Card>
-              <Card className="text-center bg-card/50 shadow-lg shadow-primary/10 hover:shadow-primary/20 hover:-translate-y-2 transition-all duration-300" style={{'--tw-shadow-color': 'hsl(262 88% 66% / 0.15)'} as React.CSSProperties}>
+              <Card className="text-center bg-card/50 shadow-lg hover:-translate-y-2 transition-all duration-300" style={{'--tw-shadow-color': 'hsl(var(--primary) / 0.15)', boxShadow: '0 10px 30px -15px var(--tw-shadow-color)'} as React.CSSProperties}>
                 <CardHeader className="items-center">
                    <div className="p-3.5 rounded-full bg-primary/10 text-primary border border-primary/20">
                     <BarChart className="h-7 w-7" />
@@ -126,7 +124,7 @@ export default function LandingPage() {
                   <p className="text-sm text-muted-foreground">Visualize your progress with insightful analytics.</p>
                 </CardContent>
               </Card>
-              <Card className="text-center bg-card/50 shadow-lg shadow-primary/10 hover:shadow-primary/20 hover:-translate-y-2 transition-all duration-300" style={{'--tw-shadow-color': 'hsl(262 88% 66% / 0.15)'} as React.CSSProperties}>
+              <Card className="text-center bg-card/50 shadow-lg hover:-translate-y-2 transition-all duration-300" style={{'--tw-shadow-color': 'hsl(var(--primary) / 0.15)', boxShadow: '0 10px 30px -15px var(--tw-shadow-color)'} as React.CSSProperties}>
                 <CardHeader className="items-center">
                    <div className="p-3.5 rounded-full bg-primary/10 text-primary border border-primary/20">
                     <BookOpenCheck className="h-7 w-7" />
