@@ -7,17 +7,75 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Send, Loader2, BookOpen, BarChart3, CalendarDaysIcon, ListChecks } from 'lucide-react';
+import { Send, Loader2, BookOpen, BarChart3, CalendarDaysIcon, ListChecks, LogOut, SettingsIcon, LayoutDashboard, BarChartBig, Bot } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { askStudyAssistant } from '@/ai/flows/studyAssistantChatFlow';
 import type { StudyAssistantChatInput } from '@/types';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useAuth } from '@/contexts/auth-context';
+import { usePathname } from 'next/navigation';
 
 interface ChatMessage {
   sender: 'user' | 'bot';
   text: string;
   isHtml?: boolean;
+}
+
+const getInitials = (name?: string | null) => {
+  if (!name) return "?";
+  const parts = name.split(' ').filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0][0].toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+};
+
+const navItems = [
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/planner", label: "AI Planner", icon: BookOpen },
+  { href: "/calendar", label: "Calendar", icon: CalendarDaysIcon },
+  { href: "/analytics", label: "Analytics", icon: BarChartBig },
+  { href: "/achievements", label: "Progress Hub", icon: ListChecks },
+  { href: "/master-chatbot", label: "Chatbot", icon: Bot },
+];
+
+function LocalSidebar() {
+    const { currentUser, logout } = useAuth();
+    const pathname = usePathname();
+
+    return (
+        <aside className="hidden lg:flex flex-col w-64 border-r bg-background p-4 space-y-4">
+            <div className="flex items-center gap-3 px-2">
+                <Avatar className="h-10 w-10">
+                    <AvatarFallback>{getInitials(currentUser?.name)}</AvatarFallback>
+                </Avatar>
+                <div>
+                    <p className="font-semibold text-sm">{currentUser?.name}</p>
+                    <p className="text-xs text-muted-foreground">{currentUser?.email}</p>
+                </div>
+            </div>
+            <nav className="flex-grow space-y-1">
+                 {navItems.map(item => (
+                    <Link key={item.href} href={item.href} passHref>
+                        <Button variant={pathname === item.href ? "secondary" : "ghost"} className="w-full justify-start gap-2">
+                            <item.icon className="h-4 w-4" />
+                            {item.label}
+                        </Button>
+                    </Link>
+                ))}
+            </nav>
+            <div className="space-y-1">
+                 <Link href="/settings" passHref>
+                    <Button variant="ghost" className="w-full justify-start gap-2">
+                        <SettingsIcon className="h-4 w-4" /> Settings
+                    </Button>
+                </Link>
+                 <Button variant="ghost" className="w-full justify-start gap-2" onClick={logout}>
+                    <LogOut className="h-4 w-4" /> Sign Out
+                </Button>
+            </div>
+        </aside>
+    );
 }
 
 const features = [
@@ -26,25 +84,6 @@ const features = [
   { href: "/analytics", label: "Analytics" },
   { href: "/achievements", label: "Progress Hub" },
 ];
-
-const featureSpotlights = [
-  {
-    icon: BookOpen,
-    title: "AI Planner",
-    description: "Generate personalized study schedules in seconds.",
-  },
-  {
-    icon: BarChart3,
-    title: "Analytics",
-    description: "Track your performance and get AI-driven reflections.",
-  },
-  {
-    icon: CalendarDaysIcon,
-    title: "Calendar View",
-    description: "Manage daily tasks, sub-tasks, and quizzes.",
-  },
-];
-
 
 const BotAvatar = () => (
     <Avatar className="h-8 w-8 border-2 border-primary/50">
@@ -97,6 +136,7 @@ const BotAvatar = () => (
 );
 
 export default function MasterChatbotPage() {
+  const { currentUser } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -146,108 +186,87 @@ export default function MasterChatbotPage() {
 
   return (
     <AppLayout>
-      <div className="container mx-auto h-[calc(100vh-120px)] flex flex-col md:flex-row py-6 px-4 md:px-6 gap-6">
-        
-        {/* Main Chat Area */}
-        <div className="flex-grow flex flex-col bg-card border rounded-lg shadow-lg overflow-hidden lg:w-2/3">
-          <ScrollArea className="flex-grow p-6" ref={scrollAreaRef}>
-            <div className="space-y-6">
-              {messages.map((message, index) => (
-                <div
-                  key={index}
-                  className={cn(
-                    "flex items-start gap-3 text-sm",
-                    message.sender === 'user' ? "justify-end" : "justify-start"
-                  )}
-                >
-                  {message.sender === 'bot' && <BotAvatar />}
-                  <div
-                    className={cn(
-                      "max-w-[85%] rounded-lg px-4 py-2",
-                      "prose prose-sm dark:prose-invert prose-p:my-2 prose-ul:my-2 prose-li:my-0",
-                      message.sender === 'user'
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted"
-                    )}
-                  >
-                    {message.isHtml ? (
-                      <div dangerouslySetInnerHTML={{ __html: message.text }} />
-                    ) : (
-                       <p>{message.text}</p>
-                    )}
-                    
-                    {message.sender === 'bot' && index === 0 && (
-                       <div className="not-prose grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
-                        {features.map((feature) => (
-                            <Link href={feature.href} key={feature.href} passHref>
-                                <Button variant="outline" className="w-full justify-start bg-background">
-                                    {feature.label}
-                                </Button>
-                            </Link>
+      <div className="flex h-[calc(100vh-57px)]">
+        <LocalSidebar />
+        <main className="flex-grow flex flex-col bg-muted/30">
+            <div className="flex-grow flex flex-col items-center justify-center p-4">
+                <div className="w-full max-w-3xl h-full flex flex-col bg-card border rounded-lg shadow-lg">
+                    <ScrollArea className="flex-grow p-6" ref={scrollAreaRef}>
+                        <div className="space-y-6">
+                        {messages.map((message, index) => (
+                            <div
+                            key={index}
+                            className={cn(
+                                "flex items-start gap-3 text-sm",
+                                message.sender === 'user' ? "justify-end" : "justify-start"
+                            )}
+                            >
+                            {message.sender === 'bot' && <BotAvatar />}
+                            <div
+                                className={cn(
+                                "max-w-[85%] rounded-lg px-4 py-2",
+                                "prose prose-sm dark:prose-invert prose-p:my-2 prose-ul:my-2 prose-li:my-0",
+                                message.sender === 'user'
+                                    ? "bg-primary text-primary-foreground"
+                                    : "bg-muted"
+                                )}
+                            >
+                                {message.isHtml ? (
+                                <div dangerouslySetInnerHTML={{ __html: message.text }} />
+                                ) : (
+                                <p>{message.text}</p>
+                                )}
+                                
+                                {message.sender === 'bot' && index === 0 && (
+                                <div className="not-prose grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
+                                    {features.map((feature) => (
+                                        <Link href={feature.href} key={feature.href} passHref>
+                                            <Button variant="outline" className="w-full justify-start bg-background">
+                                                {feature.label}
+                                            </Button>
+                                        </Link>
+                                    ))}
+                                </div>
+                                )}
+                            </div>
+                            {message.sender === 'user' && (
+                                <Avatar className="h-8 w-8">
+                                <AvatarFallback>{getInitials(currentUser?.name)}</AvatarFallback>
+                                </Avatar>
+                            )}
+                            </div>
                         ))}
-                       </div>
-                    )}
-                  </div>
-                   {message.sender === 'user' && (
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback>U</AvatarFallback>
-                    </Avatar>
-                  )}
-                </div>
-              ))}
-              {isLoading && (
-                <div className="flex items-start gap-3 justify-start">
-                   <BotAvatar />
-                  <div className="bg-muted rounded-lg p-3 flex items-center">
-                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                  </div>
-                </div>
-              )}
-            </div>
-          </ScrollArea>
-          <div className="p-4 border-t bg-background">
-            <form onSubmit={handleSendMessage} className="w-full flex items-center gap-2">
-              <Input
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                placeholder="Ask how to use the app..."
-                autoComplete="off"
-                disabled={isLoading}
-                className="flex-grow"
-              />
-              <Button type="submit" size="icon" disabled={isLoading || !inputValue.trim()}>
-                <Send className="h-4 w-4" />
-              </Button>
-            </form>
-          </div>
-        </div>
-
-        {/* Sidebar / Feature Spotlight */}
-        <aside className="hidden lg:block w-1/3 p-4">
-            <div className="bg-card border rounded-lg shadow-lg p-6 space-y-6 h-full">
-                <h3 className="text-xl font-semibold text-primary">Feature Spotlight</h3>
-                <p className="text-sm text-muted-foreground">
-                    Discover what you can do. Ask the chatbot for more details on any feature!
-                </p>
-                <div className="space-y-4">
-                  {featureSpotlights.map((spotlight) => (
-                    <Card key={spotlight.title} className="bg-muted/50">
-                      <CardContent className="p-4 flex items-start gap-4">
-                        <div className="p-2 bg-primary/10 rounded-full mt-1">
-                          <spotlight.icon className="w-5 h-5 text-primary" />
+                        {isLoading && (
+                            <div className="flex items-start gap-3 justify-start">
+                            <BotAvatar />
+                            <div className="bg-muted rounded-lg p-3 flex items-center">
+                                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                            </div>
+                            </div>
+                        )}
                         </div>
-                        <div>
-                          <h4 className="font-semibold text-base">{spotlight.title}</h4>
-                          <p className="text-sm text-muted-foreground">{spotlight.description}</p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                    </ScrollArea>
+                    <div className="p-4 border-t bg-background">
+                        <form onSubmit={handleSendMessage} className="w-full flex items-center gap-2">
+                        <Input
+                            value={inputValue}
+                            onChange={(e) => setInputValue(e.target.value)}
+                            placeholder="Ask how to use the app..."
+                            autoComplete="off"
+                            disabled={isLoading}
+                            className="flex-grow"
+                        />
+                        <Button type="submit" size="icon" disabled={isLoading || !inputValue.trim()}>
+                            <Send className="h-4 w-4" />
+                        </Button>
+                        </form>
+                    </div>
                 </div>
             </div>
-        </aside>
-
+        </main>
       </div>
     </AppLayout>
   );
 }
+
+    
