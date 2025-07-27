@@ -4,7 +4,7 @@
 import AppLayout from "@/components/AppLayout";
 import Link from "next/link";
 import { useAuth } from "@/contexts/auth-context";
-import { Zap, Brain, Settings as SettingsIcon, PlusCircle, ListChecks, Edit, HelpCircle, Lightbulb, CheckCircle2, Loader2, AlertCircle, BarChart3, BookOpen, CalendarDaysIcon, Target, MessageCircle, Repeat, Sparkles, Hourglass, Flame, Gauge, Star, BookCopy, Award } from "lucide-react";
+import { Zap, Brain, Settings as SettingsIcon, PlusCircle, ListChecks, Edit, HelpCircle, Lightbulb, CheckCircle2, Loader2, AlertCircle, BarChart3, BookOpen, CalendarDaysIcon, Target, MessageCircle, Repeat, Sparkles, Hourglass, Flame, Gauge, Star, BookCopy, Award, PanelLeft, Bell } from "lucide-react";
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { PomodoroTimerModal } from "@/components/pomodoro-timer";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -16,28 +16,22 @@ import { generatePlanReflection, type GeneratePlanReflectionInput, type Generate
 import { Badge } from "@/components/ui/badge";
 import { parseISO, isValid, differenceInDays, format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import Image from "next/image";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
-
-const sampleAgentData: AgentDisplayData[] = [
-  { name: "PlannerBot", avatar: "🤖", role: "Study Planning", confidence: 92, agentKey: "planner" },
-  { name: "ReflectionAI", avatar: "🔍", role: "Progress Analysis", confidence: 87, agentKey: "reflection" },
-  { name: "AdaptiveAI", avatar: "⚙️", role: "Dynamic Adjustment", confidence: 94, agentKey: "adaptive" },
-];
-
-// Helper function to ensure tasks have necessary fields, especially after fetching from API
 function ensureTaskStructure(tasks: ScheduleTask[] | undefined, planId: string): ScheduleTask[] {
   if (!tasks) return [];
   return tasks.map((task, index) => ({
     ...task,
-    id: task.id || `task-${planId}-${index}-${new Date(task.date).getTime()}-${Math.random().toString(36).substring(2,9)}`, // Ensure ID
-    completed: Boolean(task.completed), // Ensure boolean
+    id: task.id || `task-${planId}-${index}-${new Date(task.date).getTime()}-${Math.random().toString(36).substring(2,9)}`,
+    completed: Boolean(task.completed),
     subTasks: task.subTasks || [],
     quizScore: task.quizScore,
-    quizAttempted: Boolean(task.quizAttempted), // Ensure boolean
-    notes: task.notes || undefined, // Ensure notes field, even if undefined
+    quizAttempted: Boolean(task.quizAttempted),
+    notes: task.notes || undefined,
   }));
 }
-
 
 const studyTips = [
   "Break down large tasks into smaller, manageable chunks.",
@@ -62,13 +56,14 @@ const studyTips = [
 export default function DashboardPage() {
   const { currentUser } = useAuth();
   const { toast } = useToast();
-  const [agents, setAgents] = useState<AgentDisplayData[]>(sampleAgentData);
+  
   const [activeStudyPlan, setActiveStudyPlan] = useState<ScheduleData | null>(null);
   const [allUserPlans, setAllUserPlans] = useState<ScheduleData[]>([]);
-  const [parsedTasksForActivePlan, setParsedTasksForActivePlan] = useState<ScheduleTask[]>([]);
+  
   const [planReflection, setPlanReflection] = useState<GeneratePlanReflectionOutput | null>(null);
   const [isGeneratingReflection, setIsGeneratingReflection] = useState(false);
   const [reflectionError, setReflectionError] = useState<string | null>(null);
+  
   const [isLoadingPlanData, setIsLoadingPlanData] = useState(true);
   const [currentTip, setCurrentTip] = useState("");
 
@@ -76,10 +71,7 @@ export default function DashboardPage() {
   const reloadDataFromApi = useCallback(async () => {
     if (!currentUser?.id) {
       setActiveStudyPlan(null);
-      setParsedTasksForActivePlan([]);
       setAllUserPlans([]);
-      setPlanReflection(null);
-      setReflectionError(null);
       setIsLoadingPlanData(false);
       return;
     }
@@ -89,23 +81,7 @@ export default function DashboardPage() {
       const response = await fetch(`/api/plans?userId=${currentUser.id}`);
       
       if (!response.ok) {
-        let apiErrorMessage = "Failed to fetch plans from server.";
-        let apiErrorDetails = `Server responded with status: ${response.status}.`;
-        try {
-          const errorData = await response.json(); 
-          apiErrorMessage = String(errorData.error || apiErrorMessage);
-          apiErrorDetails = String(errorData.details || apiErrorDetails);
-        } catch (parseError) {
-          
-          console.warn("Dashboard: API error response was not JSON.", parseError);
-          apiErrorDetails = `Server returned status ${response.status} but the error message was not in the expected JSON format. Please check server logs for more details. (${response.statusText})`;
-        }
-        toast({ title: "Error Loading Plan Data", description: `${apiErrorMessage} ${apiErrorDetails}`, variant: "destructive" });
-        setActiveStudyPlan(null);
-        setParsedTasksForActivePlan([]);
-        setAllUserPlans([]);
-        setPlanReflection(null);
-        setReflectionError(null);
+        toast({ title: "Error Loading Plan Data", description: "Failed to fetch plans from server.", variant: "destructive" });
         setIsLoadingPlanData(false); 
         return;
       }
@@ -118,475 +94,211 @@ export default function DashboardPage() {
       setAllUserPlans(processedPlans);
 
       let currentPlanToDisplay: ScheduleData | null = null;
-
-      if (processedPlans && processedPlans.length > 0) {
+      if (processedPlans.length > 0) {
         const activePlans = processedPlans.filter(p => p.status === 'active').sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-        if (activePlans.length > 0) {
-          currentPlanToDisplay = activePlans[0];
-        } else {
-          const completedPlans = processedPlans.filter(p => p.status === 'completed').sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-          if (completedPlans.length > 0) {
-            currentPlanToDisplay = completedPlans[0];
-          } else {
-            currentPlanToDisplay = processedPlans.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0];
-          }
-        }
+        currentPlanToDisplay = activePlans.length > 0 ? activePlans[0] : null;
       }
-      
-      if (currentPlanToDisplay) {
-        const tasks = currentPlanToDisplay.tasks;
-        setActiveStudyPlan({...currentPlanToDisplay, tasks });
-        setParsedTasksForActivePlan(tasks);
-      } else {
-        setActiveStudyPlan(null);
-        setParsedTasksForActivePlan([]);
-      }
+      setActiveStudyPlan(currentPlanToDisplay);
       setPlanReflection(null);
       setReflectionError(null);
 
     } catch (error) {
-      console.error("Dashboard: Critical error fetching plans from API:", error);
       toast({ title: "Network Error", description: `Could not connect to fetch plans. ${(error as Error).message}`, variant: "destructive" });
-      setActiveStudyPlan(null);
-      setParsedTasksForActivePlan([]);
-      setAllUserPlans([]);
-      setPlanReflection(null);
-      setReflectionError(null);
     } finally {
       setIsLoadingPlanData(false);
     }
   }, [currentUser, toast]);
 
-
   useEffect(() => {
     reloadDataFromApi();
-
-    const handleStudyPlanUpdate = () => {
-      reloadDataFromApi();
-    };
+    const handleStudyPlanUpdate = () => reloadDataFromApi();
     window.addEventListener('studyPlanUpdated', handleStudyPlanUpdate);
-    return () => window.removeEventListener('studyPlanUpdated', handleStudyPlanUpdate);
+    
+    setCurrentTip(studyTips[Math.floor(Math.random() * studyTips.length)]);
+    const tipInterval = setInterval(() => {
+      setCurrentTip(studyTips[Math.floor(Math.random() * studyTips.length)]);
+    }, 30000);
+    
+    return () => {
+      window.removeEventListener('studyPlanUpdated', handleStudyPlanUpdate);
+      clearInterval(tipInterval);
+    };
   }, [reloadDataFromApi]);
 
-  // UseEffect to check for missed day reminders on dashboard load
-  useEffect(() => {
-    const checkAndSendReminder = async () => {
-        if (activeStudyPlan && activeStudyPlan.status === 'active' && currentUser?.id) {
-            try {
-                await fetch('/api/reminders/send-missed-day', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId: currentUser.id, planId: activeStudyPlan.id }),
-                });
-                // No toast here to avoid being intrusive. Logging handled on server.
-            } catch (error) {
-                console.warn("Could not check for reminder:", error);
-            }
-        }
-    };
-
-    if (!isLoadingPlanData) {
-        checkAndSendReminder();
-    }
-  }, [activeStudyPlan, currentUser, isLoadingPlanData]);
-
-
- const fetchPlanReflection = useCallback(async (planToReflect: ScheduleData, tasksToReflect: ScheduleTask[]) => {
-      if (!planToReflect.planDetails || !tasksToReflect || tasksToReflect.length === 0) {
-          return;
-      }
+  const fetchPlanReflection = useCallback(async () => {
+      const lastCompletedPlan = allUserPlans
+        .filter(p => p.status === 'completed' && p.tasks.length > 0)
+        .sort((a,b) => new Date(b.completionDate!).getTime() - new Date(a.completionDate!).getTime())[0];
+      
+      if (!lastCompletedPlan) return;
+      
       setIsGeneratingReflection(true);
       setPlanReflection(null);
       setReflectionError(null);
       try {
           const input: GeneratePlanReflectionInput = {
-              planDetails: planToReflect.planDetails,
-              tasks: tasksToReflect,
-              completionDate: planToReflect.completionDate
+              planDetails: lastCompletedPlan.planDetails,
+              tasks: lastCompletedPlan.tasks,
+              completionDate: lastCompletedPlan.completionDate
           };
           const reflectionResult = await generatePlanReflection(input);
           setPlanReflection(reflectionResult);
       } catch (error) {
-          console.error("Dashboard: Failed to generate plan reflection:", error);
-          const detailMessage = error instanceof Error ? error.message : "An unknown error occurred while generating the reflection.";
-          setReflectionError(detailMessage);
-          setPlanReflection(null);
+          setReflectionError(error instanceof Error ? error.message : "An unknown error occurred.");
       } finally {
           setIsGeneratingReflection(false);
       }
-  }, []);
+  }, [allUserPlans]);
 
   useEffect(() => {
-    if (activeStudyPlan && activeStudyPlan.status === 'completed' && parsedTasksForActivePlan.length > 0) {
-      if (!isGeneratingReflection && planReflection === null && !reflectionError) {
-        fetchPlanReflection(activeStudyPlan, parsedTasksForActivePlan);
-      }
-    } else if (planReflection !== null || reflectionError !== null) {
-        setPlanReflection(null);
-        setReflectionError(null);
+    if (allUserPlans.length > 0) {
+        fetchPlanReflection();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeStudyPlan, parsedTasksForActivePlan]);
+  }, [allUserPlans, fetchPlanReflection]);
 
 
-  useEffect(() => {
-    const agentConfidenceInterval = setInterval(() => {
-      setAgents(prevAgents => prevAgents.map(agent => ({
-        ...agent,
-        confidence: Math.min(99, Math.max(80, agent.confidence + Math.floor(Math.random() * 3) - 1))
-      })));
-    }, 3000);
-    
-    setCurrentTip(studyTips[Math.floor(Math.random() * studyTips.length)]);
-    const tipInterval = setInterval(() => {
-      setCurrentTip(prevTip => {
-        let newTip = prevTip;
-        while (newTip === prevTip) {
-          newTip = studyTips[Math.floor(Math.random() * studyTips.length)];
-        }
-        return newTip;
-      });
-    }, 30000);
-
-    return () => {
-      clearInterval(agentConfidenceInterval);
-      clearInterval(tipInterval);
-    };
-  }, []);
-
-  const completedTasksCount = parsedTasksForActivePlan.filter(task => task.completed).length;
-  const totalTasksCount = parsedTasksForActivePlan.length;
-  const progressPercentage = totalTasksCount > 0 ? Math.round((completedTasksCount / totalTasksCount) * 100) : 0;
-  const isPlanCompleted = activeStudyPlan?.status === 'completed';
-
-  const totalStudyHours = useMemo(() => {
-    if (activeStudyPlan?.planDetails) {
-        return activeStudyPlan.planDetails.dailyStudyHours * activeStudyPlan.planDetails.studyDurationDays;
-    }
-    return "N/A";
+  const { completedTasksCount, totalTasksCount, progressPercentage } = useMemo(() => {
+    if (!activeStudyPlan) return { completedTasksCount: 0, totalTasksCount: 0, progressPercentage: 0 };
+    const tasks = activeStudyPlan.tasks;
+    const total = tasks.length;
+    const completed = tasks.filter(t => t.completed).length;
+    const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+    return { completedTasksCount: completed, totalTasksCount: total, progressPercentage: progress };
   }, [activeStudyPlan]);
 
 
-  const averageQuizScore = useMemo(() => {
-    const attemptedQuizzes = parsedTasksForActivePlan.filter(
-      (task) => task.quizAttempted && typeof task.quizScore === 'number'
-    );
-    if (attemptedQuizzes.length === 0) return "N/A";
-    const totalScore = attemptedQuizzes.reduce((sum, task) => sum + (task.quizScore || 0), 0);
-    return Math.round(totalScore / attemptedQuizzes.length);
-  }, [parsedTasksForActivePlan]);
-
-  const studyStreak = useMemo(() => {
-    if (!allUserPlans || allUserPlans.length === 0) return 0;
-
-    const allCompletedDates = allUserPlans
-      .flatMap(plan => plan.tasks || [])
-      .filter(task => task.completed && task.date && isValid(parseISO(task.date)))
-      .map(task => format(parseISO(task.date), 'yyyy-MM-dd'));
-
-    if (allCompletedDates.length === 0) return 0;
-
-    const uniqueDates = [...new Set(allCompletedDates)].sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
-    
-    if (uniqueDates.length === 0) return 0;
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const mostRecentStudyDate = parseISO(uniqueDates[0]);
-    mostRecentStudyDate.setHours(0, 0, 0, 0);
-
-    const diffDays = differenceInDays(today, mostRecentStudyDate);
-
-    if (diffDays > 1) {
-      return 0; // Streak is broken if the last study day was not today or yesterday
-    }
-
-    let currentStreak = 1;
-    for (let i = 0; i < uniqueDates.length - 1; i++) {
-      const currentDate = parseISO(uniqueDates[i]);
-      const previousDate = parseISO(uniqueDates[i + 1]);
-      currentDate.setHours(0,0,0,0);
-      previousDate.setHours(0,0,0,0);
-      
-      if (differenceInDays(currentDate, previousDate) === 1) {
-        currentStreak++;
-      } else {
-        break; // Streak is broken
-      }
-    }
-
-    return currentStreak;
-  }, [allUserPlans]);
-
   if (isLoadingPlanData) {
     return (
-      <AppLayout>
-        <div className="flex items-center justify-center min-h-[calc(100vh-100px)]">
-          <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        </div>
-      </AppLayout>
+      <div className="flex items-center justify-center min-h-[calc(100vh-100px)]">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
     );
   }
 
   return (
-    <AppLayout>
-      <div className="container mx-auto py-6 px-4 md:px-6 space-y-10">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Welcome back, {currentUser?.name?.split(' ')[0] || 'User'}! 👋</h1>
-            <p className="text-muted-foreground">Your AI agents are ready to assist.</p>
-          </div>
-          <div className="flex items-center gap-2 mt-4 md:mt-0">
-            {(!activeStudyPlan || activeStudyPlan.status !== 'active') && (
-              <Button asChild>
-                <Link href="/planner"><span><PlusCircle className="mr-2 h-4 w-4"/>Create Study Plan</span></Link>
-              </Button>
-            )}
-            <PomodoroTimerModal />
-          </div>
-        </div>
-
-        {activeStudyPlan && activeStudyPlan.planDetails && (
-          <section>
-            <Card className={`border shadow-lg ${activeStudyPlan.status === 'completed' ? 'border-green-500/70' : (activeStudyPlan.status === 'archived' ? 'border-gray-500/50' : 'border-primary/50')}`}>
-              <CardHeader>
-                <CardTitle className="text-xl flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    {activeStudyPlan.status === 'completed' ? <CheckCircle2 className="text-green-500 h-6 w-6" /> : <ListChecks className="text-primary h-6 w-6" />}
-                    {activeStudyPlan.status === 'completed' ? "Recently Completed Plan" : (activeStudyPlan.status === 'archived' ? "Archived Plan" : "Your Current Study Plan")}
-                  </span>
-                </CardTitle>
-                <CardDescription>
-                    {activeStudyPlan.status === 'completed' ? `Completed on ${activeStudyPlan.completionDate && isValid(parseISO(activeStudyPlan.completionDate)) ? new Date(activeStudyPlan.completionDate).toLocaleDateString() : 'N/A'}. Well done!`
-                     : activeStudyPlan.status === 'archived' ? `Archived on ${isValid(parseISO(activeStudyPlan.updatedAt)) ? new Date(activeStudyPlan.updatedAt).toLocaleDateString() : 'N/A'}.`
-                     : "A quick look at your ongoing plan."}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
+      <div className="h-full w-full flex">
+        <div className="flex-grow h-full overflow-y-auto">
+            <div className="p-6 space-y-8">
+              <header className="flex items-center justify-between">
                 <div>
-                  <h4 className="text-sm font-medium text-muted-foreground">Subjects</h4>
-                  <p className="font-semibold">{activeStudyPlan.planDetails.subjects || "N/A"}</p>
+                  <h1 className="text-2xl font-bold tracking-tight">Hi, {currentUser?.name?.split(' ')[0] || 'User'}!</h1>
+                  <p className="text-muted-foreground">Welcome back, let's get studying.</p>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <h4 className="text-sm font-medium text-muted-foreground">Duration</h4>
-                    <p className="font-semibold">{activeStudyPlan.planDetails.studyDurationDays} days</p>
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-medium text-muted-foreground">Daily Study</h4>
-                    <p className="font-semibold">{activeStudyPlan.planDetails.dailyStudyHours} hours</p>
-                  </div>
+                 <div className="flex items-center gap-2">
+                    <SidebarTrigger className="md:hidden"/>
+                    <PomodoroTimerModal />
                 </div>
-                {totalTasksCount > 0 && (
-                  <div>
-                    <div className="flex justify-between items-center mb-1">
-                       <h4 className="text-sm font-medium text-muted-foreground">Progress</h4>
-                       <span className="text-xs text-muted-foreground">{completedTasksCount} / {totalTasksCount} tasks</span>
+              </header>
+
+              <section>
+                 <h2 className="text-xl font-semibold mb-3">Current Plan</h2>
+                 {activeStudyPlan ? (
+                    <Card className="bg-primary/10 border-primary/20">
+                      <CardContent className="p-4 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                        <div className="flex-grow space-y-2">
+                            <CardTitle className="text-lg">{activeStudyPlan.planDetails.subjects}</CardTitle>
+                             <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                                <span>{activeStudyPlan.planDetails.studyDurationDays} days</span>
+                                <span>&bull;</span>
+                                <span>{activeStudyPlan.planDetails.dailyStudyHours} hrs/day</span>
+                             </div>
+                             {totalTasksCount > 0 && (
+                                <div>
+                                    <div className="flex justify-between text-xs mb-1">
+                                        <span>Progress</span>
+                                        <span>{completedTasksCount} / {totalTasksCount}</span>
+                                    </div>
+                                    <Progress value={progressPercentage} className="h-2" />
+                                </div>
+                             )}
+                        </div>
+                        <Button asChild><Link href={`/planner?planId=${activeStudyPlan.id}`}>View Plan <Edit className="ml-2 h-4 w-4"/></Link></Button>
+                      </CardContent>
+                    </Card>
+                 ) : (
+                    <Alert>
+                        <HelpCircle className="h-4 w-4" />
+                        <AlertTitle>No Active Study Plan</AlertTitle>
+                        <AlertDescription>
+                        Create an AI-powered study plan to get started.
+                        <Button asChild variant="link" className="p-0 h-auto ml-1"><Link href="/planner">Create Plan</Link></Button>
+                        </AlertDescription>
+                    </Alert>
+                 )}
+              </section>
+
+              <section>
+                <h2 className="text-xl font-semibold mb-3">Your Stats</h2>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <Card><CardHeader><CardTitle className="text-sm font-medium">Streak</CardTitle><Flame className="h-4 w-4 text-muted-foreground"/></CardHeader><CardContent><div className="text-2xl font-bold">0</div></CardContent></Card>
+                    <Card><CardHeader><CardTitle className="text-sm font-medium">Tasks Done</CardTitle><CheckCircle2 className="h-4 w-4 text-muted-foreground"/></CardHeader><CardContent><div className="text-2xl font-bold">{completedTasksCount}</div></CardContent></Card>
+                    <Card><CardHeader><CardTitle className="text-sm font-medium">Achievements</CardTitle><Award className="h-4 w-4 text-muted-foreground"/></CardHeader><CardContent><div className="text-2xl font-bold">{allUserPlans.length > 0 ? 1 : 0}</div></CardContent></Card>
+                    <Card><CardHeader><CardTitle className="text-sm font-medium">Plans Made</CardTitle><ListChecks className="h-4 w-4 text-muted-foreground"/></CardHeader><CardContent><div className="text-2xl font-bold">{allUserPlans.length}</div></CardContent></Card>
+                </div>
+              </section>
+
+              <section>
+                 <h2 className="text-xl font-semibold mb-3">Recently Completed Plans</h2>
+                 <ScrollArea className="h-48">
+                    <div className="space-y-3 pr-4">
+                        {allUserPlans.filter(p => p.status === 'completed').length > 0 ? (
+                             allUserPlans.filter(p => p.status === 'completed').map(plan => (
+                                <Card key={plan.id} className="bg-card/50">
+                                    <CardContent className="p-3 flex justify-between items-center">
+                                        <div className="flex-grow">
+                                            <p className="font-semibold">{plan.planDetails.subjects}</p>
+                                            <p className="text-xs text-muted-foreground">Completed: {format(parseISO(plan.completionDate!), 'PP')}</p>
+                                        </div>
+                                        <Button asChild variant="secondary" size="sm"><Link href={`/analytics?planId=${plan.id}`}>Analyze</Link></Button>
+                                    </CardContent>
+                                </Card>
+                            ))
+                        ) : (
+                            <p className="text-sm text-muted-foreground text-center pt-8">No completed plans yet. Finish one to see it here!</p>
+                        )}
                     </div>
-                    <Progress value={progressPercentage} className="h-2" indicatorClassName={isPlanCompleted ? "bg-green-500" : "bg-primary"} />
-                  </div>
-                )}
-              </CardContent>
-              <CardFooter>
-                <Button asChild className="w-full">
-                  <Link href={`/planner?planId=${activeStudyPlan.id}`}><span><Edit className="mr-2 h-4 w-4"/> {isPlanCompleted || activeStudyPlan.status === 'archived' ? "Review Plan Details" : "View or Edit Full Plan"}</span></Link>
-                </Button>
-              </CardFooter>
-            </Card>
-          </section>
-        )}
-
-        {!activeStudyPlan && !isLoadingPlanData && (
-          <Alert>
-            <HelpCircle className="h-4 w-4" />
-            <AlertTitle>No Study Plan Found</AlertTitle>
-            <AlertDescription>
-              Create your first AI-powered study plan to see your stats and insights here!
-              <Button asChild variant="link" className="p-0 h-auto ml-1">
-                <Link href="/planner"><span>Get Started</span></Link>
-              </Button>
-            </AlertDescription>
-          </Alert>
-        )}
-
-        <section>
-          <h2 className="text-2xl font-semibold mb-4">Key Performance Indicators</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Study Hours</CardTitle>
-                <BookCopy className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{totalStudyHours}</div>
-                <p className="text-xs text-muted-foreground">Estimate from plan</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Day Streak</CardTitle>
-                <Flame className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{studyStreak}</div>
-                <p className="text-xs text-muted-foreground">{studyStreak > 0 ? "Consecutive days studied" : "Complete a task to start!"}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Completion Rate</CardTitle>
-                <Gauge className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{totalTasksCount > 0 ? `${progressPercentage}%` : 'N/A'}</div>
-                <p className="text-xs text-muted-foreground">{totalTasksCount > 0 ? `From current/last plan` : 'No plan data'}</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Average Score</CardTitle>
-                <Star className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{averageQuizScore}{typeof averageQuizScore === 'number' ? '%' : ''}</div>
-                <p className="text-xs text-muted-foreground">{averageQuizScore !== "N/A" ? "From quizzes" : "No quizzes taken"}</p>
-              </CardContent>
-            </Card>
-          </div>
-        </section>
-
-         <section>
-          <h2 className="text-2xl font-semibold mb-4">AI Agents Status</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {agents.map(agent => (
-              <Card key={agent.agentKey}>
-                <CardHeader className="flex flex-row items-start gap-3 space-y-0">
-                  <span className="text-3xl mt-1">{agent.avatar}</span>
-                  <div className="flex-grow">
-                    <CardTitle className="text-lg">{agent.name}</CardTitle>
-                    <CardDescription className="text-sm">{agent.role}</CardDescription>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">Confidence: {agent.confidence}%</p>
-                  <Progress
-                    value={agent.confidence}
-                    className="h-1.5 mt-1"
-                    indicatorClassName={
-                      agent.confidence < 60 ? "bg-red-500" :
-                      agent.confidence < 85 ? "bg-yellow-500" :
-                      "bg-green-500"
-                    }
-                  />
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </section>
-
-         {activeStudyPlan?.status === 'completed' && (
-          <section>
-            <div className="text-center mb-6">
-                <h2 className="text-2xl font-semibold mb-2 flex items-center justify-center gap-2">
-                    <Lightbulb className="h-6 w-6 text-yellow-400" /> AI-Generated Plan Reflection
-                </h2>
-                <p className="text-muted-foreground max-w-xl mx-auto">
-                  ReflectionAI has analyzed your completed plan. Here's a summary:
-                </p>
+                 </ScrollArea>
+              </section>
             </div>
-            {isGeneratingReflection && (
-              <div className="flex flex-col items-center justify-center p-8 border rounded-lg bg-muted/50">
-                <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-                <p className="text-muted-foreground">ReflectionAI is analyzing...</p>
-              </div>
-            )}
-            {reflectionError && !isGeneratingReflection && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Reflection Error</AlertTitle>
-                <AlertDescription>{reflectionError}</AlertDescription>
-              </Alert>
-            )}
-            {planReflection && !isGeneratingReflection && !reflectionError && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Overall Completion</CardTitle>
-                    <Target className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-primary">{(planReflection.overallCompletionRate * 100).toFixed(0)}%</div>
-                    <p className="text-xs text-muted-foreground">of tasks marked completed.</p>
-                  </CardContent>
-                </Card>
-                 <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Main Reflection</CardTitle>
-                    <MessageCircle className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent><p className="text-sm">{planReflection.mainReflection}</p></CardContent>
-                </Card>
-                 <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Study Consistency</CardTitle>
-                     <Repeat className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent><p className="text-sm">{planReflection.consistencyObservation}</p></CardContent>
-                </Card>
-                 <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Next Plan Suggestion</CardTitle>
-                    <Sparkles className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent><p className="text-sm">{planReflection.suggestionForNextPlan}</p></CardContent>
-                </Card>
-              </div>
-            )}
-            {!planReflection && !isGeneratingReflection && !reflectionError && activeStudyPlan?.status === 'completed' && (
-                <Alert variant="default">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>Reflection Not Available</AlertTitle>
-                    <AlertDescription>
-                        Could not generate a reflection for this plan at this time.
-                    </AlertDescription>
-                </Alert>
-            )}
-          </section>
-        )}
-
-        <section>
-            <h2 className="text-2xl font-semibold mb-4">Quick Actions &amp; Tips</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        </div>
+        <aside className="hidden lg:block w-[350px] flex-shrink-0 border-l bg-muted/20 h-full">
+           <ScrollArea className="h-full">
+            <div className="p-6 space-y-6">
                 <Card>
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><Zap className="text-primary"/>Quick Actions</CardTitle>
+                        <CardTitle className="flex items-center gap-2 text-lg">
+                             <Lightbulb className="text-yellow-400" /> Study Wisdom
+                        </CardTitle>
                     </CardHeader>
-                    <CardContent className="grid grid-cols-2 gap-4">
-                        <Button variant="outline" asChild className="w-full">
-                            <Link href="/planner"><span><BookOpen className="mr-2"/>AI Planner</span></Link>
-                        </Button>
-                        <Button variant="outline" asChild className="w-full">
-                            <Link href="/calendar"><span><CalendarDaysIcon className="mr-2"/>Calendar</span></Link>
-                        </Button>
-                        <Button variant="outline" asChild className="w-full">
-                            <Link href="/analytics"><span><BarChart3 className="mr-2"/>Analytics</span></Link>
-                        </Button>
-                         <PomodoroTimerModal />
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><Lightbulb className="text-yellow-400"/>Study Wisdom</CardTitle>
-                    </CardHeader>
-                    <CardContent>
+                     <CardContent>
                         <p className="text-sm text-muted-foreground italic">
                             "{currentTip}"
                         </p>
                     </CardContent>
                 </Card>
+                
+                 <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-lg"><Sparkles className="text-primary"/> AI Reflection</CardTitle>
+                        <CardDescription>Insights from your last completed plan.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                        {isGeneratingReflection ? <Loader2 className="mx-auto h-6 w-6 animate-spin"/> :
+                         reflectionError ? <p className="text-xs text-destructive">{reflectionError}</p> :
+                         planReflection ? (
+                            <>
+                                <p className="text-sm"><strong>Consistency:</strong> {planReflection.consistencyObservation}</p>
+                                <p className="text-sm"><strong>Suggestion:</strong> {planReflection.suggestionForNextPlan}</p>
+                                <Button variant="link" size="sm" asChild className="p-0"><Link href="/analytics">View Full Analytics</Link></Button>
+                            </>
+                         ) : <p className="text-sm text-muted-foreground">Complete a plan to get AI reflections.</p>
+                        }
+                    </CardContent>
+                 </Card>
+
             </div>
-        </section>
+           </ScrollArea>
+        </aside>
       </div>
-    </AppLayout>
   );
 }

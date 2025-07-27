@@ -1,11 +1,12 @@
 "use client";
 
 import type { ReactNode } from 'react';
-import { AppHeader } from '@/components/navbar';
+import { AppHeader, AppSidebar } from '@/components/navbar';
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
+import { SidebarProvider } from '@/components/ui/sidebar';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -37,33 +38,33 @@ export default function AppLayout({ children }: AppLayoutProps) {
     }
   }
 
-  if (!currentUser) {
-    if (PUBLIC_PATHS.includes(pathname)) {
-      return (
+  const isPublicPage = PUBLIC_PATHS.includes(pathname);
+
+  if (isPublicPage) {
+     return (
         <div className="flex flex-col flex-grow min-h-0">
+          {!currentUser && <AppHeader />}
           <main className="flex-grow">{children}</main>
         </div>
       );
-    } else {
-      return (
+  }
+
+  if (!currentUser) {
+     return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-background text-center">
           <Loader2 className="h-12 w-12 animate-spin text-primary" />
           <p className="mt-3 text-muted-foreground">Redirecting to login...</p>
         </div>
       );
-    }
   }
-
-  // User IS Authenticated
-  const showAppHeader = !PUBLIC_PATHS.includes(pathname);
-
+  
+  // User is logged in, show sidebar layout
   return (
-    <div className="flex flex-col flex-grow min-h-0">
-      {showAppHeader && <AppHeader />}
-      <main className={`flex-grow ${showAppHeader ? 'pt-0' : ''}`}>
+    <SidebarProvider>
+      <AppSidebar />
+      <main className="flex-grow">
         {children}
       </main>
-      {/* The ChatbotIcon has been removed from here */}
-    </div>
+    </SidebarProvider>
   );
 }
