@@ -44,12 +44,19 @@ const BotAvatar = () => (
 
 const initialMessageHTML = `
     <p>Hello! I'm your study assistant. How can I help you use the app today? You can ask me about any feature, or use one of the quick actions to get started.</p>
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px;">
-        <a href="/planner" style="display: block; text-decoration: none; color: inherit; padding: 12px; border-radius: 8px; text-align: center; font-weight: 500; background: linear-gradient(145deg, hsla(var(--primary) / 0.1), hsla(var(--primary) / 0.05)); border: 1px solid hsla(var(--primary) / 0.2); transition: all 0.2s ease;">AI Planner</a>
-        <a href="/calendar" style="display: block; text-decoration: none; color: inherit; padding: 12px; border-radius: 8px; text-align: center; font-weight: 500; background: linear-gradient(145deg, hsla(var(--primary) / 0.1), hsla(var(--primary) / 0.05)); border: 1px solid hsla(var(--primary) / 0.2); transition: all 0.2s ease;">Calendar</a>
-        <a href="/analytics" style="display: block; text-decoration: none; color: inherit; padding: 12px; border-radius: 8px; text-align: center; font-weight: 500; background: linear-gradient(145deg, hsla(var(--primary) / 0.1), hsla(var(--primary) / 0.05)); border: 1px solid hsla(var(--primary) / 0.2); transition: all 0.2s ease;">Analytics</a>
-        <a href="/achievements" style="display: block; text-decoration: none; color: inherit; padding: 12px; border-radius: 8px; text-align: center; font-weight: 500; background: linear-gradient(145deg, hsla(var(--primary) / 0.1), hsla(var(--primary) / 0.05)); border: 1px solid hsla(var(--primary) / 0.2); transition: all 0.2s ease;">Progress Hub</a>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px;">
+        <a href="/planner" style="display: block; text-decoration: none; color: inherit; padding: 12px; border-radius: 8px; text-align: center; font-weight: 500; background: hsl(var(--card)); border: 1px solid hsl(var(--border)); transition: all 0.2s ease; box-shadow: 0 2px 8px -1px hsla(var(--primary) / 0.1);">AI Planner</a>
+        <a href="/calendar" style="display: block; text-decoration: none; color: inherit; padding: 12px; border-radius: 8px; text-align: center; font-weight: 500; background: hsl(var(--card)); border: 1px solid hsl(var(--border)); transition: all 0.2s ease; box-shadow: 0 2px 8px -1px hsla(var(--primary) / 0.1);">Calendar</a>
+        <a href="/analytics" style="display: block; text-decoration: none; color: inherit; padding: 12px; border-radius: 8px; text-align: center; font-weight: 500; background: hsl(var(--card)); border: 1px solid hsl(var(--border)); transition: all 0.2s ease; box-shadow: 0 2px 8px -1px hsla(var(--primary) / 0.1);">Analytics</a>
+        <a href="/achievements" style="display: block; text-decoration: none; color: inherit; padding: 12px; border-radius: 8px; text-align: center; font-weight: 500; background: hsl(var(--card)); border: 1px solid hsl(var(--border)); transition: all 0.2s ease; box-shadow: 0 2px 8px -1px hsla(var(--primary) / 0.1);">Progress Hub</a>
     </div>
+    <style>
+      a:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px -2px hsla(var(--primary) / 0.2);
+        background: hsl(var(--accent));
+      }
+    </style>
 `;
 
 
@@ -65,7 +72,7 @@ export default function MasterChatbotPage() {
   const [isSending, setIsSending] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [chatToDelete, setChatToDelete] = useState<Chat | null>(null);
-  const [isSidebarVisible, setIsSidebarVisible] = useState(false); // Default to hidden on desktop
+  const [isSidebarVisible, setIsSidebarVisible] = useState(true);
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -311,8 +318,8 @@ export default function MasterChatbotPage() {
         </main>
         
         {/* Right Sidebar for Quick Actions */}
-        <aside className="w-72 flex-shrink-0 bg-card border-l hidden lg:flex flex-col p-4 space-y-6">
-            <div className="space-y-2">
+        <aside className="w-72 flex-shrink-0 bg-card border-l hidden lg:flex flex-col p-4">
+            <div className="space-y-2 mb-6">
                 <h3 className="text-lg font-semibold flex items-center gap-2"><Sparkles className="text-primary h-5 w-5" /> Quick Actions</h3>
                 <p className="text-sm text-muted-foreground">Navigate to key app features.</p>
             </div>
