@@ -131,7 +131,7 @@ export function PomodoroTimerModal() {
           <Timer className="mr-2 h-4 w-4"/> Pomodoro Timer
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-sm">
+      <DialogContent className="sm:max-w-sm bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-card to-card border-primary/20">
         <DialogHeader>
           <DialogTitle className="text-center text-xl">Pomodoro Timer</DialogTitle>
           <DialogDescription className="text-center">
