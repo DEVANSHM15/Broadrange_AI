@@ -127,7 +127,7 @@ export function PomodoroTimerModal() {
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button variant="outline">
+        <Button variant="default">
           <Timer className="mr-2 h-4 w-4"/> Pomodoro Timer
         </Button>
       </DialogTrigger>
