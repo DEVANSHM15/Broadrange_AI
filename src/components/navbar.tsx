@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -75,7 +76,8 @@ export function AppHeader() {
   );
 }
 
-export function AppSidebar() {
+// New inner component to safely call useSidebar
+function SidebarNav() {
   const { currentUser, logout } = useAuth();
   const [theme, setTheme] = useState("dark");
   const pathname = usePathname();
@@ -112,7 +114,7 @@ export function AppSidebar() {
   ];
 
   return (
-    <Sidebar>
+    <>
       <SidebarHeader>
         <div className="flex items-center gap-2">
           <Link href="/dashboard" className="flex items-center gap-2 font-bold text-lg text-foreground group-data-[collapsible=icon]:-ml-1">
@@ -172,6 +174,15 @@ export function AppSidebar() {
             </DropdownMenu>
         </SidebarMenu>
       </SidebarFooter>
+    </>
+  );
+}
+
+// AppSidebar now just contains the structure, not the logic that calls the hook.
+export function AppSidebar() {
+  return (
+    <Sidebar>
+      <SidebarNav />
     </Sidebar>
   );
 }
