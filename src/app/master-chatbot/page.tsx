@@ -13,7 +13,7 @@ import { askStudyAssistant } from '@/ai/flows/studyAssistantChatFlow';
 import type { StudyAssistantChatInput } from '@/types';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/auth-context';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
 interface ChatMessage {
   sender: 'user' | 'bot';
@@ -221,15 +221,15 @@ export default function MasterChatbotPage() {
             <div className="space-y-4">
               {featureCards.map((card, index) => (
                 <Link href={card.href} key={index}>
-                  <div className="p-4 rounded-lg bg-muted hover:bg-accent/50 transition-colors cursor-pointer">
-                    <div className="flex items-center gap-4">
+                  <Card className="bg-muted hover:bg-accent/50 transition-colors cursor-pointer">
+                    <CardContent className="p-4 flex items-center gap-4">
                       <card.icon className="h-6 w-6 text-primary" />
                       <div>
                         <h3 className="font-semibold">{card.title}</h3>
                         <p className="text-sm text-muted-foreground">{card.description}</p>
                       </div>
-                    </div>
-                  </div>
+                    </CardContent>
+                  </Card>
                 </Link>
               ))}
             </div>
@@ -239,5 +239,3 @@ export default function MasterChatbotPage() {
     </AppLayout>
   );
 }
-
-    
