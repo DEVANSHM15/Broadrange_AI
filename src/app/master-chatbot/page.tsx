@@ -296,7 +296,7 @@ export default function MasterChatbotPage() {
                 <h3 className="text-lg font-semibold flex items-center gap-2"><Sparkles className="text-primary h-5 w-5" /> Quick Actions</h3>
                 <p className="text-sm text-muted-foreground">Navigate to key app features.</p>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-4">
                  <Link href="/planner" className="block">
                     <Card className="bg-muted/50 hover:bg-muted/80 hover:-translate-y-1 transition-transform duration-300 cursor-pointer">
                     <CardHeader className="p-4 flex-row items-center gap-4">
@@ -350,4 +350,3 @@ export default function MasterChatbotPage() {
     </AppLayout>
   );
 }
-
