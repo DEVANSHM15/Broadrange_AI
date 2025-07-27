@@ -21,7 +21,7 @@ export default function LandingPage() {
   const { currentUser } = useAuth();
 
   return (
-    <div className="flex flex-col min-h-[100dvh] bg-background text-foreground">
+    <div className="flex flex-col min-h-[100dvh] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/10 via-background to-background text-foreground">
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-14 max-w-screen-2xl items-center">
