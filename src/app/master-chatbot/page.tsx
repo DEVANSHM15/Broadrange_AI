@@ -7,12 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Send, Loader2 } from 'lucide-react';
+import { Send, Loader2, BookOpen, BarChartBig, Calendar } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { askStudyAssistant } from '@/ai/flows/studyAssistantChatFlow';
 import type { StudyAssistantChatInput } from '@/types';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/auth-context';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface ChatMessage {
   sender: 'user' | 'bot';
@@ -27,13 +28,6 @@ const getInitials = (name?: string | null) => {
   if (parts.length === 1) return parts[0][0].toUpperCase();
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 };
-
-const features = [
-  { href: "/planner", label: "AI Planner" },
-  { href: "/calendar", label: "Calendar" },
-  { href: "/analytics", label: "Analytics" },
-  { href: "/achievements", label: "Progress Hub" },
-];
 
 const BotAvatar = () => (
     <Avatar className="h-8 w-8 border-2 border-primary/50">
@@ -85,6 +79,27 @@ const BotAvatar = () => (
     </Avatar>
 );
 
+const featureCards = [
+    {
+        icon: BookOpen,
+        title: "AI Planner",
+        description: "Generate personalized study schedules in seconds.",
+        href: "/planner"
+    },
+    {
+        icon: BarChartBig,
+        title: "Analytics",
+        description: "Track your performance and get AI-driven reflections.",
+        href: "/analytics"
+    },
+    {
+        icon: Calendar,
+        title: "Calendar View",
+        description: "Manage daily tasks, sub-tasks, and quizzes.",
+        href: "/calendar"
+    }
+];
+
 export default function MasterChatbotPage() {
   const { currentUser } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -94,7 +109,7 @@ export default function MasterChatbotPage() {
 
   useEffect(() => {
     setMessages([
-      { sender: 'bot', text: "Hello! I'm your study assistant. Ask me anything about how to use the application, or use the shortcuts below to navigate.", isHtml: false },
+      { sender: 'bot', text: "Hello! I'm your study assistant. Ask me anything about how to use the application.", isHtml: false },
     ]);
   }, []);
 
@@ -136,8 +151,10 @@ export default function MasterChatbotPage() {
 
   return (
     <AppLayout>
-      <main className="flex-grow flex flex-col items-center justify-center p-4 bg-muted/30">
-          <div className="w-full max-w-3xl h-full flex flex-col bg-card border rounded-lg shadow-lg">
+      <main className="flex-grow p-4 md:p-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-100px)]">
+          {/* Main Chat Area */}
+          <div className="lg:col-span-2 h-full flex flex-col bg-card border rounded-lg shadow-lg">
               <ScrollArea className="flex-grow p-6" ref={scrollAreaRef}>
                   <div className="space-y-6">
                   {messages.map((message, index) => (
@@ -162,18 +179,6 @@ export default function MasterChatbotPage() {
                           <div dangerouslySetInnerHTML={{ __html: message.text }} />
                           ) : (
                           <p>{message.text}</p>
-                          )}
-                          
-                          {message.sender === 'bot' && index === 0 && (
-                          <div className="not-prose grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
-                              {features.map((feature) => (
-                                  <Link href={feature.href} key={feature.href} passHref>
-                                      <Button variant="outline" className="w-full justify-start bg-background">
-                                          {feature.label}
-                                      </Button>
-                                  </Link>
-                              ))}
-                          </div>
                           )}
                       </div>
                       {message.sender === 'user' && (
@@ -209,7 +214,30 @@ export default function MasterChatbotPage() {
                   </form>
               </div>
           </div>
+          {/* Right Sidebar */}
+          <div className="hidden lg:block bg-card border rounded-lg shadow-lg p-6">
+            <h2 className="text-xl font-bold text-primary mb-2">Feature Spotlight</h2>
+            <p className="text-sm text-muted-foreground mb-6">Discover what you can do. Ask the chatbot for more details on any feature!</p>
+            <div className="space-y-4">
+              {featureCards.map((card, index) => (
+                <Link href={card.href} key={index}>
+                  <div className="p-4 rounded-lg bg-muted hover:bg-accent/50 transition-colors cursor-pointer">
+                    <div className="flex items-center gap-4">
+                      <card.icon className="h-6 w-6 text-primary" />
+                      <div>
+                        <h3 className="font-semibold">{card.title}</h3>
+                        <p className="text-sm text-muted-foreground">{card.description}</p>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
       </main>
     </AppLayout>
   );
 }
+
+    
