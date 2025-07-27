@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -103,7 +104,7 @@ export default function LandingPage() {
                 </div>
               </div>
               <div className="mx-auto grid max-w-5xl items-start gap-8 sm:grid-cols-2 md:grid-cols-3 lg:gap-12 mt-12">
-                <Card className="text-center bg-card/50 shadow-lg hover:-translate-y-2 transition-all duration-300" style={{'--tw-shadow-color': 'hsl(var(--primary) / 0.15)', boxShadow: '0 10px 30px -15px var(--tw-shadow-color)'} as React.CSSProperties}>
+                <Card className="text-center bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-card to-card hover:-translate-y-2 transition-transform duration-300">
                   <CardHeader className="items-center">
                     <div className="p-3.5 rounded-full bg-primary/10 text-primary border border-primary/20">
                       <Layers className="h-7 w-7" />
@@ -114,7 +115,7 @@ export default function LandingPage() {
                     <p className="text-sm text-muted-foreground">Optimal study schedules based on your goals.</p>
                   </CardContent>
                 </Card>
-                <Card className="text-center bg-card/50 shadow-lg hover:-translate-y-2 transition-all duration-300" style={{'--tw-shadow-color': 'hsl(var(--primary) / 0.15)', boxShadow: '0 10px 30px -15px var(--tw-shadow-color)'} as React.CSSProperties}>
+                <Card className="text-center bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-card to-card hover:-translate-y-2 transition-transform duration-300">
                   <CardHeader className="items-center">
                      <div className="p-3.5 rounded-full bg-primary/10 text-primary border border-primary/20">
                       <BarChart className="h-7 w-7" />
@@ -125,7 +126,7 @@ export default function LandingPage() {
                     <p className="text-sm text-muted-foreground">Visualize your progress with insightful analytics.</p>
                   </CardContent>
                 </Card>
-                <Card className="text-center bg-card/50 shadow-lg hover:-translate-y-2 transition-all duration-300" style={{'--tw-shadow-color': 'hsl(var(--primary) / 0.15)', boxShadow: '0 10px 30px -15px var(--tw-shadow-color)'} as React.CSSProperties}>
+                <Card className="text-center bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-card to-card hover:-translate-y-2 transition-transform duration-300">
                   <CardHeader className="items-center">
                      <div className="p-3.5 rounded-full bg-primary/10 text-primary border border-primary/20">
                       <BookOpenCheck className="h-7 w-7" />
