@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Send, Loader2, BookOpen, BarChartBig, Calendar } from 'lucide-react';
+import { Send, Loader2, BookOpen, BarChartBig, Calendar, Sparkles } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { askStudyAssistant } from '@/ai/flows/studyAssistantChatFlow';
 import type { StudyAssistantChatInput } from '@/types';
@@ -32,49 +32,7 @@ const getInitials = (name?: string | null) => {
 const BotAvatar = () => (
     <Avatar className="h-8 w-8 border-2 border-primary/50">
         <div className="flex h-full w-full items-center justify-center bg-primary/10">
-            <svg
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                className="text-primary"
-            >
-                <path
-                d="M16.5 7.5V12.5C16.5 14.7091 14.7091 16.5 12.5 16.5H2.5"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                />
-                <path
-                d="M7.5 16.5V11.5C7.5 9.29086 9.29086 7.5 11.5 7.5H21.5"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                />
-                <path
-                d="M12 7.5C12 5.84315 10.6569 4.5 9 4.5C7.34315 4.5 6 5.84315 6 7.5C6 9.15685 7.34315 10.5 9 10.5"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                />
-                <path
-                d="M18 7.5C18 9.15685 16.6569 10.5 15 10.5C13.3431 10.5 12 9.15685 12 7.5"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                />
-                <path
-                d="M12.5 16.5H11.5C9.29086 16.5 7.5 18.2909 7.5 20.5V21.5"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                />
-                <path
-                d="M16.5 12.5V14.5C16.5 16.7091 14.7091 18.5 12.5 18.5H12"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                />
-            </svg>
+            <Sparkles className="h-5 w-5 text-primary" />
         </div>
     </Avatar>
 );
@@ -152,7 +110,7 @@ export default function MasterChatbotPage() {
   return (
     <AppLayout>
       <main className="flex-grow p-4 md:p-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-100px)]">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-120px)]">
           {/* Main Chat Area */}
           <div className="lg:col-span-2 h-full flex flex-col bg-card border rounded-lg shadow-lg">
               <ScrollArea className="flex-grow p-6" ref={scrollAreaRef}>
@@ -198,7 +156,7 @@ export default function MasterChatbotPage() {
                   )}
                   </div>
               </ScrollArea>
-              <div className="p-4 border-t bg-background">
+              <div className="p-4 border-t bg-background rounded-b-lg">
                   <form onSubmit={handleSendMessage} className="w-full flex items-center gap-2">
                   <Input
                       value={inputValue}
@@ -220,7 +178,7 @@ export default function MasterChatbotPage() {
             <p className="text-sm text-muted-foreground mb-6">Discover what you can do. Ask the chatbot for more details on any feature!</p>
             <div className="space-y-4">
               {featureCards.map((card, index) => (
-                <Link href={card.href} key={index}>
+                <Link href={card.href} key={index} passHref>
                   <Card className="bg-muted hover:bg-accent/50 transition-colors cursor-pointer">
                     <CardContent className="p-4 flex items-center gap-4">
                       <card.icon className="h-6 w-6 text-primary" />
