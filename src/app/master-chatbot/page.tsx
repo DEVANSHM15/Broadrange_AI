@@ -230,19 +230,19 @@ export default function MasterChatbotPage() {
                     Discover what you can do. Ask the chatbot for more details on any feature!
                 </p>
                 <div className="space-y-4">
-                    {featureSpotlights.map((spotlight) => (
-                        <Card key={spotlight.title} className="bg-muted/50">
-                            <CardHeader className="flex-row items-center gap-4 space-y-0 pb-2">
-                                <div className="p-2 bg-primary/10 rounded-full">
-                                    <spotlight.icon className="w-5 h-5 text-primary" />
-                                </div>
-                                <CardTitle className="text-base">{spotlight.title}</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <p className="text-sm text-muted-foreground pl-12">{spotlight.description}</p>
-                            </CardContent>
-                        </Card>
-                    ))}
+                  {featureSpotlights.map((spotlight) => (
+                    <Card key={spotlight.title} className="bg-muted/50">
+                      <CardContent className="p-4 flex items-start gap-4">
+                        <div className="p-2 bg-primary/10 rounded-full mt-1">
+                          <spotlight.icon className="w-5 h-5 text-primary" />
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-base">{spotlight.title}</h4>
+                          <p className="text-sm text-muted-foreground">{spotlight.description}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
             </div>
         </aside>
@@ -251,4 +251,3 @@ export default function MasterChatbotPage() {
     </AppLayout>
   );
 }
-
