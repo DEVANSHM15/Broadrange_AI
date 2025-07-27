@@ -20,60 +20,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { usePathname } from "next/navigation";
 
 
-// Helper to get initials from a name
-const getInitials = (name?: string | null) => {
-  if (!name) return "?";
-  const parts = name.split(' ').filter(Boolean);
-  if (parts.length === 0) return "?";
-  if (parts.length === 1) return parts[0][0].toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-};
-
-const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/master-chatbot", label: "Chatbot", icon: Bot },
-];
-
-function LocalSidebar() {
-    const { currentUser, logout } = useAuth();
-    const pathname = usePathname();
-
-    return (
-        <aside className="hidden lg:flex flex-col w-64 border-r bg-background p-4 space-y-4">
-            <div className="flex items-center gap-3 px-2">
-                <Avatar className="h-10 w-10">
-                    <AvatarFallback>{getInitials(currentUser?.name)}</AvatarFallback>
-                </Avatar>
-                <div>
-                    <p className="font-semibold text-sm">{currentUser?.name}</p>
-                    <p className="text-xs text-muted-foreground">{currentUser?.email}</p>
-                </div>
-            </div>
-            <nav className="flex-grow space-y-1">
-                 {navItems.map(item => (
-                    <Link key={item.href} href={item.href} passHref>
-                        <Button variant={pathname === item.href ? "secondary" : "ghost"} className="w-full justify-start gap-2">
-                            <item.icon className="h-4 w-4" />
-                            {item.label}
-                        </Button>
-                    </Link>
-                ))}
-            </nav>
-            <div className="space-y-1">
-                 <Link href="/settings" passHref>
-                    <Button variant="ghost" className="w-full justify-start gap-2">
-                        <SettingsIcon className="h-4 w-4" /> Settings
-                    </Button>
-                </Link>
-                 <Button variant="ghost" className="w-full justify-start gap-2" onClick={logout}>
-                    <LogOut className="h-4 w-4" /> Sign Out
-                </Button>
-            </div>
-        </aside>
-    );
-}
-
-
 function ensureTaskStructure(tasks: ScheduleTask[] | undefined, planId: string): ScheduleTask[] {
   if (!tasks) return [];
   return tasks.map((task, index) => ({
@@ -225,143 +171,140 @@ export default function DashboardPage() {
 
   return (
     <AppLayout>
-      <div className="flex h-[calc(100vh-57px)]">
-        <LocalSidebar />
-        <main className="flex-1 p-6 overflow-y-auto">
-            <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
-              <div>
-                <h1 className="text-3xl font-bold tracking-tight">Welcome back, {currentUser?.name?.split(' ')[0] || 'User'}!</h1>
-                <p className="text-muted-foreground">Here's your study dashboard overview.</p>
+      <main className="flex-1 p-6 overflow-y-auto">
+          <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Welcome back, {currentUser?.name?.split(' ')[0] || 'User'}!</h1>
+              <p className="text-muted-foreground">Here's your study dashboard overview.</p>
+            </div>
+            <div className="flex items-center gap-2 mt-3 sm:mt-0">
+                <PomodoroTimerModal />
+                <Button asChild variant="default">
+                  <Link href="/planner">
+                    <BookOpen className="mr-2 h-4 w-4" /> AI Planner
+                  </Link>
+                </Button>
               </div>
-              <div className="flex items-center gap-2 mt-3 sm:mt-0">
-                  <PomodoroTimerModal />
-                  <Button asChild variant="default">
-                    <Link href="/planner">
-                      <BookOpen className="mr-2 h-4 w-4" /> AI Planner
-                    </Link>
-                  </Button>
-                </div>
-            </header>
+          </header>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Main content column */}
-              <div className="lg:col-span-2 space-y-8">
-                <Card className="shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><ListChecks className="text-primary"/> Current Study Plan</CardTitle>
-                    <CardDescription>
-                      {activeStudyPlan ? `Plan: ${activeStudyPlan.planDetails.subjects}` : "No active plan found."}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {activeStudyPlan ? (
-                      <div className="space-y-4">
-                        <div className="flex justify-between text-sm">
-                          <span>Progress</span>
-                          <span>{completedTasksCount} / {totalTasksCount} tasks</span>
-                        </div>
-                        <Progress value={progressPercentage} className="h-2" />
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 text-center">
-                            <div>
-                              <p className="text-2xl font-bold">{totalTasksCount}</p>
-                              <p className="text-xs text-muted-foreground">Total Tasks</p>
-                            </div>
-                            <div>
-                              <p className="text-2xl font-bold">{completedTasksCount}</p>
-                              <p className="text-xs text-muted-foreground">Completed</p>
-                            </div>
-                            <div>
-                              <p className="text-2xl font-bold">{totalTasksCount - completedTasksCount}</p>
-                              <p className="text-xs text-muted-foreground">Pending</p>
-                            </div>
-                            <div>
-                              <p className="text-2xl font-bold">{averageQuizScore}%</p>
-                              <p className="text-xs text-muted-foreground">Avg. Quiz Score</p>
-                            </div>
-                        </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Main content column */}
+            <div className="lg:col-span-2 space-y-8">
+              <Card className="shadow-lg">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2"><ListChecks className="text-primary"/> Current Study Plan</CardTitle>
+                  <CardDescription>
+                    {activeStudyPlan ? `Plan: ${activeStudyPlan.planDetails.subjects}` : "No active plan found."}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {activeStudyPlan ? (
+                    <div className="space-y-4">
+                      <div className="flex justify-between text-sm">
+                        <span>Progress</span>
+                        <span>{completedTasksCount} / {totalTasksCount} tasks</span>
                       </div>
-                    ) : (
-                      <Alert>
-                        <HelpCircle className="h-4 w-4" />
-                        <AlertTitle>No Active Plan</AlertTitle>
-                        <AlertDescription>
-                          You don't have an active study plan. Go to the AI Planner to create one.
-                        </AlertDescription>
-                      </Alert>
-                    )}
-                  </CardContent>
-                  <CardFooter className="flex gap-2">
-                      <Button asChild variant="default" className="w-full sm:w-auto">
-                          <Link href="/planner" className="flex-grow text-center"><Edit className="mr-2 h-4 w-4"/> {activeStudyPlan ? "View/Edit Plan" : "Create Plan"} </Link>
-                      </Button>
-                      <Button asChild variant="outline" className="w-full sm:w-auto">
-                          <Link href="/calendar" className="flex-grow text-center"><CalendarDaysIcon className="mr-2 h-4 w-4"/> View Calendar</Link>
-                      </Button>
-                  </CardFooter>
-                </Card>
+                      <Progress value={progressPercentage} className="h-2" />
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 text-center">
+                          <div>
+                            <p className="text-2xl font-bold">{totalTasksCount}</p>
+                            <p className="text-xs text-muted-foreground">Total Tasks</p>
+                          </div>
+                          <div>
+                            <p className="text-2xl font-bold">{completedTasksCount}</p>
+                            <p className="text-xs text-muted-foreground">Completed</p>
+                          </div>
+                          <div>
+                            <p className="text-2xl font-bold">{totalTasksCount - completedTasksCount}</p>
+                            <p className="text-xs text-muted-foreground">Pending</p>
+                          </div>
+                          <div>
+                            <p className="text-2xl font-bold">{averageQuizScore}%</p>
+                            <p className="text-xs text-muted-foreground">Avg. Quiz Score</p>
+                          </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <Alert>
+                      <HelpCircle className="h-4 w-4" />
+                      <AlertTitle>No Active Plan</AlertTitle>
+                      <AlertDescription>
+                        You don't have an active study plan. Go to the AI Planner to create one.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </CardContent>
+                <CardFooter className="flex gap-2">
+                    <Button asChild variant="default" className="w-full sm:w-auto">
+                        <Link href="/planner" className="flex-grow text-center"><Edit className="mr-2 h-4 w-4"/> {activeStudyPlan ? "View/Edit Plan" : "Create Plan"} </Link>
+                    </Button>
+                    <Button asChild variant="outline" className="w-full sm:w-auto">
+                        <Link href="/calendar" className="flex-grow text-center"><CalendarDaysIcon className="mr-2 h-4 w-4"/> View Calendar</Link>
+                    </Button>
+                </CardFooter>
+              </Card>
 
-              </div>
+            </div>
 
-              {/* Right sidebar content */}
-              <div className="space-y-8">
-                <Card className="shadow-lg">
+            {/* Right sidebar content */}
+            <div className="space-y-8">
+              <Card className="shadow-lg">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2"><Sparkles className="text-primary"/> AI Reflection</CardTitle>
+                  <CardDescription>Insights from your last completed study plan.</CardDescription>
+                </CardHeader>
+                <CardContent className="min-h-[120px]">
+                  {isGeneratingReflection ? (
+                      <div className="flex items-center justify-center p-6"><Loader2 className="h-8 w-8 animate-spin text-primary"/></div>
+                  ) : reflectionError ? (
+                      <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{reflectionError}</AlertDescription></Alert>
+                  ) : planReflection ? (
+                      <div className="space-y-3 text-sm">
+                        <p><strong>Overall Performance:</strong> {planReflection.mainReflection}</p>
+                        <p><strong>Consistency:</strong> {planReflection.consistencyObservation}</p>
+                      </div>
+                  ) : (
+                      <p className="text-sm text-muted-foreground text-center py-4">Complete a study plan to unlock AI-powered reflections on your performance.</p>
+                  )}
+                </CardContent>
+                <CardFooter>
+                    <Button asChild variant="link" className="p-0 h-auto">
+                        <Link href="/analytics">Go to Full Analytics <BarChart3 className="ml-2 h-4 w-4"/></Link>
+                    </Button>
+                </CardFooter>
+              </Card>
+
+              <Card className="shadow-lg">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><Sparkles className="text-primary"/> AI Reflection</CardTitle>
-                    <CardDescription>Insights from your last completed study plan.</CardDescription>
+                    <CardTitle className="flex items-center gap-2"><Star className="text-yellow-400"/> Quick Stats</CardTitle>
                   </CardHeader>
-                  <CardContent className="min-h-[120px]">
-                    {isGeneratingReflection ? (
-                        <div className="flex items-center justify-center p-6"><Loader2 className="h-8 w-8 animate-spin text-primary"/></div>
-                    ) : reflectionError ? (
-                        <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{reflectionError}</AlertDescription></Alert>
-                    ) : planReflection ? (
-                        <div className="space-y-3 text-sm">
-                          <p><strong>Overall Performance:</strong> {planReflection.mainReflection}</p>
-                          <p><strong>Consistency:</strong> {planReflection.consistencyObservation}</p>
-                        </div>
-                    ) : (
-                        <p className="text-sm text-muted-foreground text-center py-4">Complete a study plan to unlock AI-powered reflections on your performance.</p>
-                    )}
+                  <CardContent className="grid grid-cols-2 gap-4">
+                    <div className="text-center p-2 rounded-lg bg-muted/50">
+                      <p className="text-3xl font-bold">0</p>
+                      <p className="text-xs text-muted-foreground">Study Streak</p>
+                    </div>
+                    <div className="text-center p-2 rounded-lg bg-muted/50">
+                      <p className="text-3xl font-bold">{allUserPlans.length}</p>
+                      <p className="text-xs text-muted-foreground">Plans Created</p>
+                    </div>
+                    <div className="text-center p-2 rounded-lg bg-muted/50">
+                      <p className="text-3xl font-bold">{allUserPlans.filter(p => p.status === 'completed').length}</p>
+                      <p className="text-xs text-muted-foreground">Plans Done</p>
+                    </div>
+                    <div className="text-center p-2 rounded-lg bg-muted/50">
+                      <p className="text-3xl font-bold">{allUserPlans.length > 0 ? 1 : 0}+</p>
+                      <p className="text-xs text-muted-foreground">Achievements</p>
+                    </div>
                   </CardContent>
                   <CardFooter>
-                      <Button asChild variant="link" className="p-0 h-auto">
-                          <Link href="/analytics">Go to Full Analytics <BarChart3 className="ml-2 h-4 w-4"/></Link>
-                      </Button>
+                    <Button asChild variant="secondary" className="w-full">
+                          <Link href="/achievements"><Award className="mr-2 h-4 w-4"/> View Progress Hub</Link>
+                    </Button>
                   </CardFooter>
                 </Card>
-
-                <Card className="shadow-lg">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2"><Star className="text-yellow-400"/> Quick Stats</CardTitle>
-                    </CardHeader>
-                    <CardContent className="grid grid-cols-2 gap-4">
-                      <div className="text-center p-2 rounded-lg bg-muted/50">
-                        <p className="text-3xl font-bold">0</p>
-                        <p className="text-xs text-muted-foreground">Study Streak</p>
-                      </div>
-                      <div className="text-center p-2 rounded-lg bg-muted/50">
-                        <p className="text-3xl font-bold">{allUserPlans.length}</p>
-                        <p className="text-xs text-muted-foreground">Plans Created</p>
-                      </div>
-                      <div className="text-center p-2 rounded-lg bg-muted/50">
-                        <p className="text-3xl font-bold">{allUserPlans.filter(p => p.status === 'completed').length}</p>
-                        <p className="text-xs text-muted-foreground">Plans Done</p>
-                      </div>
-                      <div className="text-center p-2 rounded-lg bg-muted/50">
-                        <p className="text-3xl font-bold">{allUserPlans.length > 0 ? 1 : 0}+</p>
-                        <p className="text-xs text-muted-foreground">Achievements</p>
-                      </div>
-                    </CardContent>
-                    <CardFooter>
-                      <Button asChild variant="secondary" className="w-full">
-                            <Link href="/achievements"><Award className="mr-2 h-4 w-4"/> View Progress Hub</Link>
-                      </Button>
-                    </CardFooter>
-                  </Card>
-              </div>
             </div>
-        </main>
-      </div>
+          </div>
+      </main>
     </AppLayout>
   );
 }
