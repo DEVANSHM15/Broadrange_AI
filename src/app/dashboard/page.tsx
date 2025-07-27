@@ -312,7 +312,7 @@ export default function DashboardPage() {
                   <CardTitle className="flex items-center gap-2"><FolderKanban className="text-primary"/> Quick Actions</CardTitle>
                   <CardDescription>Navigate to key features of the app.</CardDescription>
                 </CardHeader>
-                <CardContent className="grid grid-cols-1 gap-2">
+                <CardContent className="grid grid-cols-2 gap-2">
                   <Button asChild variant="outline" className="justify-start">
                     <Link href="/planner"><BookOpen className="mr-2 h-4 w-4"/> AI Planner</Link>
                   </Button>
