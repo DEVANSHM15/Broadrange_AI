@@ -75,7 +75,7 @@ export default function LandingPage() {
                     </Button>
                   </div>
               </div>
-              <div className="w-full max-w-md mx-auto lg:mx-0">
+              <div className="w-full max-w-xl mx-auto lg:mx-0">
                   <Image
                       src="https://blog.cdn.cmarix.com/blog/wp-content/uploads/2022/05/Blog-1-2.png"
                       alt="AI Study Planner Dashboard"
