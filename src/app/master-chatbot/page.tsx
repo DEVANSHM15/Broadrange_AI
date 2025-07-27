@@ -6,7 +6,7 @@ import AppLayout from "@/components/AppLayout";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Send, Loader2, Sparkles, PlusCircle, MessageSquare, Trash2, Layers, BarChart, BookOpenCheck, Calendar, AreaChart, Award, BookOpen } from 'lucide-react';
+import { Send, Loader2, Sparkles, PlusCircle, MessageSquare, Trash2, Layers, Award, BookOpen, Calendar, AreaChart, PanelLeftOpen, PanelLeftClose } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import type { ChatMessage, Chat } from '@/types';
 import Link from 'next/link';
@@ -43,8 +43,15 @@ const BotAvatar = () => (
 );
 
 const initialMessageHTML = `
-  <p>Hello! I'm your study assistant. How can I help you use the app today? You can ask me a question, or use one of the quick actions on the right.</p>
+    <p>Hello! I'm your study assistant. How can I help you use the app today? You can ask me about any feature, or use one of the quick actions to get started.</p>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px;">
+        <a href="/planner" style="display: block; text-decoration: none; color: inherit; padding: 12px; border-radius: 8px; text-align: center; font-weight: 500; background: linear-gradient(145deg, hsla(var(--primary) / 0.1), hsla(var(--primary) / 0.05)); border: 1px solid hsla(var(--primary) / 0.2); transition: all 0.2s ease;">AI Planner</a>
+        <a href="/calendar" style="display: block; text-decoration: none; color: inherit; padding: 12px; border-radius: 8px; text-align: center; font-weight: 500; background: linear-gradient(145deg, hsla(var(--primary) / 0.1), hsla(var(--primary) / 0.05)); border: 1px solid hsla(var(--primary) / 0.2); transition: all 0.2s ease;">Calendar</a>
+        <a href="/analytics" style="display: block; text-decoration: none; color: inherit; padding: 12px; border-radius: 8px; text-align: center; font-weight: 500; background: linear-gradient(145deg, hsla(var(--primary) / 0.1), hsla(var(--primary) / 0.05)); border: 1px solid hsla(var(--primary) / 0.2); transition: all 0.2s ease;">Analytics</a>
+        <a href="/achievements" style="display: block; text-decoration: none; color: inherit; padding: 12px; border-radius: 8px; text-align: center; font-weight: 500; background: linear-gradient(145deg, hsla(var(--primary) / 0.1), hsla(var(--primary) / 0.05)); border: 1px solid hsla(var(--primary) / 0.2); transition: all 0.2s ease;">Progress Hub</a>
+    </div>
 `;
+
 
 export default function MasterChatbotPage() {
   const { currentUser } = useAuth();
@@ -58,6 +65,7 @@ export default function MasterChatbotPage() {
   const [isSending, setIsSending] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [chatToDelete, setChatToDelete] = useState<Chat | null>(null);
+  const [isSidebarVisible, setIsSidebarVisible] = useState(true);
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -68,7 +76,6 @@ export default function MasterChatbotPage() {
   };
 
   useEffect(() => {
-    // A slight delay ensures the DOM has updated before we scroll
     setTimeout(scrollToBottom, 100);
   }, [messages, isSending]);
 
@@ -100,7 +107,7 @@ export default function MasterChatbotPage() {
   const handleSelectChat = async (chatId: string) => {
     if (!currentUser) return;
     setActiveChatId(chatId);
-    setMessages([]); // Clear previous messages
+    setMessages([]);
     setIsLoadingHistory(true);
     try {
         const response = await fetch(`/api/chats/${chatId}?userId=${currentUser.id}`);
@@ -114,10 +121,10 @@ export default function MasterChatbotPage() {
     }
   };
 
-  const handleNewChat = () => {
+  const handleNewChat = useCallback(() => {
     setActiveChatId(null);
     setMessages([{ role: 'bot', content: initialMessageHTML, isHtml: true, chatId: 'new', createdAt: new Date().toISOString() }]);
-  };
+  }, []);
   
   const handleSendMessage = async (e: FormEvent) => {
     e.preventDefault();
@@ -205,7 +212,10 @@ export default function MasterChatbotPage() {
     <AppLayout>
       <div className="flex h-[calc(100vh-57px)]">
         {/* Left Sidebar for Chat History */}
-        <aside className="w-64 flex-shrink-0 bg-card border-r hidden md:flex flex-col">
+        <aside className={cn(
+            "flex-shrink-0 bg-card border-r flex-col transition-all duration-300 ease-in-out",
+            isSidebarVisible ? "w-64 flex" : "w-0 hidden"
+        )}>
           <div className="p-2">
             <Button variant="outline" className="w-full" onClick={handleNewChat}>
               <PlusCircle className="mr-2 h-4 w-4" /> New Chat
@@ -236,6 +246,16 @@ export default function MasterChatbotPage() {
 
         {/* Main Chat Area */}
         <main className="flex-1 flex flex-col h-full bg-background">
+          <div className="flex items-center justify-between p-2 border-b">
+              <Button variant="ghost" size="icon" onClick={() => setIsSidebarVisible(!isSidebarVisible)} className="md:hidden">
+                  {isSidebarVisible ? <PanelLeftClose /> : <PanelLeftOpen />}
+              </Button>
+              <div className="flex-grow text-center font-semibold">Master Agent</div>
+              <Button variant="ghost" size="icon" onClick={handleNewChat} title="Start New Chat">
+                  <PlusCircle />
+              </Button>
+          </div>
+
           <div className="flex-grow p-4 md:p-6 overflow-y-auto" ref={scrollRef}>
               <div className="max-w-3xl mx-auto space-y-6">
               {messages.map((message, index) => (
@@ -293,42 +313,34 @@ export default function MasterChatbotPage() {
         {/* Right Sidebar for Quick Actions */}
         <aside className="w-72 flex-shrink-0 bg-card border-l hidden lg:flex flex-col p-4 space-y-6">
             <div className="space-y-2">
-                <h3 className="text-lg font-semibold flex items-center gap-2"><Sparkles className="text-primary h-5 w-5" /> Quick Actions</h3>
-                <p className="text-sm text-muted-foreground">Navigate to key app features.</p>
+                <h3 className="text-lg font-semibold flex items-center gap-2"><Sparkles className="text-primary h-5 w-5" /> Core Features</h3>
+                <p className="text-sm text-muted-foreground">An overview of the app's capabilities.</p>
             </div>
             <div className="space-y-4">
-                 <Link href="/planner" className="block">
-                    <Card className="bg-muted/50 hover:bg-muted/80 hover:-translate-y-1 transition-transform duration-300 cursor-pointer">
-                    <CardHeader className="p-4 flex-row items-center gap-4">
-                        <div className="p-2 rounded-full bg-primary/10 text-primary border border-primary/20"><BookOpen className="h-6 w-6" /></div>
-                        <CardTitle className="text-base">AI Planner</CardTitle>
-                    </CardHeader>
-                    </Card>
-                </Link>
-                <Link href="/calendar" className="block">
-                    <Card className="bg-muted/50 hover:bg-muted/80 hover:-translate-y-1 transition-transform duration-300 cursor-pointer">
-                    <CardHeader className="p-4 flex-row items-center gap-4">
-                        <div className="p-2 rounded-full bg-primary/10 text-primary border border-primary/20"><Calendar className="h-6 w-6" /></div>
-                        <CardTitle className="text-base">Calendar</CardTitle>
-                    </CardHeader>
-                    </Card>
-                </Link>
-                <Link href="/analytics" className="block">
-                    <Card className="bg-muted/50 hover:bg-muted/80 hover:-translate-y-1 transition-transform duration-300 cursor-pointer">
-                    <CardHeader className="p-4 flex-row items-center gap-4">
-                        <div className="p-2 rounded-full bg-primary/10 text-primary border border-primary/20"><AreaChart className="h-6 w-6" /></div>
-                        <CardTitle className="text-base">Analytics</CardTitle>
-                    </CardHeader>
-                    </Card>
-                </Link>
-                <Link href="/achievements" className="block">
-                    <Card className="bg-muted/50 hover:bg-muted/80 hover:-translate-y-1 transition-transform duration-300 cursor-pointer">
-                    <CardHeader className="p-4 flex-row items-center gap-4">
-                        <div className="p-2 rounded-full bg-primary/10 text-primary border border-primary/20"><Award className="h-6 w-6" /></div>
-                        <CardTitle className="text-base">Progress Hub</CardTitle>
-                    </CardHeader>
-                    </Card>
-                </Link>
+                 <Card className="text-center bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-card to-card">
+                  <CardHeader className="items-center p-4">
+                    <div className="p-2.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                      <Layers className="h-6 w-6" />
+                    </div>
+                    <CardTitle className="mt-2 text-base">Personalized Plans</CardTitle>
+                  </CardHeader>
+                </Card>
+                <Card className="text-center bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-card to-card">
+                  <CardHeader className="items-center p-4">
+                     <div className="p-2.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                      <AreaChart className="h-6 w-6" />
+                    </div>
+                    <CardTitle className="mt-2 text-base">Advanced Analytics</CardTitle>
+                  </CardHeader>
+                </Card>
+                <Card className="text-center bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-card to-card">
+                  <CardHeader className="items-center p-4">
+                     <div className="p-2.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                      <BookOpen className="h-6 w-6" />
+                    </div>
+                    <CardTitle className="mt-2 text-base">AI-Powered Quizzes</CardTitle>
+                  </CardHeader>
+                </Card>
             </div>
         </aside>
       </div>
@@ -350,3 +362,4 @@ export default function MasterChatbotPage() {
     </AppLayout>
   );
 }
+
