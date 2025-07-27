@@ -6,7 +6,7 @@ import AppLayout from "@/components/AppLayout";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Send, Loader2, Sparkles, PlusCircle, MessageSquare, Trash2 } from 'lucide-react';
+import { Send, Loader2, Sparkles, PlusCircle, MessageSquare, Trash2, Layers, BarChart, BookOpenCheck, Calendar, AreaChart, Award, BookOpen } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import type { ChatMessage, Chat } from '@/types';
 import Link from 'next/link';
@@ -23,6 +23,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
 
 const getInitials = (name?: string | null) => {
   if (!name) return "?";
@@ -41,13 +43,7 @@ const BotAvatar = () => (
 );
 
 const initialMessageHTML = `
-  <p>Hello! I'm your study assistant. How can I help you get started? You can ask me a question, or use one of these quick actions:</p>
-  <div class="mt-4 grid grid-cols-2 gap-2">
-    <a href="/planner" class="w-full text-center px-4 py-2 text-sm font-medium rounded-md border border-primary/30 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-card to-card text-foreground hover:bg-primary/20 no-underline transition-all hover:scale-105">AI Planner</a>
-    <a href="/calendar" class="w-full text-center px-4 py-2 text-sm font-medium rounded-md border border-primary/30 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-card to-card text-foreground hover:bg-primary/20 no-underline transition-all hover:scale-105">Calendar</a>
-    <a href="/analytics" class="w-full text-center px-4 py-2 text-sm font-medium rounded-md border border-primary/30 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-card to-card text-foreground hover:bg-primary/20 no-underline transition-all hover:scale-105">Analytics</a>
-    <a href="/achievements" class="w-full text-center px-4 py-2 text-sm font-medium rounded-md border border-primary/30 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-card to-card text-foreground hover:bg-primary/20 no-underline transition-all hover:scale-105">Progress Hub</a>
-  </div>
+  <p>Hello! I'm your study assistant. How can I help you use the app today? You can ask me a question, or use one of the quick actions on the right.</p>
 `;
 
 export default function MasterChatbotPage() {
@@ -63,15 +59,19 @@ export default function MasterChatbotPage() {
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [chatToDelete, setChatToDelete] = useState<Chat | null>(null);
 
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
-    if (scrollAreaRef.current) {
-        scrollAreaRef.current.scrollTo({ top: scrollAreaRef.current.scrollHeight, behavior: 'smooth' });
+    if (scrollRef.current) {
+        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   };
 
-  useEffect(scrollToBottom, [messages, isSending]);
+  useEffect(() => {
+    // A slight delay ensures the DOM has updated before we scroll
+    setTimeout(scrollToBottom, 100);
+  }, [messages, isSending]);
+
 
   const fetchChats = useCallback(async () => {
     if (!currentUser) return;
@@ -128,13 +128,12 @@ export default function MasterChatbotPage() {
     setIsSending(true);
 
     const userMessage: ChatMessage = { chatId: activeChatId || 'temp', role: 'user', content: query, createdAt: new Date().toISOString() };
-    const newMessages = [...messages, userMessage];
+    const newMessages = [...messages.filter(m => m.chatId !== 'new'), userMessage];
     setMessages(newMessages);
     
     let currentChatId = activeChatId;
 
     try {
-        // Create new chat if it's the first message
         if (!currentChatId) {
             const createResponse = await fetch('/api/chats', {
                 method: 'POST',
@@ -169,12 +168,13 @@ export default function MasterChatbotPage() {
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsSending(false);
-      // Refresh chat list to show updated timestamp
       if (currentChatId) {
         const chatToUpdate = chats.find(c => c.id === currentChatId);
         if (chatToUpdate) {
           chatToUpdate.updatedAt = new Date().toISOString();
           setChats(prev => [chatToUpdate, ...prev.filter(c => c.id !== currentChatId)]);
+        } else {
+           fetchChats();
         }
       }
     }
@@ -188,7 +188,11 @@ export default function MasterChatbotPage() {
         toast({ title: "Success", description: "Chat deleted." });
         setChats(prev => prev.filter(c => c.id !== chatToDelete.id));
         if (activeChatId === chatToDelete.id) {
-            handleNewChat();
+            if(chats.length > 1) {
+                handleSelectChat(chats.filter(c => c.id !== chatToDelete.id)[0].id);
+            } else {
+                handleNewChat();
+            }
         }
     } catch (error) {
         toast({ title: "Error", description: "Could not delete chat.", variant: "destructive" });
@@ -232,7 +236,7 @@ export default function MasterChatbotPage() {
 
         {/* Main Chat Area */}
         <main className="flex-1 flex flex-col h-full bg-background">
-          <div className="flex-grow p-4 md:p-6 overflow-y-auto" ref={scrollAreaRef}>
+          <div className="flex-grow p-4 md:p-6 overflow-y-auto" ref={scrollRef}>
               <div className="max-w-3xl mx-auto space-y-6">
               {messages.map((message, index) => (
                   <div key={index} className={cn("flex items-start gap-3 text-sm", message.role === 'user' ? "justify-end" : "justify-start")}>
@@ -285,6 +289,48 @@ export default function MasterChatbotPage() {
             </div>
           </div>
         </main>
+        
+        {/* Right Sidebar for Quick Actions */}
+        <aside className="w-72 flex-shrink-0 bg-card border-l hidden lg:flex flex-col p-4 space-y-6">
+            <div className="space-y-2">
+                <h3 className="text-lg font-semibold flex items-center gap-2"><Sparkles className="text-primary h-5 w-5" /> Quick Actions</h3>
+                <p className="text-sm text-muted-foreground">Navigate to key app features.</p>
+            </div>
+            <div className="space-y-3">
+                 <Link href="/planner" className="block">
+                    <Card className="bg-muted/50 hover:bg-muted/80 hover:-translate-y-1 transition-transform duration-300 cursor-pointer">
+                    <CardHeader className="p-4 flex-row items-center gap-4">
+                        <div className="p-2 rounded-full bg-primary/10 text-primary border border-primary/20"><BookOpen className="h-6 w-6" /></div>
+                        <CardTitle className="text-base">AI Planner</CardTitle>
+                    </CardHeader>
+                    </Card>
+                </Link>
+                <Link href="/calendar" className="block">
+                    <Card className="bg-muted/50 hover:bg-muted/80 hover:-translate-y-1 transition-transform duration-300 cursor-pointer">
+                    <CardHeader className="p-4 flex-row items-center gap-4">
+                        <div className="p-2 rounded-full bg-primary/10 text-primary border border-primary/20"><Calendar className="h-6 w-6" /></div>
+                        <CardTitle className="text-base">Calendar</CardTitle>
+                    </CardHeader>
+                    </Card>
+                </Link>
+                <Link href="/analytics" className="block">
+                    <Card className="bg-muted/50 hover:bg-muted/80 hover:-translate-y-1 transition-transform duration-300 cursor-pointer">
+                    <CardHeader className="p-4 flex-row items-center gap-4">
+                        <div className="p-2 rounded-full bg-primary/10 text-primary border border-primary/20"><AreaChart className="h-6 w-6" /></div>
+                        <CardTitle className="text-base">Analytics</CardTitle>
+                    </CardHeader>
+                    </Card>
+                </Link>
+                <Link href="/achievements" className="block">
+                    <Card className="bg-muted/50 hover:bg-muted/80 hover:-translate-y-1 transition-transform duration-300 cursor-pointer">
+                    <CardHeader className="p-4 flex-row items-center gap-4">
+                        <div className="p-2 rounded-full bg-primary/10 text-primary border border-primary/20"><Award className="h-6 w-6" /></div>
+                        <CardTitle className="text-base">Progress Hub</CardTitle>
+                    </CardHeader>
+                    </Card>
+                </Link>
+            </div>
+        </aside>
       </div>
 
        <AlertDialog open={!!chatToDelete} onOpenChange={(open) => !open && setChatToDelete(null)}>
@@ -305,4 +351,3 @@ export default function MasterChatbotPage() {
   );
 }
 
-    
