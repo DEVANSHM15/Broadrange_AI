@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { LogIn, UserPlus, LogOut, Moon, Sun, Settings, LayoutDashboard, BookOpen, BarChartBig, CalendarDaysIcon, ListChecks } from "lucide-react";
+import { LogIn, UserPlus, LogOut, Moon, Sun, Settings, LayoutDashboard, BookOpen, BarChartBig, CalendarDaysIcon, ListChecks, Bot } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import {
@@ -61,9 +61,12 @@ export function AppHeader() {
 
   const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/planner", label: "AI Planner", icon: BookOpen },
+    { href: "/master-chatbot", label: "Master Chatbot", icon: Bot },
+  ];
+
+  const allFeatureItems = [
+     { href: "/planner", label: "AI Planner", icon: BookOpen },
     { href: "/calendar", label: "Calendar", icon: CalendarDaysIcon },
-    // { href: "/weekly-diary", label: "Weekly Diary", icon: NotebookPen }, // Removed Weekly Diary
     { href: "/analytics", label: "Analytics", icon: BarChartBig },
     { href: "/achievements", label: "Progress Hub", icon: ListChecks },
   ];
@@ -153,7 +156,7 @@ export function AppHeader() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                {navItems.map((item) => (
+                {[...navItems, ...allFeatureItems].map((item) => (
                   <DropdownMenuItem key={item.href} asChild>
                     <Link href={item.href} className={pathname === item.href ? "bg-accent" : ""}>
                       <item.icon className="mr-2 h-4 w-4" />
