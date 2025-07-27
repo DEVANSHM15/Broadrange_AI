@@ -5,7 +5,6 @@ import { useState, useRef, useEffect, type FormEvent } from 'react';
 import AppLayout from "@/components/AppLayout";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Send, Loader2, Layers, BarChart, BookOpenCheck, Sparkles, Award } from 'lucide-react';
 import { cn } from "@/lib/utils";
@@ -63,10 +62,7 @@ export default function MasterChatbotPage() {
 
   useEffect(() => {
     if (scrollAreaRef.current) {
-        const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
-        if (viewport) {
-            viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' });
-        }
+        scrollAreaRef.current.scrollTo({ top: scrollAreaRef.current.scrollHeight, behavior: 'smooth' });
     }
   }, [messages, isLoading]);
 
