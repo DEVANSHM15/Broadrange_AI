@@ -53,10 +53,6 @@ export default function LandingPage() {
       <main className="flex-1">
         {/* Hero Section */}
         <section className="w-full py-20 md:py-28 lg:py-32 relative overflow-hidden">
-          {/* Background decoration */}
-          <div className="absolute top-0 left-0 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] md:w-[500px] md:h-[500px] bg-primary/20 rounded-full blur-3xl animate-pulse"></div>
-          <div className="absolute bottom-0 right-0 translate-x-1/2 translate-y-1/2 w-[300px] h-[300px] md:w-[500px] md:h-[500px] bg-secondary rounded-full blur-3xl animate-pulse delay-1000"></div>
-          
           <div className="container px-4 md:px-6 relative z-10">
             <div className="grid lg:grid-cols-2 gap-10 items-center">
               <div className="flex flex-col items-start space-y-6 text-left">
@@ -89,75 +85,82 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Features Section */}
-        <section className="w-full py-16 md:py-24 lg:py-28 bg-background/50">
-          <div className="container px-4 md:px-6">
-            <div className="flex flex-col items-center justify-center space-y-4 text-center">
-              <div className="space-y-2">
-                <div className="inline-block rounded-lg bg-primary/10 px-3 py-1 text-sm text-primary font-semibold">Core Features</div>
-                <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">Smart AI for Everyday Learning</h2>
-                <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                  Our platform is packed with features designed to enhance your learning experience and boost your productivity.
-                </p>
+        {/* Features & CTA Section with Background Glows */}
+        <div className="relative overflow-hidden">
+           {/* Background decoration */}
+           <div className="absolute top-1/4 -right-1/4 w-[800px] h-[800px] bg-primary/10 rounded-full blur-3xl -z-10 animate-pulse delay-500"></div>
+           <div className="absolute bottom-0 -left-1/4 w-[600px] h-[600px] bg-primary/10 rounded-full blur-3xl -z-10 animate-pulse"></div>
+
+          {/* Features Section */}
+          <section className="w-full py-16 md:py-24 lg:py-28 bg-transparent">
+            <div className="container px-4 md:px-6">
+              <div className="flex flex-col items-center justify-center space-y-4 text-center">
+                <div className="space-y-2">
+                  <div className="inline-block rounded-lg bg-primary/10 px-3 py-1 text-sm text-primary font-semibold">Core Features</div>
+                  <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">Smart AI for Everyday Learning</h2>
+                  <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                    Our platform is packed with features designed to enhance your learning experience and boost your productivity.
+                  </p>
+                </div>
+              </div>
+              <div className="mx-auto grid max-w-5xl items-start gap-8 sm:grid-cols-2 md:grid-cols-3 lg:gap-12 mt-12">
+                <Card className="text-center bg-card/50 shadow-lg hover:-translate-y-2 transition-all duration-300" style={{'--tw-shadow-color': 'hsl(var(--primary) / 0.15)', boxShadow: '0 10px 30px -15px var(--tw-shadow-color)'} as React.CSSProperties}>
+                  <CardHeader className="items-center">
+                    <div className="p-3.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                      <Layers className="h-7 w-7" />
+                    </div>
+                    <CardTitle className="mt-2">Personalized Plans</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">Optimal study schedules based on your goals.</p>
+                  </CardContent>
+                </Card>
+                <Card className="text-center bg-card/50 shadow-lg hover:-translate-y-2 transition-all duration-300" style={{'--tw-shadow-color': 'hsl(var(--primary) / 0.15)', boxShadow: '0 10px 30px -15px var(--tw-shadow-color)'} as React.CSSProperties}>
+                  <CardHeader className="items-center">
+                     <div className="p-3.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                      <BarChart className="h-7 w-7" />
+                    </div>
+                    <CardTitle className="mt-2">Advanced Analytics</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">Visualize your progress with insightful analytics.</p>
+                  </CardContent>
+                </Card>
+                <Card className="text-center bg-card/50 shadow-lg hover:-translate-y-2 transition-all duration-300" style={{'--tw-shadow-color': 'hsl(var(--primary) / 0.15)', boxShadow: '0 10px 30px -15px var(--tw-shadow-color)'} as React.CSSProperties}>
+                  <CardHeader className="items-center">
+                     <div className="p-3.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                      <BookOpenCheck className="h-7 w-7" />
+                    </div>
+                    <CardTitle className="mt-2">AI-Powered Quizzes</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">Reinforce learning with on-demand quizzes.</p>
+                  </CardContent>
+                </Card>
               </div>
             </div>
-            <div className="mx-auto grid max-w-5xl items-start gap-8 sm:grid-cols-2 md:grid-cols-3 lg:gap-12 mt-12">
-              <Card className="text-center bg-card/50 shadow-lg hover:-translate-y-2 transition-all duration-300" style={{'--tw-shadow-color': 'hsl(var(--primary) / 0.15)', boxShadow: '0 10px 30px -15px var(--tw-shadow-color)'} as React.CSSProperties}>
-                <CardHeader className="items-center">
-                  <div className="p-3.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-                    <Layers className="h-7 w-7" />
-                  </div>
-                  <CardTitle className="mt-2">Personalized Plans</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">Optimal study schedules based on your goals.</p>
-                </CardContent>
-              </Card>
-              <Card className="text-center bg-card/50 shadow-lg hover:-translate-y-2 transition-all duration-300" style={{'--tw-shadow-color': 'hsl(var(--primary) / 0.15)', boxShadow: '0 10px 30px -15px var(--tw-shadow-color)'} as React.CSSProperties}>
-                <CardHeader className="items-center">
-                   <div className="p-3.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-                    <BarChart className="h-7 w-7" />
-                  </div>
-                  <CardTitle className="mt-2">Advanced Analytics</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">Visualize your progress with insightful analytics.</p>
-                </CardContent>
-              </Card>
-              <Card className="text-center bg-card/50 shadow-lg hover:-translate-y-2 transition-all duration-300" style={{'--tw-shadow-color': 'hsl(var(--primary) / 0.15)', boxShadow: '0 10px 30px -15px var(--tw-shadow-color)'} as React.CSSProperties}>
-                <CardHeader className="items-center">
-                   <div className="p-3.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-                    <BookOpenCheck className="h-7 w-7" />
-                  </div>
-                  <CardTitle className="mt-2">AI-Powered Quizzes</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">Reinforce learning with on-demand quizzes.</p>
-                </CardContent>
-              </Card>
+          </section>
+          
+          {/* Final CTA */}
+          <section className="w-full py-12 md:py-16 lg:py-20 border-t bg-transparent">
+            <div className="container grid items-center justify-center gap-4 px-4 text-center md:px-6">
+              <div className="space-y-3">
+                <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight">Ready to Ace Your Studies?</h2>
+                <p className="mx-auto max-w-[600px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
+                  Join CodeXStudy today and unlock your full academic potential. Your personalized study journey awaits.
+                </p>
+              </div>
+              <div className="mx-auto w-full max-w-sm space-y-2">
+                <Button asChild size="lg" className="shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-shadow">
+                  <Link href={currentUser ? "/dashboard" : "/register"}>
+                    {currentUser ? "Back to Dashboard" : "Sign Up Now"}
+                    <Sparkles className="ml-2 h-5 w-5" />
+                  </Link>
+                </Button>
+              </div>
             </div>
-          </div>
-        </section>
-        
-        {/* Final CTA */}
-        <section className="w-full py-12 md:py-16 lg:py-20 border-t">
-          <div className="container grid items-center justify-center gap-4 px-4 text-center md:px-6">
-            <div className="space-y-3">
-              <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight">Ready to Ace Your Studies?</h2>
-              <p className="mx-auto max-w-[600px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                Join CodeXStudy today and unlock your full academic potential. Your personalized study journey awaits.
-              </p>
-            </div>
-            <div className="mx-auto w-full max-w-sm space-y-2">
-              <Button asChild size="lg" className="shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-shadow">
-                <Link href={currentUser ? "/dashboard" : "/register"}>
-                  {currentUser ? "Back to Dashboard" : "Sign Up Now"}
-                  <Sparkles className="ml-2 h-5 w-5" />
-                </Link>
-              </Button>
-            </div>
-          </div>
-        </section>
+          </section>
+        </div>
       </main>
     </div>
   );
