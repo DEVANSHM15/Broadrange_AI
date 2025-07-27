@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Send, Loader2, Layers, BarChart, BookOpenCheck, Sparkles } from 'lucide-react';
+import { Send, Loader2, Layers, BarChart, BookOpenCheck, Sparkles, Award } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { askStudyAssistant } from '@/ai/flows/studyAssistantChatFlow';
 import type { StudyAssistantChatInput } from '@/types';
@@ -37,27 +37,6 @@ const BotAvatar = () => (
     </Avatar>
 );
 
-const featureCards = [
-    {
-        icon: Layers,
-        title: "AI Planner",
-        description: "Generate optimal study schedules.",
-        href: "/planner"
-    },
-    {
-        icon: BarChart,
-        title: "Analytics",
-        description: "Visualize your progress & insights.",
-        href: "/analytics"
-    },
-    {
-        icon: BookOpenCheck,
-        title: "Calendar",
-        description: "Manage tasks & take AI quizzes.",
-        href: "/calendar"
-    }
-];
-
 export default function MasterChatbotPage() {
   const { currentUser } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -66,13 +45,14 @@ export default function MasterChatbotPage() {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Enhanced initial message with HTML and buttons
+    // Enhanced initial message with HTML and buttons in a 2x2 grid
     const initialMessageHTML = `
       <p>Hello! I'm your study assistant. How can I help you get started? You can ask me a question, or use one of these quick actions:</p>
-      <div class="mt-4 flex flex-col sm:flex-row gap-2">
+      <div class="mt-4 grid grid-cols-2 gap-2">
         <a href="/planner" class="w-full text-center px-4 py-2 text-sm font-medium rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground no-underline">AI Planner</a>
-        <a href="/analytics" class="w-full text-center px-4 py-2 text-sm font-medium rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground no-underline">View Analytics</a>
-        <a href="/calendar" class="w-full text-center px-4 py-2 text-sm font-medium rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground no-underline">Manage Calendar</a>
+        <a href="/calendar" class="w-full text-center px-4 py-2 text-sm font-medium rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground no-underline">Calendar</a>
+        <a href="/analytics" class="w-full text-center px-4 py-2 text-sm font-medium rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground no-underline">Analytics</a>
+        <a href="/achievements" class="w-full text-center px-4 py-2 text-sm font-medium rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground no-underline">Progress Hub</a>
       </div>
     `;
 
