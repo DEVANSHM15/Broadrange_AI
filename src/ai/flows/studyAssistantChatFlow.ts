@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview A helpful study assistant chatbot with knowledge of the application.
@@ -6,11 +7,24 @@
 import { ai } from '@/ai/genkit';
 import type { StudyAssistantChatInput, StudyAssistantChatOutput } from '@/types';
 import { marked } from 'marked';
+import { z } from 'zod';
+
+const HistoryItemSchema = z.object({
+  role: z.enum(['user', 'model']),
+  parts: z.array(z.object({ text: z.string() })),
+});
+
+const StudyAssistantChatInputSchema = z.object({
+    query: z.string(),
+    history: z.array(HistoryItemSchema),
+});
+
 
 export async function askStudyAssistant(input: StudyAssistantChatInput): Promise<StudyAssistantChatOutput> {
   try {
      const llmResponse = await ai.generate({
       model: 'googleai/gemini-1.5-flash-latest',
+      history: input.history,
       prompt: `You are a friendly and helpful study assistant for this application.
 Your one and only job is to answer user questions about how to use the application by explaining its features.
 You must not attempt to perform actions or navigate. You only provide helpful, explanatory information.
@@ -51,7 +65,7 @@ Here is a comprehensive summary of the application's features you can talk about
 *   You (in Markdown): Yes! There is a **Pomodoro Timer** to help you manage your study sessions. You can find it on the **Dashboard** page. It allows you to set focus and break intervals to stay productive.
 
 ---
-User's Question: "${input.query}"`,
+Current User Question: "${input.query}"`,
     });
 
     const rawText = llmResponse.text;

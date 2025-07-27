@@ -1,24 +1,28 @@
 
 "use client";
 
-import { useState, useRef, useEffect, type FormEvent } from 'react';
+import { useState, useRef, useEffect, type FormEvent, useCallback } from 'react';
 import AppLayout from "@/components/AppLayout";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Send, Loader2, Layers, BarChart, BookOpenCheck, Sparkles, Award } from 'lucide-react';
+import { Send, Loader2, Sparkles, PlusCircle, MessageSquare, Trash2 } from 'lucide-react';
 import { cn } from "@/lib/utils";
-import { askStudyAssistant } from '@/ai/flows/studyAssistantChatFlow';
-import type { StudyAssistantChatInput } from '@/types';
+import type { ChatMessage, Chat } from '@/types';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/auth-context';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-
-interface ChatMessage {
-  sender: 'user' | 'bot';
-  text: string;
-  isHtml?: boolean;
-}
+import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const getInitials = (name?: string | null) => {
   if (!name) return "?";
@@ -36,176 +40,266 @@ const BotAvatar = () => (
     </Avatar>
 );
 
+const initialMessageHTML = `
+  <p>Hello! I'm your study assistant. How can I help you get started? You can ask me a question, or use one of these quick actions:</p>
+  <div class="mt-4 grid grid-cols-2 gap-2">
+    <a href="/planner" class="w-full text-center px-4 py-2 text-sm font-medium rounded-md border border-primary/30 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-card to-card text-foreground hover:bg-primary/20 no-underline transition-all hover:scale-105">AI Planner</a>
+    <a href="/calendar" class="w-full text-center px-4 py-2 text-sm font-medium rounded-md border border-primary/30 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-card to-card text-foreground hover:bg-primary/20 no-underline transition-all hover:scale-105">Calendar</a>
+    <a href="/analytics" class="w-full text-center px-4 py-2 text-sm font-medium rounded-md border border-primary/30 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-card to-card text-foreground hover:bg-primary/20 no-underline transition-all hover:scale-105">Analytics</a>
+    <a href="/achievements" class="w-full text-center px-4 py-2 text-sm font-medium rounded-md border border-primary/30 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-card to-card text-foreground hover:bg-primary/20 no-underline transition-all hover:scale-105">Progress Hub</a>
+  </div>
+`;
+
 export default function MasterChatbotPage() {
   const { currentUser } = useAuth();
+  const { toast } = useToast();
+
+  const [chats, setChats] = useState<Chat[]>([]);
+  const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  
+  const [isSending, setIsSending] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [chatToDelete, setChatToDelete] = useState<Chat | null>(null);
+
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    // Enhanced initial message with HTML and buttons in a 2x2 grid
-    const initialMessageHTML = `
-      <p>Hello! I'm your study assistant. How can I help you get started? You can ask me a question, or use one of these quick actions:</p>
-      <div class="mt-4 grid grid-cols-2 gap-2">
-        <a href="/planner" class="w-full text-center px-4 py-2 text-sm font-medium rounded-md border border-primary/30 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-card to-card text-primary-foreground hover:bg-primary/20 no-underline transition-all hover:scale-105">AI Planner</a>
-        <a href="/calendar" class="w-full text-center px-4 py-2 text-sm font-medium rounded-md border border-primary/30 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-card to-card text-primary-foreground hover:bg-primary/20 no-underline transition-all hover:scale-105">Calendar</a>
-        <a href="/analytics" class="w-full text-center px-4 py-2 text-sm font-medium rounded-md border border-primary/30 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-card to-card text-primary-foreground hover:bg-primary/20 no-underline transition-all hover:scale-105">Analytics</a>
-        <a href="/achievements" class="w-full text-center px-4 py-2 text-sm font-medium rounded-md border border-primary/30 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-card to-card text-primary-foreground hover:bg-primary/20 no-underline transition-all hover:scale-105">Progress Hub</a>
-      </div>
-    `;
-
-    setMessages([
-      { sender: 'bot', text: initialMessageHTML, isHtml: true },
-    ]);
-  }, []);
-
-  useEffect(() => {
+  const scrollToBottom = () => {
     if (scrollAreaRef.current) {
         scrollAreaRef.current.scrollTo({ top: scrollAreaRef.current.scrollHeight, behavior: 'smooth' });
     }
-  }, [messages, isLoading]);
+  };
 
+  useEffect(scrollToBottom, [messages, isSending]);
+
+  const fetchChats = useCallback(async () => {
+    if (!currentUser) return;
+    setIsLoadingHistory(true);
+    try {
+      const response = await fetch(`/api/chats?userId=${currentUser.id}`);
+      if (!response.ok) throw new Error("Failed to fetch chats");
+      const data: Chat[] = await response.json();
+      setChats(data);
+      if (data.length > 0 && !activeChatId) {
+        handleSelectChat(data[0].id);
+      } else if (data.length === 0) {
+        handleNewChat();
+      }
+    } catch (error) {
+      toast({ title: "Error", description: "Could not load chat history.", variant: "destructive" });
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  }, [currentUser, toast, activeChatId]);
+
+  useEffect(() => {
+    fetchChats();
+  }, [currentUser]);
+
+  const handleSelectChat = async (chatId: string) => {
+    if (!currentUser) return;
+    setActiveChatId(chatId);
+    setMessages([]); // Clear previous messages
+    setIsLoadingHistory(true);
+    try {
+        const response = await fetch(`/api/chats/${chatId}?userId=${currentUser.id}`);
+        if (!response.ok) throw new Error("Failed to fetch messages");
+        const data: ChatMessage[] = await response.json();
+        setMessages(data);
+    } catch (error) {
+        toast({ title: "Error", description: "Could not load chat messages.", variant: "destructive" });
+    } finally {
+        setIsLoadingHistory(false);
+    }
+  };
+
+  const handleNewChat = () => {
+    setActiveChatId(null);
+    setMessages([{ role: 'bot', content: initialMessageHTML, isHtml: true, chatId: 'new', createdAt: new Date().toISOString() }]);
+  };
+  
   const handleSendMessage = async (e: FormEvent) => {
     e.preventDefault();
-    if (!inputValue.trim() || isLoading) return;
+    if (!inputValue.trim() || isSending || !currentUser) return;
 
-    const userMessage: ChatMessage = { sender: 'user', text: inputValue };
-    setMessages(prev => [...prev, userMessage]);
+    const query = inputValue;
     setInputValue('');
-    setIsLoading(true);
+    setIsSending(true);
+
+    const userMessage: ChatMessage = { chatId: activeChatId || 'temp', role: 'user', content: query, createdAt: new Date().toISOString() };
+    setMessages(prev => [...prev, userMessage]);
+    
+    let currentChatId = activeChatId;
 
     try {
-      const input: StudyAssistantChatInput = {
-        query: userMessage.text,
-      };
-      const result = await askStudyAssistant(input);
+        // Create new chat if it's the first message
+        if (!currentChatId) {
+            const createResponse = await fetch('/api/chats', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: currentUser.id, title: query.substring(0, 40) + '...' }),
+            });
+            const newChat: Chat = await createResponse.json();
+            currentChatId = newChat.id;
+            setActiveChatId(newChat.id);
+            setChats(prev => [newChat, ...prev]);
+        }
 
-      const botMessage: ChatMessage = { sender: 'bot', text: result.response, isHtml: true };
-      setMessages(prev => [...prev, botMessage]);
+        const historyForAI = messages.map(m => ({
+          role: m.role === 'user' ? 'user' : 'model',
+          parts: [{ text: m.content }]
+        })) as { role: 'user' | 'model'; parts: { text: string }[] }[];
+        
+        const response = await fetch(`/api/chats/${currentChatId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: currentUser.id, message: query, history: historyForAI }),
+        });
+        
+        if (!response.ok) throw new Error("Failed to get response from AI");
 
+        const botMessage: ChatMessage = await response.json();
+        setMessages(prev => [...prev.filter(m => m.chatId !== 'temp'), botMessage]);
+        
     } catch (error) {
       console.error("Chatbot error:", error);
-      const errorMessage: ChatMessage = { sender: 'bot', text: "Sorry, I'm having trouble connecting. Please try again later.", isHtml: false };
+      const errorMessage: ChatMessage = { chatId: 'error', role: 'bot', content: "Sorry, I'm having trouble connecting. Please try again later.", createdAt: new Date().toISOString() };
       setMessages(prev => [...prev, errorMessage]);
     } finally {
-      setIsLoading(false);
+      setIsSending(false);
+      // Refresh chat list to show updated timestamp
+      if (currentChatId) {
+        const chatToUpdate = chats.find(c => c.id === currentChatId);
+        if (chatToUpdate) {
+          chatToUpdate.updatedAt = new Date().toISOString();
+          setChats(prev => [chatToUpdate, ...prev.filter(c => c.id !== currentChatId)]);
+        }
+      }
+    }
+  };
+
+  const handleDeleteChat = async () => {
+    if (!chatToDelete || !currentUser) return;
+    try {
+        const response = await fetch(`/api/chats/${chatToDelete.id}?userId=${currentUser.id}`, { method: 'DELETE' });
+        if (!response.ok) throw new Error("Failed to delete chat");
+        toast({ title: "Success", description: "Chat deleted." });
+        setChats(prev => prev.filter(c => c.id !== chatToDelete.id));
+        if (activeChatId === chatToDelete.id) {
+            handleNewChat();
+        }
+    } catch (error) {
+        toast({ title: "Error", description: "Could not delete chat.", variant: "destructive" });
+    } finally {
+        setChatToDelete(null);
     }
   };
 
   return (
     <AppLayout>
-      <main className="flex-grow p-4 md:p-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-120px)]">
-          {/* Main Chat Area */}
-          <div className="lg:col-span-2 h-full flex flex-col bg-card border rounded-lg shadow-lg">
-              <div className="flex-grow p-6 overflow-y-auto" ref={scrollAreaRef}>
-                  <div className="space-y-6">
-                  {messages.map((message, index) => (
-                      <div
-                      key={index}
+      <div className="flex h-[calc(100vh-57px)]">
+        {/* Left Sidebar for Chat History */}
+        <aside className="w-64 flex-shrink-0 bg-card border-r hidden md:flex flex-col">
+          <div className="p-2">
+            <Button variant="outline" className="w-full" onClick={handleNewChat}>
+              <PlusCircle className="mr-2 h-4 w-4" /> New Chat
+            </Button>
+          </div>
+          <ScrollArea className="flex-grow">
+            <div className="p-2 space-y-1">
+              {isLoadingHistory ? (
+                <div className="p-4 text-center text-muted-foreground">
+                  <Loader2 className="h-5 w-5 animate-spin mx-auto" />
+                </div>
+              ) : (
+                chats.map(chat => (
+                  <div key={chat.id} className={cn("group flex items-center justify-between rounded-md p-2 text-sm cursor-pointer", activeChatId === chat.id ? 'bg-primary/10 text-primary' : 'hover:bg-muted')}>
+                    <button className="flex-grow text-left truncate" onClick={() => handleSelectChat(chat.id)}>
+                      <MessageSquare className="inline h-4 w-4 mr-2 flex-shrink-0" />
+                      {chat.title}
+                    </button>
+                    <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => setChatToDelete(chat)}>
+                       <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                ))
+              )}
+            </div>
+          </ScrollArea>
+        </aside>
+
+        {/* Main Chat Area */}
+        <main className="flex-1 flex flex-col h-full bg-background">
+          <div className="flex-grow p-4 md:p-6 overflow-y-auto" ref={scrollAreaRef}>
+              <div className="max-w-3xl mx-auto space-y-6">
+              {messages.map((message, index) => (
+                  <div key={index} className={cn("flex items-start gap-3 text-sm", message.role === 'user' ? "justify-end" : "justify-start")}>
+                  {message.role === 'bot' && <BotAvatar />}
+                  <div
                       className={cn(
-                          "flex items-start gap-3 text-sm",
-                          message.sender === 'user' ? "justify-end" : "justify-start"
+                        "max-w-[85%] rounded-lg px-4 py-2",
+                        "prose prose-sm dark:prose-invert prose-p:my-2 prose-ul:my-2 prose-li:my-0",
+                        message.role === 'user' ? "bg-primary text-primary-foreground" : "bg-muted"
                       )}
-                      >
-                      {message.sender === 'bot' && <BotAvatar />}
-                      <div
-                          className={cn(
-                          "max-w-[85%] rounded-lg px-4 py-2",
-                          "prose prose-sm dark:prose-invert prose-p:my-2 prose-ul:my-2 prose-li:my-0",
-                          message.sender === 'user'
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-muted"
-                          )}
-                      >
-                          {message.isHtml ? (
-                          <div dangerouslySetInnerHTML={{ __html: message.text }} />
-                          ) : (
-                          <p>{message.text}</p>
-                          )}
-                      </div>
-                      {message.sender === 'user' && (
-                          <Avatar className="h-8 w-8">
-                          <AvatarFallback>{getInitials(currentUser?.name)}</AvatarFallback>
-                          </Avatar>
+                  >
+                      {message.isHtml ? (
+                      <div dangerouslySetInnerHTML={{ __html: message.content }} />
+                      ) : (
+                      <p>{message.content}</p>
                       )}
-                      </div>
-                  ))}
-                  {isLoading && (
-                      <div className="flex items-start gap-3 justify-start">
-                      <BotAvatar />
-                      <div className="bg-muted rounded-lg p-3 flex items-center">
-                          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                      </div>
-                      </div>
+                  </div>
+                  {message.role === 'user' && (
+                      <Avatar className="h-8 w-8">
+                      <AvatarFallback>{getInitials(currentUser?.name)}</AvatarFallback>
+                      </Avatar>
                   )}
                   </div>
-              </div>
-              <div className="p-4 border-t bg-background rounded-b-lg">
-                  <form onSubmit={handleSendMessage} className="w-full flex items-center gap-2">
-                  <Input
-                      value={inputValue}
-                      onChange={(e) => setInputValue(e.target.value)}
-                      placeholder="Ask how to use the app..."
-                      autoComplete="off"
-                      disabled={isLoading}
-                      className="flex-grow"
-                  />
-                  <Button type="submit" size="icon" disabled={isLoading || !inputValue.trim()}>
-                      <Send className="h-4 w-4" />
-                  </Button>
-                  </form>
+              ))}
+              {isSending && (
+                  <div className="flex items-start gap-3 justify-start">
+                  <BotAvatar />
+                  <div className="bg-muted rounded-lg p-3 flex items-center">
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  </div>
+                  </div>
+              )}
               </div>
           </div>
-          {/* Right Sidebar */}
-          <div className="hidden lg:flex flex-col bg-card border rounded-lg shadow-lg p-6">
-            <h2 className="text-xl font-bold text-primary mb-2">Core Features</h2>
-            <p className="text-sm text-muted-foreground mb-6">Explore the app's capabilities. Ask me for more details on any feature!</p>
-            <div className="space-y-6">
-               <Link href="/planner" passHref>
-                  <Card className="text-center bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-card to-card hover:-translate-y-1 transition-transform duration-300 cursor-pointer">
-                    <CardHeader className="items-center pb-2 pt-4">
-                      <div className="p-3.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-                        <Layers className="h-7 w-7" />
-                      </div>
-                      <CardTitle className="mt-2 text-sm font-semibold">Personalized Plans</CardTitle>
-                    </CardHeader>
-                    <CardContent className="pb-4">
-                      <p className="text-xs text-muted-foreground">Optimal study schedules based on your goals.</p>
-                    </CardContent>
-                  </Card>
-                </Link>
-                <Link href="/analytics" passHref>
-                  <Card className="text-center bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-card to-card hover:-translate-y-1 transition-transform duration-300 cursor-pointer">
-                    <CardHeader className="items-center pb-2 pt-4">
-                       <div className="p-3.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-                        <BarChart className="h-7 w-7" />
-                      </div>
-                      <CardTitle className="mt-2 text-sm font-semibold">Advanced Analytics</CardTitle>
-                    </CardHeader>
-                    <CardContent className="pb-4">
-                      <p className="text-xs text-muted-foreground">Visualize your progress with insightful analytics.</p>
-                    </CardContent>
-                  </Card>
-                </Link>
-                <Link href="/calendar" passHref>
-                  <Card className="text-center bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-card to-card hover:-translate-y-1 transition-transform duration-300 cursor-pointer">
-                    <CardHeader className="items-center pb-2 pt-4">
-                       <div className="p-3.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-                        <BookOpenCheck className="h-7 w-7" />
-                      </div>
-                      <CardTitle className="mt-2 text-sm font-semibold">AI-Powered Quizzes</CardTitle>
-                    </CardHeader>
-                    <CardContent className="pb-4">
-                      <p className="text-xs text-muted-foreground">Reinforce learning with on-demand quizzes.</p>
-                    </CardContent>
-                  </Card>
-                </Link>
+          <div className="p-4 border-t bg-background">
+            <div className="max-w-3xl mx-auto">
+              <form onSubmit={handleSendMessage} className="w-full flex items-center gap-2">
+              <Input
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  placeholder="Ask how to use the app..."
+                  autoComplete="off"
+                  disabled={isSending}
+                  className="flex-grow"
+              />
+              <Button type="submit" size="icon" disabled={isSending || !inputValue.trim()}>
+                  <Send className="h-4 w-4" />
+              </Button>
+              </form>
             </div>
           </div>
-        </div>
-      </main>
+        </main>
+      </div>
+
+       <AlertDialog open={!!chatToDelete} onOpenChange={(open) => !open && setChatToDelete(null)}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        This will permanently delete the chat "{chatToDelete?.title}".
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDeleteChat}>Confirm Delete</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
     </AppLayout>
   );
 }

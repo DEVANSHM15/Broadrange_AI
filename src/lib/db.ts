@@ -84,6 +84,25 @@ export async function getDb(): Promise<Database> {
         completed BOOLEAN NOT NULL DEFAULT FALSE,
         FOREIGN KEY (taskId) REFERENCES schedule_tasks (id) ON DELETE CASCADE
     );
+
+    CREATE TABLE IF NOT EXISTS chats (
+        id TEXT PRIMARY KEY,
+        userId INTEGER NOT NULL,
+        title TEXT NOT NULL,
+        createdAt TEXT NOT NULL,
+        updatedAt TEXT NOT NULL,
+        FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS chat_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        chatId TEXT NOT NULL,
+        role TEXT NOT NULL, -- 'user' or 'bot'
+        content TEXT NOT NULL,
+        isHtml BOOLEAN DEFAULT FALSE,
+        createdAt TEXT NOT NULL,
+        FOREIGN KEY (chatId) REFERENCES chats(id) ON DELETE CASCADE
+    );
   `);
   
   // Schema migration checks

@@ -134,8 +134,26 @@ export interface GenerateTaskQuizOutput {
 }
 
 // Chatbot specific types
+export interface ChatMessage {
+  id?: number;
+  chatId: string;
+  role: 'user' | 'bot';
+  content: string;
+  isHtml?: boolean;
+  createdAt: string;
+}
+
+export interface Chat {
+  id: string;
+  userId: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface StudyAssistantChatInput {
   query: string;
+  history: { role: 'user' | 'model'; parts: { text: string }[] };
 }
 
 export interface StudyAssistantChatOutput {
