@@ -43,6 +43,7 @@ function AppLayoutContent({ children }: AppLayoutProps) {
      return (
         <div className="flex flex-col flex-grow min-h-0">
           {/* Public pages do not need the full sidebar, but AppHeader might have a mobile trigger */}
+          <AppHeader/>
           <main className="flex-grow">{children}</main>
         </div>
       );
@@ -72,22 +73,12 @@ function AppLayoutContent({ children }: AppLayoutProps) {
 
 
 export default function AppLayout({ children }: AppLayoutProps) {
-    const pathname = usePathname();
-    const isPublicPage = PUBLIC_PATHS.includes(pathname);
-    
     // The SidebarProvider now wraps everything unconditionally.
-    // This ensures that any component calling useSidebar (like SidebarTrigger in AppHeader)
-    // will always have the context it needs, regardless of the page being public or private.
+    // The main layout logic is moved into AppLayoutContent.
+    // This ensures that any component calling useSidebar will always have the context it needs.
     return (
         <SidebarProvider>
-            {isPublicPage ? (
-                <>
-                  <AppHeader/>
-                  <AppLayoutContent>{children}</AppLayoutContent>
-                </>
-            ) : (
-                <AppLayoutContent>{children}</AppLayoutContent>
-            )}
+            <AppLayoutContent>{children}</AppLayoutContent>
         </SidebarProvider>
     );
 }
