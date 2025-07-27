@@ -14,13 +14,13 @@ interface AppLayoutProps {
 
 const PUBLIC_PATHS = ['/', '/login', '/register', '/register/step2', '/register/step3', '/forgot-password'];
 
-export default function AppLayout({ children }: AppLayoutProps) {
+function AppLayoutContent({ children }: AppLayoutProps) {
   const { currentUser, isLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    if (isLoading) return; 
+    if (isLoading) return;
 
     if (!currentUser && !PUBLIC_PATHS.includes(pathname)) {
       router.replace('/login');
@@ -43,7 +43,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   if (isPublicPage) {
      return (
         <div className="flex flex-col flex-grow min-h-0">
-          {!currentUser && <AppHeader />}
+          <AppHeader />
           <main className="flex-grow">{children}</main>
         </div>
       );
@@ -57,14 +57,23 @@ export default function AppLayout({ children }: AppLayoutProps) {
         </div>
       );
   }
-  
+
   // User is logged in, show sidebar layout
   return (
-    <SidebarProvider>
+    <>
       <AppSidebar />
       <main className="flex-grow">
         {children}
       </main>
-    </SidebarProvider>
+    </>
   );
+}
+
+
+export default function AppLayout({ children }: AppLayoutProps) {
+    return (
+        <SidebarProvider>
+            <AppLayoutContent>{children}</AppLayoutContent>
+        </SidebarProvider>
+    );
 }
