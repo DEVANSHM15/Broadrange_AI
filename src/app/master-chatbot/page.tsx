@@ -7,13 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Send, Loader2, BookOpen, BarChartBig, Calendar, Sparkles } from 'lucide-react';
+import { Send, Loader2, BookOpen, BarChartBig, Calendar, Sparkles, Layers, BarChart, BookOpenCheck } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { askStudyAssistant } from '@/ai/flows/studyAssistantChatFlow';
 import type { StudyAssistantChatInput } from '@/types';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/auth-context';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 
 interface ChatMessage {
   sender: 'user' | 'bot';
@@ -39,21 +39,21 @@ const BotAvatar = () => (
 
 const featureCards = [
     {
-        icon: BookOpen,
-        title: "AI Planner",
-        description: "Generate personalized study schedules in seconds.",
+        icon: Layers,
+        title: "Personalized Plans",
+        description: "Optimal study schedules based on your goals.",
         href: "/planner"
     },
     {
-        icon: BarChartBig,
-        title: "Analytics",
-        description: "Track your performance and get AI-driven reflections.",
+        icon: BarChart,
+        title: "Advanced Analytics",
+        description: "Visualize your progress with insightful analytics.",
         href: "/analytics"
     },
     {
-        icon: Calendar,
-        title: "Calendar View",
-        description: "Manage daily tasks, sub-tasks, and quizzes.",
+        icon: BookOpenCheck,
+        title: "AI-Powered Quizzes",
+        description: "Reinforce learning with on-demand quizzes.",
         href: "/calendar"
     }
 ];
@@ -173,19 +173,21 @@ export default function MasterChatbotPage() {
               </div>
           </div>
           {/* Right Sidebar */}
-          <div className="hidden lg:block bg-card border rounded-lg shadow-lg p-6">
+          <div className="hidden lg:block bg-card border rounded-lg shadow-lg p-6 overflow-y-auto">
             <h2 className="text-xl font-bold text-primary mb-2">Feature Spotlight</h2>
-            <p className="text-sm text-muted-foreground mb-6">Discover what you can do. Ask the chatbot for more details on any feature!</p>
+            <p className="text-sm text-muted-foreground mb-6">Discover what you can do. Ask me for more details on any feature!</p>
             <div className="space-y-4">
               {featureCards.map((card, index) => (
                 <Link href={card.href} key={index} passHref>
-                  <Card className="bg-muted hover:bg-accent/50 transition-colors cursor-pointer">
-                    <CardContent className="p-4 flex items-center gap-4">
-                      <card.icon className="h-6 w-6 text-primary" />
-                      <div>
-                        <h3 className="font-semibold">{card.title}</h3>
-                        <p className="text-sm text-muted-foreground">{card.description}</p>
+                  <Card className="text-center bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-card to-card hover:-translate-y-1 transition-transform duration-300 cursor-pointer">
+                    <CardHeader className="items-center pb-2">
+                      <div className="p-3 rounded-full bg-primary/10 text-primary border border-primary/20">
+                        <card.icon className="h-6 w-6" />
                       </div>
+                      <CardTitle className="mt-2 text-base">{card.title}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-xs text-muted-foreground">{card.description}</p>
                     </CardContent>
                   </Card>
                 </Link>
