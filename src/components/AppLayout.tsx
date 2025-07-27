@@ -7,7 +7,9 @@ import { useAuth } from '@/contexts/auth-context';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
-import { SidebarProvider } from '@/components/ui/sidebar';
+import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import { PomodoroTimerModal } from './pomodoro-timer';
+
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -42,7 +44,6 @@ function AppLayoutContent({ children }: AppLayoutProps) {
   if (isPublicPage) {
      return (
         <div className="flex flex-col flex-grow min-h-0">
-          {/* Public pages do not need the full sidebar, but AppHeader might have a mobile trigger */}
           <AppHeader/>
           <main className="flex-grow">{children}</main>
         </div>
@@ -73,9 +74,6 @@ function AppLayoutContent({ children }: AppLayoutProps) {
 
 
 export default function AppLayout({ children }: AppLayoutProps) {
-    // The SidebarProvider now wraps everything unconditionally.
-    // The main layout logic is moved into AppLayoutContent.
-    // This ensures that any component calling useSidebar will always have the context it needs.
     return (
         <SidebarProvider>
             <AppLayoutContent>{children}</AppLayoutContent>

@@ -169,13 +169,16 @@ export default function DashboardPage() {
 
   if (isLoadingPlanData) {
     return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-100px)]">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-      </div>
+      <AppLayout>
+        <div className="flex items-center justify-center min-h-[calc(100vh-100px)]">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </div>
+      </AppLayout>
     );
   }
 
   return (
+    <AppLayout>
       <div className="h-full w-full flex">
         <div className="flex-grow h-full overflow-y-auto">
             <div className="p-6 space-y-8">
@@ -185,7 +188,6 @@ export default function DashboardPage() {
                   <p className="text-muted-foreground">Welcome back, let's get studying.</p>
                 </div>
                  <div className="flex items-center gap-2">
-                    <SidebarTrigger className="md:hidden"/>
                     <PomodoroTimerModal />
                 </div>
               </header>
@@ -300,5 +302,6 @@ export default function DashboardPage() {
            </ScrollArea>
         </aside>
       </div>
+    </AppLayout>
   );
 }
