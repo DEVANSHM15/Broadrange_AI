@@ -70,7 +70,7 @@ export default function LandingPage() {
               </div>
                <div className="w-full max-w-5xl pt-8">
                 <Image
-                  src="https://placehold.co/1200x600.png"
+                  src="https://miro.medium.com/v2/resize:fit:1400/1*4Z29u97MqjK-A_jCcrV2RQ.jpeg"
                   alt="AI Study Planner Dashboard"
                   width={1200}
                   height={600}
