@@ -103,7 +103,7 @@ export default function MasterChatbotPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-120px)]">
           {/* Main Chat Area */}
           <div className="lg:col-span-2 h-full flex flex-col bg-card border rounded-lg shadow-lg">
-              <ScrollArea className="flex-grow p-6" ref={scrollAreaRef}>
+              <div className="flex-grow p-6 overflow-y-auto" ref={scrollAreaRef}>
                   <div className="space-y-6">
                   {messages.map((message, index) => (
                       <div
@@ -145,7 +145,7 @@ export default function MasterChatbotPage() {
                       </div>
                   )}
                   </div>
-              </ScrollArea>
+              </div>
               <div className="p-4 border-t bg-background rounded-b-lg">
                   <form onSubmit={handleSendMessage} className="w-full flex items-center gap-2">
                   <Input
