@@ -31,10 +31,6 @@ const getInitials = (name?: string | null) => {
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/planner", label: "AI Planner", icon: BookOpen },
-  { href: "/calendar", label: "Calendar", icon: CalendarDaysIcon },
-  { href: "/analytics", label: "Analytics", icon: BarChartBig },
-  { href: "/achievements", label: "Progress Hub", icon: ListChecks },
   { href: "/master-chatbot", label: "Chatbot", icon: Bot },
 ];
 
@@ -369,5 +365,3 @@ export default function DashboardPage() {
     </AppLayout>
   );
 }
-
-    
