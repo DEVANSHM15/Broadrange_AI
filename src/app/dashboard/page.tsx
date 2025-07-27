@@ -239,10 +239,61 @@ export default function DashboardPage() {
                 </CardFooter>
               </Card>
 
+              <Card className="shadow-lg" id="aiPlanReflectionSection">
+                <CardHeader>
+                    <CardTitle className="text-xl font-semibold flex items-center gap-3">
+                    <Lightbulb className="h-6 w-6 text-yellow-400" />
+                    AI Plan Reflection
+                    </CardTitle>
+                    <CardDescription>Insights from your most recently completed plan.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {isGeneratingReflection ? (
+                        <div className="flex items-center justify-center p-6"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+                    ) : reflectionError ? (
+                        <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{reflectionError}</AlertDescription></Alert>
+                    ) : planReflection ? (
+                        <div className="space-y-3 text-sm">
+                            <div className="flex items-start gap-3"><Target className="h-4 w-4 mt-1 text-primary flex-shrink-0" /><p><strong>Completion:</strong> {(planReflection.overallCompletionRate * 100).toFixed(0)}% - {planReflection.mainReflection}</p></div>
+                            <div className="flex items-start gap-3"><Repeat className="h-4 w-4 mt-1 text-primary flex-shrink-0" /><p><strong>Consistency:</strong> {planReflection.consistencyObservation}</p></div>
+                            <div className="flex items-start gap-3"><Sparkles className="h-4 w-4 mt-1 text-primary flex-shrink-0" /><p><strong>Suggestion:</strong> {planReflection.suggestionForNextPlan}</p></div>
+                            <Button asChild variant="link" className="p-0 h-auto">
+                                <Link href="/analytics">View Full Analytics <BarChart3 className="ml-2 h-4 w-4"/></Link>
+                            </Button>
+                        </div>
+                    ) : (
+                        <p className="text-sm text-muted-foreground">Complete a study plan to see your AI reflection here.</p>
+                    )}
+                </CardContent>
+              </Card>
             </div>
 
             {/* Right sidebar content */}
             <div className="space-y-8">
+
+              <Card className="shadow-lg">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2"><Star className="text-yellow-400"/> Quick Stats</CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-2 gap-4">
+                  <div className="text-center p-2 rounded-lg bg-muted/50">
+                    <p className="text-3xl font-bold">0</p>
+                    <p className="text-xs text-muted-foreground">Study Streak</p>
+                  </div>
+                  <div className="text-center p-2 rounded-lg bg-muted/50">
+                    <p className="text-3xl font-bold">{allUserPlans.length}</p>
+                    <p className="text-xs text-muted-foreground">Plans Created</p>
+                  </div>
+                  <div className="text-center p-2 rounded-lg bg-muted/50">
+                    <p className="text-3xl font-bold">{allUserPlans.filter(p => p.status === 'completed').length}</p>
+                    <p className="text-xs text-muted-foreground">Plans Done</p>
+                  </div>
+                  <div className="text-center p-2 rounded-lg bg-muted/50">
+                    <p className="text-3xl font-bold">{allUserPlans.length > 0 ? 1 : 0}+</p>
+                    <p className="text-xs text-muted-foreground">Achievements</p>
+                  </div>
+                </CardContent>
+              </Card>
 
               <Card className="shadow-lg">
                 <CardHeader>
@@ -276,30 +327,6 @@ export default function DashboardPage() {
                   </Button>
                 </CardContent>
               </Card>
-
-              <Card className="shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><Star className="text-yellow-400"/> Quick Stats</CardTitle>
-                  </CardHeader>
-                  <CardContent className="grid grid-cols-2 gap-4">
-                    <div className="text-center p-2 rounded-lg bg-muted/50">
-                      <p className="text-3xl font-bold">0</p>
-                      <p className="text-xs text-muted-foreground">Study Streak</p>
-                    </div>
-                    <div className="text-center p-2 rounded-lg bg-muted/50">
-                      <p className="text-3xl font-bold">{allUserPlans.length}</p>
-                      <p className="text-xs text-muted-foreground">Plans Created</p>
-                    </div>
-                    <div className="text-center p-2 rounded-lg bg-muted/50">
-                      <p className="text-3xl font-bold">{allUserPlans.filter(p => p.status === 'completed').length}</p>
-                      <p className="text-xs text-muted-foreground">Plans Done</p>
-                    </div>
-                    <div className="text-center p-2 rounded-lg bg-muted/50">
-                      <p className="text-3xl font-bold">{allUserPlans.length > 0 ? 1 : 0}+</p>
-                      <p className="text-xs text-muted-foreground">Achievements</p>
-                    </div>
-                  </CardContent>
-                </Card>
 
             </div>
           </div>
