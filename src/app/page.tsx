@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -73,7 +74,7 @@ export default function LandingPage() {
                     </Button>
                   </div>
             </div>
-            <div className="mt-12 lg:mt-16 w-full max-w-4xl mx-auto">
+            <div className="mt-12 lg:mt-16 w-full max-w-3xl mx-auto">
                 <div className="relative" style={{ paddingTop: '56.25%' }}> {/* 16:9 Aspect Ratio */}
                   <Image
                       src="https://blog.cdn.cmarix.com/blog/wp-content/uploads/2022/05/Blog-1-2.png"
