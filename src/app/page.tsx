@@ -9,7 +9,6 @@ import {
   CalendarCheck,
   ArrowRight,
   Sparkles,
-  BookOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -50,46 +49,35 @@ export default function LandingPage() {
 
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="w-full py-12 md:py-20 lg:py-24">
+        <section className="w-full py-20 md:py-28 lg:py-32">
           <div className="container px-4 md:px-6">
-            <div className="grid gap-6 lg:grid-cols-[1fr_400px] lg:gap-12 xl:grid-cols-[1fr_600px]">
-              <div className="flex flex-col justify-center space-y-4">
-                <div className="space-y-2">
-                   <h1 className="text-3xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none bg-clip-text text-transparent bg-gradient-to-r from-foreground to-primary">
-                    Revolutionize Your Study Habits
+            <div className="flex flex-col items-center space-y-4 text-center">
+              <div className="space-y-4">
+                 <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl/none bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
+                    Accelerate Your Learning
                   </h1>
-                  <p className="max-w-[600px] text-muted-foreground md:text-xl">
-                    CodeXStudy transforms your study routine with intelligent, adaptive plans tailored just for you. Stop guessing, start achieving.
+                  <p className="mx-auto max-w-[700px] text-muted-foreground md:text-xl">
+                    Highly personalized study plans, expertly curated to meet your objectives and drive your academic success forward.
                   </p>
-                </div>
-                <div className="flex flex-col gap-2 min-[400px]:flex-row">
-                  <Button asChild size="lg" className="text-lg px-8 py-6">
+              </div>
+              <div className="space-x-4">
+                <Button asChild size="lg" className="text-lg px-8 py-6">
                     <Link href={currentUser ? "/dashboard" : "/register"}>
-                      {currentUser ? "Open Dashboard" : "Start For Free"}
+                      {currentUser ? "Open Dashboard" : "Get Started"}
                       <ArrowRight className="ml-2 h-5 w-5" />
                     </Link>
                   </Button>
-                </div>
               </div>
-              <Image
-                src="https://static.vecteezy.com/system/resources/previews/050/965/360/non_2x/open-notebook-with-blank-pages-next-to-a-cup-of-coffee-on-a-wooden-desk-photo.jpg"
-                width={600}
-                height={400}
-                alt="Notebook and coffee on a desk"
-                data-ai-hint="notebook coffee"
-                className="mx-auto aspect-video overflow-hidden rounded-xl object-cover sm:w-full lg:order-last lg:aspect-square"
-                priority
-              />
             </div>
           </div>
         </section>
 
         {/* Features Section */}
-        <section className="w-full py-12 md:py-16 lg:py-20 bg-muted/40">
+        <section className="w-full py-12 md:py-16 lg:py-20 bg-secondary/40">
           <div className="container px-4 md:px-6">
             <div className="flex flex-col items-center justify-center space-y-4 text-center">
               <div className="space-y-2">
-                <div className="inline-block rounded-lg bg-secondary px-3 py-1 text-sm">Key Features</div>
+                <div className="inline-block rounded-lg bg-primary/10 px-3 py-1 text-sm text-primary">Key Features</div>
                 <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">Everything You Need to Succeed</h2>
                 <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
                   Our platform is packed with features designed to enhance your learning experience and boost your productivity.
@@ -127,51 +115,9 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
-
-        {/* How It Works Section */}
-        <section className="w-full py-12 md:py-16 lg:py-20">
-            <div className="container px-4 md:px-6">
-                <div className="flex flex-col items-center justify-center space-y-4 text-center mb-12">
-                    <h2 className="text-3xl font-bold tracking-tighter sm:text-5xl">Get Started in 3 Easy Steps</h2>
-                    <p className="max-w-[900px] text-muted-foreground md:text-xl/relaxed">
-                        Achieving your academic goals has never been more straightforward.
-                    </p>
-                </div>
-                <div className="relative grid gap-10 sm:grid-cols-3">
-                    <div className="absolute top-1/2 left-0 w-full h-0.5 bg-border -translate-y-1/2 hidden sm:block"></div>
-                     <Card className="relative p-6">
-                        <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground h-10 w-10 rounded-full flex items-center justify-center font-bold text-lg border-4 border-background">1</div>
-                        <CardHeader className="pt-8">
-                            <CardTitle>Create Your Plan</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p>Tell our AI your subjects, how much time you have, and your goals. Get a personalized schedule in seconds.</p>
-                        </CardContent>
-                    </Card>
-                    <Card className="relative p-6">
-                        <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground h-10 w-10 rounded-full flex items-center justify-center font-bold text-lg border-4 border-background">2</div>
-                        <CardHeader className="pt-8">
-                            <CardTitle>Follow and Track</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p>Follow your daily tasks, mark them as complete, take quizzes, and watch your progress bar grow.</p>
-                        </CardContent>
-                    </Card>
-                    <Card className="relative p-6">
-                        <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground h-10 w-10 rounded-full flex items-center justify-center font-bold text-lg border-4 border-background">3</div>
-                        <CardHeader className="pt-8">
-                            <CardTitle>Analyze & Adapt</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p>Review your performance analytics. If you fall behind, let AdaptiveAI recalibrate your plan instantly.</p>
-                        </CardContent>
-                    </Card>
-                </div>
-            </div>
-        </section>
-
+        
         {/* Final CTA */}
-        <section className="w-full py-12 md:py-16 lg:py-20 bg-primary/10">
+        <section className="w-full py-12 md:py-16 lg:py-20 border-t">
           <div className="container grid items-center justify-center gap-4 px-4 text-center md:px-6">
             <div className="space-y-3">
               <h2 className="text-3xl font-bold tracking-tighter md:text-4xl/tight">Ready to Ace Your Studies?</h2>
