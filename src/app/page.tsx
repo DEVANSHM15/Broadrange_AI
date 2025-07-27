@@ -58,11 +58,12 @@ export default function LandingPage() {
           <div className="absolute bottom-0 right-0 translate-x-1/2 translate-y-1/2 w-[300px] h-[300px] md:w-[500px] md:h-[500px] bg-secondary rounded-full blur-3xl animate-pulse delay-1000"></div>
           
           <div className="container px-4 md:px-6 relative z-10">
-            <div className="flex flex-col items-center space-y-6 text-center">
-                 <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl/none text-center">
-                    Supercharge Your Studies with AI
+            <div className="grid lg:grid-cols-2 gap-10 items-center">
+              <div className="flex flex-col items-start space-y-6 text-left">
+                  <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl/none">
+                      Supercharge Your Studies with AI
                   </h1>
-                  <p className="max-w-[700px] text-muted-foreground md:text-xl text-center">
+                  <p className="max-w-[700px] text-muted-foreground md:text-xl">
                     Our intelligent agents deliver tailored study plans and insights to help you achieve your academic goals, faster and smarter than ever before.
                   </p>
                   <div className="flex gap-4">
@@ -73,19 +74,20 @@ export default function LandingPage() {
                         </Link>
                     </Button>
                   </div>
-            </div>
-            <div className="mt-12 lg:mt-16 w-full max-w-3xl mx-auto">
-                <div className="relative" style={{ paddingTop: '56.25%' }}> {/* 16:9 Aspect Ratio */}
-                  <Image
-                      src="https://blog.cdn.cmarix.com/blog/wp-content/uploads/2022/05/Blog-1-2.png"
-                      alt="AI Study Planner Dashboard"
-                      layout="fill"
-                      objectFit="contain"
-                      className="rounded-xl border shadow-2xl shadow-primary/20"
-                      data-ai-hint="dashboard planning"
-                  />
-                </div>
               </div>
+              <div className="w-full max-w-xl mx-auto lg:mx-0">
+                  <div className="relative" style={{ paddingTop: '56.25%' }}> {/* 16:9 Aspect Ratio */}
+                    <Image
+                        src="https://blog.cdn.cmarix.com/blog/wp-content/uploads/2022/05/Blog-1-2.png"
+                        alt="AI Study Planner Dashboard"
+                        layout="fill"
+                        objectFit="contain"
+                        className="rounded-xl border shadow-2xl shadow-primary/20"
+                        data-ai-hint="dashboard planning"
+                    />
+                  </div>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -102,7 +104,7 @@ export default function LandingPage() {
               </div>
             </div>
             <div className="mx-auto grid max-w-5xl items-start gap-8 sm:grid-cols-2 md:grid-cols-3 lg:gap-12 mt-12">
-              <Card className="text-center bg-card/50 shadow-lg shadow-primary/10 hover:shadow-primary/20 hover:-translate-y-2 transition-all duration-300">
+              <Card className="text-center bg-card/50 shadow-lg shadow-primary/10 hover:shadow-primary/20 hover:-translate-y-2 transition-all duration-300" style={{'--tw-shadow-color': 'hsl(262 88% 66% / 0.15)'} as React.CSSProperties}>
                 <CardHeader className="items-center">
                   <div className="p-3.5 rounded-full bg-primary/10 text-primary border border-primary/20">
                     <Layers className="h-7 w-7" />
@@ -113,7 +115,7 @@ export default function LandingPage() {
                   <p className="text-sm text-muted-foreground">Optimal study schedules based on your goals.</p>
                 </CardContent>
               </Card>
-              <Card className="text-center bg-card/50 shadow-lg shadow-primary/10 hover:shadow-primary/20 hover:-translate-y-2 transition-all duration-300">
+              <Card className="text-center bg-card/50 shadow-lg shadow-primary/10 hover:shadow-primary/20 hover:-translate-y-2 transition-all duration-300" style={{'--tw-shadow-color': 'hsl(262 88% 66% / 0.15)'} as React.CSSProperties}>
                 <CardHeader className="items-center">
                    <div className="p-3.5 rounded-full bg-primary/10 text-primary border border-primary/20">
                     <BarChart className="h-7 w-7" />
@@ -124,7 +126,7 @@ export default function LandingPage() {
                   <p className="text-sm text-muted-foreground">Visualize your progress with insightful analytics.</p>
                 </CardContent>
               </Card>
-              <Card className="text-center bg-card/50 shadow-lg shadow-primary/10 hover:shadow-primary/20 hover:-translate-y-2 transition-all duration-300">
+              <Card className="text-center bg-card/50 shadow-lg shadow-primary/10 hover:shadow-primary/20 hover:-translate-y-2 transition-all duration-300" style={{'--tw-shadow-color': 'hsl(262 88% 66% / 0.15)'} as React.CSSProperties}>
                 <CardHeader className="items-center">
                    <div className="p-3.5 rounded-full bg-primary/10 text-primary border border-primary/20">
                     <BookOpenCheck className="h-7 w-7" />
