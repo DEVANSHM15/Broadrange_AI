@@ -4,7 +4,7 @@
 import AppLayout from "@/components/AppLayout";
 import Link from "next/link";
 import { useAuth } from "@/contexts/auth-context";
-import { Zap, Brain, Settings as SettingsIcon, PlusCircle, ListChecks, Edit, HelpCircle, Lightbulb, CheckCircle2, Loader2, AlertCircle, BarChart3, BookOpen, CalendarDaysIcon, Target, MessageCircle, Repeat, Sparkles, Hourglass, Flame, Gauge, Star, BookCopy, Award, LogOut, Moon, Sun, Bot, LayoutDashboard, BarChartBig } from "lucide-react";
+import { Zap, Brain, Settings as SettingsIcon, PlusCircle, ListChecks, Edit, HelpCircle, Lightbulb, CheckCircle2, Loader2, AlertCircle, BarChart3, BookOpen, CalendarDaysIcon, Target, MessageCircle, Repeat, Sparkles, Hourglass, Flame, Gauge, Star, BookCopy, Award, LogOut, Moon, Sun, Bot, LayoutDashboard, BarChartBig, FolderKanban, Calendar, AreaChart } from "lucide-react";
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { PomodoroTimerModal } from "@/components/pomodoro-timer";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -179,12 +179,7 @@ export default function DashboardPage() {
             </div>
             <div className="flex items-center gap-2 mt-3 sm:mt-0">
                 <PomodoroTimerModal />
-                <Button asChild variant="default">
-                  <Link href="/planner">
-                    <BookOpen className="mr-2 h-4 w-4" /> AI Planner
-                  </Link>
-                </Button>
-              </div>
+            </div>
           </header>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -248,30 +243,38 @@ export default function DashboardPage() {
 
             {/* Right sidebar content */}
             <div className="space-y-8">
+
               <Card className="shadow-lg">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2"><Sparkles className="text-primary"/> AI Reflection</CardTitle>
-                  <CardDescription>Insights from your last completed study plan.</CardDescription>
+                  <CardTitle className="flex items-center gap-2"><Flame className="text-orange-500"/> Daily Spark</CardTitle>
                 </CardHeader>
-                <CardContent className="min-h-[120px]">
-                  {isGeneratingReflection ? (
-                      <div className="flex items-center justify-center p-6"><Loader2 className="h-8 w-8 animate-spin text-primary"/></div>
-                  ) : reflectionError ? (
-                      <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{reflectionError}</AlertDescription></Alert>
-                  ) : planReflection ? (
-                      <div className="space-y-3 text-sm">
-                        <p><strong>Overall Performance:</strong> {planReflection.mainReflection}</p>
-                        <p><strong>Consistency:</strong> {planReflection.consistencyObservation}</p>
-                      </div>
-                  ) : (
-                      <p className="text-sm text-muted-foreground text-center py-4">Complete a study plan to unlock AI-powered reflections on your performance.</p>
-                  )}
+                <CardContent>
+                  <blockquote className="border-l-2 border-primary pl-4 italic text-muted-foreground">
+                    "The secret of getting ahead is getting started."
+                    <footer className="mt-2 text-xs not-italic">- Mark Twain</footer>
+                  </blockquote>
                 </CardContent>
-                <CardFooter>
-                    <Button asChild variant="link" className="p-0 h-auto">
-                        <Link href="/analytics">Go to Full Analytics <BarChart3 className="ml-2 h-4 w-4"/></Link>
-                    </Button>
-                </CardFooter>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2"><FolderKanban className="text-primary"/> Quick Actions</CardTitle>
+                  <CardDescription>Navigate to key features of the app.</CardDescription>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 gap-2">
+                  <Button asChild variant="outline" className="justify-start">
+                    <Link href="/planner"><BookOpen className="mr-2 h-4 w-4"/> AI Planner</Link>
+                  </Button>
+                  <Button asChild variant="outline" className="justify-start">
+                    <Link href="/calendar"><Calendar className="mr-2 h-4 w-4"/> Calendar View</Link>
+                  </Button>
+                  <Button asChild variant="outline" className="justify-start">
+                    <Link href="/analytics"><AreaChart className="mr-2 h-4 w-4"/> View Analytics</Link>
+                  </Button>
+                   <Button asChild variant="outline" className="justify-start">
+                    <Link href="/achievements"><Award className="mr-2 h-4 w-4"/> Progress Hub</Link>
+                  </Button>
+                </CardContent>
               </Card>
 
               <Card className="shadow-lg">
@@ -296,12 +299,8 @@ export default function DashboardPage() {
                       <p className="text-xs text-muted-foreground">Achievements</p>
                     </div>
                   </CardContent>
-                  <CardFooter>
-                    <Button asChild variant="secondary" className="w-full">
-                          <Link href="/achievements"><Award className="mr-2 h-4 w-4"/> View Progress Hub</Link>
-                    </Button>
-                  </CardFooter>
                 </Card>
+
             </div>
           </div>
       </main>
@@ -309,4 +308,3 @@ export default function DashboardPage() {
   );
 }
 
-    
