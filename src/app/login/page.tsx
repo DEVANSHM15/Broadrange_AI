@@ -145,8 +145,8 @@ export default function UnifiedAuthPage() {
   return (
     <div className="w-full min-h-screen flex items-center justify-center p-4 bg-muted/30">
       <div className={cn(
-        "relative w-full max-w-4xl min-h-[600px] bg-card rounded-2xl shadow-2xl overflow-hidden",
-        "transition-all duration-700 ease-in-out",
+        "relative w-full max-w-4xl min-h-[600px] bg-card rounded-2xl overflow-hidden",
+        "transition-all duration-700 ease-in-out shadow-[0_0_15px_rgba(0,0,0,0.2)] hover:shadow-[0_0_25px_5px_hsl(var(--primary)/0.2)]",
         {"right-panel-active": isSignUpActive}
       )} id="container">
         
