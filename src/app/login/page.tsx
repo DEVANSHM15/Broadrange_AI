@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import Image from "next/image";
 
 // Schemas
 const loginSchema = z.object({
@@ -171,12 +172,17 @@ export default function UnifiedAuthPage() {
             isSignUpActive ? "-translate-x-full rounded-r-2xl" : "translate-x-0 rounded-l-2xl"
         )}>
             <div className={cn(
-                "relative bg-primary text-primary-foreground h-full w-[200%] transition-all duration-700 ease-in-out",
+                "relative bg-primary text-primary-foreground h-full w-[200%] transition-all duration-700 ease-in-out flex flex-col items-center justify-center",
                  isSignUpActive ? "translate-x-1/2" : "-translate-x-0"
             )}>
+                <Link href="/" className="absolute top-6 flex items-center gap-2 text-primary-foreground hover:opacity-80 transition-opacity">
+                    <Image src="https://www.broadrange.ai/images/broadrange-logo.jpg" alt="Broadrange AI Logo" width={93} height={24} className="h-7 w-auto rounded-md invert brightness-0" />
+                    <span className="font-bold">CodeXStudy</span>
+                </Link>
+
                  {/* Sign In Overlay */}
                 <div className={cn(
-                    "absolute top-0 left-0 w-1/2 h-full px-8 flex flex-col justify-center items-center text-center transition-all duration-700 ease-in-out",
+                    "absolute top-0 left-0 w-1/2 h-full px-8 flex flex-col justify-center items-center text-center transition-opacity duration-300 ease-in-out",
                     isSignUpActive ? "opacity-0" : "opacity-100"
                 )}>
                     <LogIn className="h-16 w-16 mb-4"/>
@@ -187,7 +193,7 @@ export default function UnifiedAuthPage() {
 
                 {/* Sign Up Overlay */}
                 <div className={cn(
-                     "absolute top-0 right-0 w-1/2 h-full px-8 flex flex-col justify-center items-center text-center transition-all duration-700 ease-in-out",
+                     "absolute top-0 right-0 w-1/2 h-full px-8 flex flex-col justify-center items-center text-center transition-opacity duration-300 ease-in-out",
                      isSignUpActive ? "opacity-100" : "opacity-0"
                 )}>
                     <UserPlus className="h-16 w-16 mb-4"/>

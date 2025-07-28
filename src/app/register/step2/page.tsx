@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect } from "react";
@@ -55,7 +56,7 @@ export default function RegisterStep2Page() {
     }
     if (!sessionStorage.getItem("registrationStep1Data")) {
         toast({ title: "Error", description: "Please complete step 1 first.", variant: "destructive" });
-        router.push("/register");
+        router.push("/login");
         return;
     }
     const step2DataString = sessionStorage.getItem("registrationStep2Data");
@@ -223,7 +224,7 @@ export default function RegisterStep2Page() {
                                 type="button" 
                                 variant="outline"
                                 className="w-full" 
-                                onClick={() => router.push('/register')}
+                                onClick={() => router.push('/login')}
                             >
                                 Back
                             </Button>
