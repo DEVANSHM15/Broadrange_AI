@@ -143,7 +143,13 @@ export default function UnifiedAuthPage() {
   }
 
   return (
-    <div className="w-full min-h-screen flex items-center justify-center p-4 bg-muted/30">
+    <div className="relative w-full min-h-screen flex items-center justify-center p-4 bg-muted/30 overflow-hidden">
+        {/* Background Glows */}
+        <div className="absolute top-0 left-0 w-72 h-72 bg-primary/20 rounded-full blur-3xl animate-pulse -z-10"></div>
+        <div className="absolute top-0 right-0 w-72 h-72 bg-blue-500/20 rounded-full blur-3xl animate-pulse -z-10 delay-1000"></div>
+        <div className="absolute bottom-0 left-0 w-72 h-72 bg-blue-500/20 rounded-full blur-3xl animate-pulse -z-10 delay-500"></div>
+        <div className="absolute bottom-0 right-0 w-72 h-72 bg-primary/20 rounded-full blur-3xl animate-pulse -z-10 delay-1500"></div>
+
       <div className={cn(
         "relative w-full max-w-4xl min-h-[600px] bg-card rounded-2xl overflow-hidden",
         "transition-all duration-700 ease-in-out shadow-[0_0_15px_rgba(0,0,0,0.2)] hover:shadow-[0_0_25px_5px_hsl(var(--primary)/0.2)]",
