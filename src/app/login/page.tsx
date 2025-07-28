@@ -38,6 +38,10 @@ const SignInForm = ({ onSignIn, isLoading }: { onSignIn: (data: LoginFormData) =
 
   return (
     <div className="flex flex-col items-center justify-center h-full px-10 text-center">
+      <Link href="/" className="flex justify-center items-center gap-2 text-foreground hover:opacity-80 transition-opacity mb-4">
+        <Image src="https://www.broadrange.ai/images/broadrange-logo.jpg" alt="Broadrange AI Logo" width={93} height={24} className="h-8 w-auto rounded-lg" />
+        <span className="text-xl font-bold sm:inline-block">CodeXStudy</span>
+      </Link>
       <h1 className="text-3xl font-bold mb-4">Sign In</h1>
       <form onSubmit={handleSubmit(onSignIn)} className="grid gap-4 w-full">
         <div className="grid gap-2 text-left">
@@ -71,6 +75,10 @@ const SignUpForm = ({ onSignUp, isLoading }: { onSignUp: (data: RegisterFormData
 
   return (
     <div className="flex flex-col items-center justify-center h-full px-10 text-center">
+        <Link href="/" className="flex justify-center items-center gap-2 text-foreground hover:opacity-80 transition-opacity mb-4">
+            <Image src="https://www.broadrange.ai/images/broadrange-logo.jpg" alt="Broadrange AI Logo" width={93} height={24} className="h-8 w-auto rounded-lg" />
+            <span className="text-xl font-bold sm:inline-block">CodeXStudy</span>
+        </Link>
         <h1 className="text-3xl font-bold mb-4">Create Account</h1>
         <form onSubmit={handleSubmit(onSignUp)} className="grid gap-4 w-full">
             <div className="grid gap-2 text-left">
