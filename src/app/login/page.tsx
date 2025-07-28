@@ -9,12 +9,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
-import { Loader2, Mail, Lock } from "lucide-react";
+import { Loader2, Mail, Lock, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
-import Image from "next/image";
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address."),
@@ -57,14 +55,12 @@ export default function LoginPage() {
           title: "Login Successful",
           description: "Welcome back!",
         });
-        setIsSubmittingForm(false);
       } else {
         toast({
           variant: "destructive",
           title: "Login Failed",
           description: result.message || "Invalid email or password. Please try again.",
         });
-        setIsSubmittingForm(false);
       }
     } catch (error) {
       console.error("Login error:", error);
@@ -73,101 +69,88 @@ export default function LoginPage() {
         title: "Login Error",
         description: "An unexpected error occurred. Please try again later.",
       });
-      setIsSubmittingForm(false);
+    } finally {
+        setIsSubmittingForm(false);
     }
   };
 
-  const handleForgotPassword = () => {
-    router.push('/forgot-password');
-  };
-
-  if (authLoading && !currentUser) {
+  if (authLoading || currentUser) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
+      <div className="flex items-center justify-center min-h-screen bg-muted/30">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
     );
   }
 
-  if (currentUser && !authLoading) return null;
-
   return (
-    <div className="w-full min-h-screen flex items-center justify-center p-4 bg-background">
-        <Card className="mx-auto max-w-md w-full border-border/50 shadow-2xl shadow-primary/10">
-            <CardHeader className="text-center">
-                <Link href="/" className="flex justify-center items-center gap-2 text-2xl font-bold text-foreground mb-4">
-                    <Image src="https://www.broadrange.ai/images/broadrange-logo.jpg" alt="Broadrange AI Logo" width={93} height={24} className="h-8 w-auto rounded-lg" />
-                    <span>CodeXStudy</span>
-                </Link>
-                <CardTitle className="text-2xl">Welcome Back</CardTitle>
-                <CardDescription>
-                    Sign in to accelerate your learning.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4">
-                    <div className="grid gap-2">
-                        <Label htmlFor="email">Email</Label>
-                        <div className="relative">
-                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                            type="email"
-                            id="email"
-                            className={`pl-10 h-11 bg-input border-border focus:bg-accent/30 ${errors.email ? "border-destructive" : ""}`}
-                            {...register("email")}
-                            required
-                            placeholder="you@example.com"
-                            />
-                        </div>
-                        {errors.email && <p className="text-xs text-destructive mt-1">{errors.email.message}</p>}
+    <div className="w-full min-h-screen flex items-center justify-center p-4 bg-muted/30">
+      <div className="w-full max-w-4xl flex flex-col md:flex-row bg-card rounded-2xl shadow-2xl overflow-hidden">
+        
+        {/* Form Panel */}
+        <div className="w-full md:w-1/2 p-8 md:p-12 flex flex-col justify-center">
+            <h1 className="text-3xl font-bold mb-2 text-center">Sign In</h1>
+            <p className="text-muted-foreground text-center mb-8">
+              or use your email account
+            </p>
+            <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4">
+                <div className="grid gap-2">
+                    <Label htmlFor="email">Email</Label>
+                    <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                        type="email"
+                        id="email"
+                        className={`pl-10 h-11 bg-input border-border focus:bg-accent/30 ${errors.email ? "border-destructive" : ""}`}
+                        {...register("email")}
+                        required
+                        placeholder="you@example.com"
+                        />
                     </div>
-                    <div className="grid gap-2">
-                        <div className="flex items-center justify-between">
-                            <Label htmlFor="password">Password</Label>
-                             <Button
-                                type="button"
-                                variant="link"
-                                className="ml-auto inline-block text-sm underline h-auto p-0 text-primary/80"
-                                onClick={handleForgotPassword}
-                            >
-                                Forgot password?
-                            </Button>
-                        </div>
-                        <div className="relative">
-                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                            type="password"
-                            id="password"
-                            className={`pl-10 h-11 bg-input border-border focus:bg-accent/30 ${errors.password ? "border-destructive" : ""}`}
-                            {...register("password")}
-                            required
-                            placeholder="••••••••"
-                            />
-                        </div>
-                        {errors.password && <p className="text-xs text-destructive mt-1">{errors.password.message}</p>}
+                    {errors.email && <p className="text-xs text-destructive mt-1">{errors.email.message}</p>}
+                </div>
+                <div className="grid gap-2">
+                    <Label htmlFor="password">Password</Label>
+                    <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                        type="password"
+                        id="password"
+                        className={`pl-10 h-11 bg-input border-border focus:bg-accent/30 ${errors.password ? "border-destructive" : ""}`}
+                        {...register("password")}
+                        required
+                        placeholder="••••••••"
+                        />
                     </div>
-                    
-                    <Button type="submit" className="w-full h-11 text-base font-semibold" disabled={isSubmittingForm}>
-                        {isSubmittingForm ? (
-                            <>
-                            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                            Signing In...
-                            </>
-                        ) : (
-                            "Sign In"
-                        )}
-                    </Button>
-                </form>
-            </CardContent>
-            <CardFooter className="justify-center">
-                 <div className="text-sm">
-                    Don&apos;t have an account?{" "}
-                    <Link href="/register" className="underline text-primary hover:text-primary/80">
-                        Get Started
+                    {errors.password && <p className="text-xs text-destructive mt-1">{errors.password.message}</p>}
+                </div>
+                <div className="text-sm text-right">
+                    <Link href="/forgot-password" className="underline text-muted-foreground hover:text-primary">
+                        Forgot your password?
                     </Link>
                 </div>
-            </CardFooter>
-        </Card>
+                <Button type="submit" className="w-full h-11 text-base font-semibold mt-4" disabled={isSubmittingForm}>
+                    {isSubmittingForm ? (
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    ) : (
+                        "Sign In"
+                    )}
+                </Button>
+            </form>
+        </div>
+
+        {/* Overlay Panel */}
+        <div className="w-full md:w-1/2 p-8 md:p-12 flex flex-col justify-center items-center bg-primary text-primary-foreground text-center">
+            <LogIn className="h-16 w-16 mb-4"/>
+            <h2 className="text-3xl font-bold mb-4">Hello, Friend!</h2>
+            <p className="max-w-xs mb-8">
+              Enter your personal details and start your journey with us
+            </p>
+            <Button asChild variant="outline" className="bg-transparent border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary w-full max-w-xs">
+                <Link href="/register">Sign Up</Link>
+            </Button>
+        </div>
+
+      </div>
     </div>
   );
 }
