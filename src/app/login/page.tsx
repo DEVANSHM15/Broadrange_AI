@@ -37,7 +37,7 @@ const SignInForm = ({ onSignIn, isLoading }: { onSignIn: (data: LoginFormData) =
   });
 
   return (
-    <div className="animate-in fade-in-50">
+    <div className="animate-in fade-in-50 duration-700">
       <Link href="/" className="flex justify-center items-center gap-2 mb-6 text-foreground hover:opacity-80 transition-opacity">
           <Image src="https://www.broadrange.ai/images/broadrange-logo.jpg" alt="Broadrange AI Logo" width={93} height={24} className="h-8 w-auto rounded-lg" />
           <span className="text-xl font-bold sm:inline-block">CodeXStudy</span>
@@ -81,7 +81,7 @@ const SignUpForm = ({ onSignUp, isLoading }: { onSignUp: (data: RegisterFormData
   });
 
   return (
-    <div className="animate-in fade-in-50">
+    <div className="animate-in fade-in-50 duration-700">
         <Link href="/" className="flex justify-center items-center gap-2 mb-6 text-foreground hover:opacity-80 transition-opacity">
             <Image src="https://www.broadrange.ai/images/broadrange-logo.jpg" alt="Broadrange AI Logo" width={93} height={24} className="h-8 w-auto rounded-lg" />
             <span className="text-xl font-bold sm:inline-block">CodeXStudy</span>
@@ -157,53 +157,81 @@ export default function UnifiedAuthPage() {
         "relative w-full max-w-4xl min-h-[650px] bg-card rounded-2xl shadow-2xl overflow-hidden",
         "transition-all duration-700 ease-in-out"
       )}>
-        {/* Sign Up Form Panel */}
-        <div className={cn(
-            "absolute top-0 left-0 h-full w-1/2 p-8 md:p-12 flex flex-col justify-center transition-all duration-700 ease-in-out",
-            isSignUpActive ? 'opacity-100 translate-x-full z-20 animate-show' : 'opacity-0 -translate-x-full z-10'
-        )}>
+
+        {/* Form Panels Container */}
+        <div
+          className={cn(
+            "absolute top-0 left-0 h-full w-1/2 flex items-center justify-center transition-transform duration-700 ease-in-out",
+            isSignUpActive ? "translate-x-full" : "translate-x-0"
+          )}
+        >
+          <div
+            className={cn(
+              "absolute w-full h-full p-8 md:p-12 flex flex-col justify-center transition-opacity duration-300 ease-in-out",
+              isSignUpActive ? "opacity-0" : "opacity-100 z-10"
+            )}
+          >
+            <SignInForm onSignIn={handleSignInSubmit} isLoading={isSubmitting} />
+          </div>
+          <div
+            className={cn(
+              "absolute w-full h-full p-8 md:p-12 flex flex-col justify-center transition-opacity duration-300 ease-in-out",
+              isSignUpActive ? "opacity-100 z-10" : "opacity-0"
+            )}
+          >
             <SignUpForm onSignUp={handleSignUpSubmit} isLoading={isSubmitting} />
-        </div>
-        
-        {/* Sign In Form Panel */}
-        <div className={cn(
-            "absolute top-0 left-0 h-full w-1/2 p-8 md:p-12 flex flex-col justify-center transition-all duration-700 ease-in-out",
-            isSignUpActive ? 'opacity-0 -translate-x-full z-10' : 'opacity-100 translate-x-0 z-20 animate-show'
-        )}>
-           <SignInForm onSignIn={handleSignInSubmit} isLoading={isSubmitting} />
+          </div>
         </div>
 
         {/* Overlay Container */}
-        <div className={cn(
-            "absolute top-0 left-1/2 w-1/2 h-full overflow-hidden z-50 transition-all duration-700 ease-in-out",
-            isSignUpActive ? "-translate-x-full rounded-r-2xl" : "translate-x-0 rounded-l-2xl"
-        )}>
-            <div className={cn(
-                "relative bg-primary text-primary-foreground h-full w-[200%] transition-all duration-700 ease-in-out flex flex-col items-center justify-center",
-                 isSignUpActive ? "translate-x-1/2" : "-translate-x-0"
-            )}>
-                 {/* Sign In Overlay */}
-                <div className={cn(
-                    "absolute top-0 left-0 w-1/2 h-full px-8 flex flex-col justify-center items-center text-center transition-opacity duration-300 ease-in-out",
-                    isSignUpActive ? "opacity-0" : "opacity-100"
-                )}>
-                    <LogIn className="h-16 w-16 mb-4"/>
-                    <h2 className="text-3xl font-bold mb-4">Hello, Friend!</h2>
-                    <p className="max-w-xs mb-8">Enter your personal details and start your journey with us</p>
-                    <Button variant="outline" onClick={() => setIsSignUpActive(true)} className="bg-transparent border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary w-full max-w-xs">Sign Up</Button>
-                </div>
-
-                {/* Sign Up Overlay */}
-                <div className={cn(
-                     "absolute top-0 right-0 w-1/2 h-full px-8 flex flex-col justify-center items-center text-center transition-opacity duration-300 ease-in-out",
-                     isSignUpActive ? "opacity-100" : "opacity-0"
-                )}>
-                    <UserPlus className="h-16 w-16 mb-4"/>
-                    <h2 className="text-3xl font-bold mb-4">Welcome Back!</h2>
-                    <p className="max-w-xs mb-8">To keep connected with us please login with your personal info</p>
-                    <Button variant="outline" onClick={() => setIsSignUpActive(false)} className="bg-transparent border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary w-full max-w-xs">Sign In</Button>
-                </div>
+        <div
+          className={cn(
+            "absolute top-0 left-1/2 w-1/2 h-full overflow-hidden z-20 transition-transform duration-700 ease-in-out",
+            isSignUpActive ? "-translate-x-full" : "translate-x-0"
+          )}
+        >
+          <div
+            className={cn(
+              "relative bg-primary text-primary-foreground h-full w-[200%] transition-transform duration-700 ease-in-out",
+              isSignUpActive ? "translate-x-1/2" : "translate-x-0"
+            )}
+          >
+            {/* Sign Up Overlay */}
+            <div
+              className={cn(
+                "absolute top-0 left-0 w-1/2 h-full px-8 flex flex-col justify-center items-center text-center"
+              )}
+            >
+              <UserPlus className="h-16 w-16 mb-4" />
+              <h2 className="text-3xl font-bold mb-4">Hello, Friend!</h2>
+              <p className="max-w-xs mb-8">Enter your personal details and start your journey with us</p>
+              <Button
+                variant="outline"
+                onClick={() => setIsSignUpActive(true)}
+                className="bg-transparent border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary w-full max-w-xs"
+              >
+                Sign Up
+              </Button>
             </div>
+
+            {/* Sign In Overlay */}
+            <div
+              className={cn(
+                "absolute top-0 right-0 w-1/2 h-full px-8 flex flex-col justify-center items-center text-center"
+              )}
+            >
+              <LogIn className="h-16 w-16 mb-4" />
+              <h2 className="text-3xl font-bold mb-4">Welcome Back!</h2>
+              <p className="max-w-xs mb-8">To keep connected with us please login with your personal info</p>
+              <Button
+                variant="outline"
+                onClick={() => setIsSignUpActive(false)}
+                className="bg-transparent border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary w-full max-w-xs"
+              >
+                Sign In
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
