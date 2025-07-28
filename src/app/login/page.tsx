@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -39,6 +38,10 @@ const SignInForm = ({ onSignIn, isLoading }: { onSignIn: (data: LoginFormData) =
 
   return (
     <div className="animate-in fade-in-50">
+      <Link href="/" className="flex justify-center items-center gap-2 mb-6 text-foreground hover:opacity-80 transition-opacity">
+          <Image src="https://www.broadrange.ai/images/broadrange-logo.jpg" alt="Broadrange AI Logo" width={93} height={24} className="h-8 w-auto rounded-lg" />
+          <span className="text-xl font-bold sm:inline-block">CodeXStudy</span>
+      </Link>
       <h1 className="text-3xl font-bold mb-2 text-center">Sign In</h1>
       <p className="text-muted-foreground text-center mb-8">or use your email account</p>
       <form onSubmit={handleSubmit(onSignIn)} className="grid gap-4">
@@ -79,6 +82,10 @@ const SignUpForm = ({ onSignUp, isLoading }: { onSignUp: (data: RegisterFormData
 
   return (
     <div className="animate-in fade-in-50">
+        <Link href="/" className="flex justify-center items-center gap-2 mb-6 text-foreground hover:opacity-80 transition-opacity">
+            <Image src="https://www.broadrange.ai/images/broadrange-logo.jpg" alt="Broadrange AI Logo" width={93} height={24} className="h-8 w-auto rounded-lg" />
+            <span className="text-xl font-bold sm:inline-block">CodeXStudy</span>
+        </Link>
         <h1 className="text-3xl font-bold mb-2 text-center">Create Account</h1>
         <p className="text-muted-foreground text-center mb-8">to start your journey</p>
         <form onSubmit={handleSubmit(onSignUp)} className="grid gap-4">
@@ -147,7 +154,7 @@ export default function UnifiedAuthPage() {
   return (
     <div className="w-full min-h-screen flex items-center justify-center p-4 bg-muted/30">
       <div className={cn(
-        "relative w-full max-w-4xl min-h-[550px] bg-card rounded-2xl shadow-2xl overflow-hidden",
+        "relative w-full max-w-4xl min-h-[650px] bg-card rounded-2xl shadow-2xl overflow-hidden",
         "transition-all duration-700 ease-in-out"
       )}>
         {/* Sign Up Form Panel */}
@@ -175,11 +182,6 @@ export default function UnifiedAuthPage() {
                 "relative bg-primary text-primary-foreground h-full w-[200%] transition-all duration-700 ease-in-out flex flex-col items-center justify-center",
                  isSignUpActive ? "translate-x-1/2" : "-translate-x-0"
             )}>
-                <Link href="/" className="absolute top-6 flex items-center gap-2 text-primary-foreground hover:opacity-80 transition-opacity">
-                    <Image src="https://www.broadrange.ai/images/broadrange-logo.jpg" alt="Broadrange AI Logo" width={93} height={24} className="h-7 w-auto rounded-md invert brightness-0" />
-                    <span className="font-bold">CodeXStudy</span>
-                </Link>
-
                  {/* Sign In Overlay */}
                 <div className={cn(
                     "absolute top-0 left-0 w-1/2 h-full px-8 flex flex-col justify-center items-center text-center transition-opacity duration-300 ease-in-out",
