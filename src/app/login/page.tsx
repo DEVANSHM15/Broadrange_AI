@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -8,7 +9,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
-import { Loader2, Mail, Lock, LogIn, UserPlus, User } from "lucide-react";
+import { Loader2, Mail, Lock, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,7 +30,6 @@ const registerSchema = z.object({
 });
 type RegisterFormData = z.infer<typeof registerSchema>;
 
-
 // Sign-in Form Component
 const SignInForm = ({ onSignIn, isLoading }: { onSignIn: (data: LoginFormData) => void, isLoading: boolean }) => {
   const { register, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
@@ -37,36 +37,25 @@ const SignInForm = ({ onSignIn, isLoading }: { onSignIn: (data: LoginFormData) =
   });
 
   return (
-    <div className="animate-in fade-in-50 duration-700">
-      <Link href="/" className="flex justify-center items-center gap-2 mb-6 text-foreground hover:opacity-80 transition-opacity">
-          <Image src="https://www.broadrange.ai/images/broadrange-logo.jpg" alt="Broadrange AI Logo" width={93} height={24} className="h-8 w-auto rounded-lg" />
-          <span className="text-xl font-bold sm:inline-block">CodeXStudy</span>
-      </Link>
-      <h1 className="text-3xl font-bold mb-2 text-center">Sign In</h1>
-      <p className="text-muted-foreground text-center mb-8">or use your email account</p>
-      <form onSubmit={handleSubmit(onSignIn)} className="grid gap-4">
-        <div className="grid gap-2">
+    <div className="flex flex-col items-center justify-center h-full px-10 text-center">
+      <h1 className="text-3xl font-bold mb-4">Sign In</h1>
+      <form onSubmit={handleSubmit(onSignIn)} className="grid gap-4 w-full">
+        <div className="grid gap-2 text-left">
             <Label htmlFor="login-email">Email</Label>
-            <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input type="email" id="login-email" className="pl-10 h-11" {...register("email")} placeholder="you@example.com" />
-            </div>
+            <Input type="email" id="login-email" {...register("email")} placeholder="you@example.com" />
             {errors.email && <p className="text-xs text-destructive mt-1">{errors.email.message}</p>}
         </div>
-        <div className="grid gap-2">
+        <div className="grid gap-2 text-left">
             <Label htmlFor="login-password">Password</Label>
-            <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input type="password" id="login-password" className="pl-10 h-11" {...register("password")} placeholder="••••••••" />
-            </div>
+            <Input type="password" id="login-password" {...register("password")} placeholder="••••••••" />
              {errors.password && <p className="text-xs text-destructive mt-1">{errors.password.message}</p>}
         </div>
-        <div className="text-sm text-right">
+        <div className="text-sm text-center">
             <Link href="/forgot-password" className="underline text-muted-foreground hover:text-primary">
                 Forgot your password?
             </Link>
         </div>
-        <Button type="submit" className="w-full h-11 text-base font-semibold mt-4" disabled={isLoading}>
+        <Button type="submit" className="w-full text-base font-semibold mt-2" disabled={isLoading}>
             {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "Sign In"}
         </Button>
       </form>
@@ -81,37 +70,31 @@ const SignUpForm = ({ onSignUp, isLoading }: { onSignUp: (data: RegisterFormData
   });
 
   return (
-    <div className="animate-in fade-in-50 duration-700">
-        <Link href="/" className="flex justify-center items-center gap-2 mb-6 text-foreground hover:opacity-80 transition-opacity">
-            <Image src="https://www.broadrange.ai/images/broadrange-logo.jpg" alt="Broadrange AI Logo" width={93} height={24} className="h-8 w-auto rounded-lg" />
-            <span className="text-xl font-bold sm:inline-block">CodeXStudy</span>
-        </Link>
-        <h1 className="text-3xl font-bold mb-2 text-center">Create Account</h1>
-        <p className="text-muted-foreground text-center mb-8">to start your journey</p>
-        <form onSubmit={handleSubmit(onSignUp)} className="grid gap-4">
-            <div className="grid gap-2">
+    <div className="flex flex-col items-center justify-center h-full px-10 text-center">
+        <h1 className="text-3xl font-bold mb-4">Create Account</h1>
+        <form onSubmit={handleSubmit(onSignUp)} className="grid gap-4 w-full">
+            <div className="grid gap-2 text-left">
                 <Label htmlFor="register-name">Full Name</Label>
-                <div className="relative"><User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input id="register-name" {...register("name")} placeholder="John Doe" className="pl-10 h-11" /></div>
+                <Input id="register-name" {...register("name")} placeholder="John Doe" />
                 {errors.name && <p className="text-xs text-destructive mt-1">{errors.name.message}</p>}
             </div>
-            <div className="grid gap-2">
+            <div className="grid gap-2 text-left">
                 <Label htmlFor="register-email">Email Address</Label>
-                <div className="relative"><Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input type="email" id="register-email" {...register("email")} placeholder="you@example.com" className="pl-10 h-11"/></div>
+                <Input type="email" id="register-email" {...register("email")} placeholder="you@example.com" />
                  {errors.email && <p className="text-xs text-destructive mt-1">{errors.email.message}</p>}
             </div>
-            <div className="grid gap-2">
+            <div className="grid gap-2 text-left">
                 <Label htmlFor="register-password">Password</Label>
-                <div className="relative"><Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input type="password" id="register-password" {...register("password")} placeholder="••••••••" className="pl-10 h-11"/></div>
+                <Input type="password" id="register-password" {...register("password")} placeholder="••••••••" />
                  {errors.password && <p className="text-xs text-destructive mt-1">{errors.password.message}</p>}
             </div>
-            <Button type="submit" className="w-full h-11 text-base font-semibold mt-4" disabled={isLoading}>
+            <Button type="submit" className="w-full text-base font-semibold mt-2" disabled={isLoading}>
                 {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "Sign Up"}
             </Button>
         </form>
     </div>
   );
 };
-
 
 export default function UnifiedAuthPage() {
   const router = useRouter();
@@ -154,85 +137,92 @@ export default function UnifiedAuthPage() {
   return (
     <div className="w-full min-h-screen flex items-center justify-center p-4 bg-muted/30">
       <div className={cn(
-        "relative w-full max-w-4xl min-h-[650px] bg-card rounded-2xl shadow-2xl overflow-hidden",
-        "transition-all duration-700 ease-in-out"
-      )}>
-
-        {/* Form Panels Container */}
-        <div
-          className={cn(
-            "absolute top-0 left-0 h-full w-1/2 flex items-center justify-center transition-transform duration-700 ease-in-out",
-            isSignUpActive ? "translate-x-full" : "translate-x-0"
-          )}
-        >
-          <div
-            className={cn(
-              "absolute w-full h-full p-8 md:p-12 flex flex-col justify-center transition-opacity duration-300 ease-in-out",
-              isSignUpActive ? "opacity-0" : "opacity-100 z-10"
-            )}
-          >
-            <SignInForm onSignIn={handleSignInSubmit} isLoading={isSubmitting} />
-          </div>
-          <div
-            className={cn(
-              "absolute w-full h-full p-8 md:p-12 flex flex-col justify-center transition-opacity duration-300 ease-in-out",
-              isSignUpActive ? "opacity-100 z-10" : "opacity-0"
-            )}
-          >
+        "relative w-full max-w-4xl min-h-[600px] bg-card rounded-2xl shadow-2xl overflow-hidden",
+        "transition-all duration-700 ease-in-out",
+        {"right-panel-active": isSignUpActive}
+      )} id="container">
+        
+        {/* Sign Up Form Panel */}
+        <div className="absolute top-0 h-full w-1/2 left-0 opacity-0 z-10 transition-all ease-in-out duration-500 form-container sign-up-container">
             <SignUpForm onSignUp={handleSignUpSubmit} isLoading={isSubmitting} />
-          </div>
+        </div>
+
+        {/* Sign In Form Panel */}
+        <div className="absolute top-0 h-full w-1/2 left-0 opacity-100 z-20 transition-all ease-in-out duration-500 form-container sign-in-container">
+            <SignInForm onSignIn={handleSignInSubmit} isLoading={isSubmitting} />
         </div>
 
         {/* Overlay Container */}
-        <div
-          className={cn(
-            "absolute top-0 left-1/2 w-1/2 h-full overflow-hidden z-20 transition-transform duration-700 ease-in-out",
-            isSignUpActive ? "-translate-x-full" : "translate-x-0"
-          )}
-        >
-          <div
-            className={cn(
-              "relative bg-primary text-primary-foreground h-full w-[200%] transition-transform duration-700 ease-in-out",
-              isSignUpActive ? "translate-x-1/2" : "translate-x-0"
-            )}
-          >
-            {/* Sign Up Overlay */}
-            <div
-              className={cn(
-                "absolute top-0 left-0 w-1/2 h-full px-8 flex flex-col justify-center items-center text-center"
-              )}
-            >
-              <UserPlus className="h-16 w-16 mb-4" />
-              <h2 className="text-3xl font-bold mb-4">Hello, Friend!</h2>
-              <p className="max-w-xs mb-8">Enter your personal details and start your journey with us</p>
-              <Button
-                variant="outline"
-                onClick={() => setIsSignUpActive(true)}
-                className="bg-transparent border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary w-full max-w-xs"
-              >
-                Sign Up
-              </Button>
-            </div>
-
+        <div className="absolute top-0 left-1/2 w-1/2 h-full overflow-hidden z-30 transition-transform duration-600 ease-in-out overlay-container">
+          <div className="relative -left-full h-full w-[200%] bg-primary text-primary-foreground transition-transform duration-600 ease-in-out overlay">
+            
             {/* Sign In Overlay */}
-            <div
-              className={cn(
-                "absolute top-0 right-0 w-1/2 h-full px-8 flex flex-col justify-center items-center text-center"
-              )}
-            >
-              <LogIn className="h-16 w-16 mb-4" />
-              <h2 className="text-3xl font-bold mb-4">Welcome Back!</h2>
-              <p className="max-w-xs mb-8">To keep connected with us please login with your personal info</p>
+            <div className="absolute top-0 h-full w-1/2 flex items-center justify-center flex-col px-10 text-center transition-transform duration-600 ease-in-out overlay-panel overlay-left">
+              <h1 className="text-3xl font-bold">Welcome Back!</h1>
+              <p className="text-sm mt-4 mb-6">To keep connected with us please login with your personal info</p>
               <Button
                 variant="outline"
                 onClick={() => setIsSignUpActive(false)}
                 className="bg-transparent border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary w-full max-w-xs"
+                id="signIn"
               >
                 Sign In
               </Button>
             </div>
+
+            {/* Sign Up Overlay */}
+            <div className="absolute top-0 h-full w-1/2 right-0 flex items-center justify-center flex-col px-10 text-center transition-transform duration-600 ease-in-out overlay-panel overlay-right">
+              <h1 className="text-3xl font-bold">Hello, Friend!</h1>
+              <p className="text-sm mt-4 mb-6">Enter your personal details and start your journey with us</p>
+              <Button
+                variant="outline"
+                onClick={() => setIsSignUpActive(true)}
+                className="bg-transparent border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary w-full max-w-xs"
+                id="signUp"
+              >
+                Sign Up
+              </Button>
+            </div>
           </div>
         </div>
+
+        <style jsx>{`
+            #container.right-panel-active .sign-in-container {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            #container.right-panel-active .sign-up-container {
+                transform: translateX(100%);
+                opacity: 1;
+                z-index: 5;
+                animation: show 0.6s;
+            }
+            #container.right-panel-active .overlay-container {
+                transform: translateX(-100%);
+            }
+            #container.right-panel-active .overlay {
+                transform: translateX(50%);
+            }
+            #container.right-panel-active .overlay-left {
+                transform: translateX(0);
+            }
+            #container.right-panel-active .overlay-right {
+                transform: translateX(20%);
+            }
+            @keyframes show {
+                0%, 49.99% {
+                    opacity: 0;
+                    z-index: 1;
+                }
+                50%, 100% {
+                    opacity: 1;
+                    z-index: 5;
+                }
+            }
+            .overlay-left {
+                transform: translateX(-20%);
+            }
+        `}</style>
       </div>
     </div>
   );
