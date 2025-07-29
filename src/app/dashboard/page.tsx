@@ -92,7 +92,11 @@ export default function DashboardPage() {
       // Find the most recently completed plan and set its reflection
       const lastCompletedPlan = processedPlans
           .filter(p => p.status === 'completed' && p.reflection)
-          .sort((a, b) => new Date(b.completionDate!).getTime() - new Date(a.completionDate!).getTime())[0];
+          .sort((a, b) => {
+            const dateA = a.completionDate ? new Date(a.completionDate).getTime() : 0;
+            const dateB = b.completionDate ? new Date(b.completionDate).getTime() : 0;
+            return dateB - dateA;
+          })[0];
       
       setPlanReflection(lastCompletedPlan?.reflection || null);
 
@@ -226,12 +230,12 @@ export default function DashboardPage() {
                             <div className="flex items-start gap-3"><Target className="h-4 w-4 mt-1 text-primary flex-shrink-0" /><p><strong>Completion:</strong> {(planReflection.overallCompletionRate * 100).toFixed(0)}% - {planReflection.mainReflection}</p></div>
                             <div className="flex items-start gap-3"><Repeat className="h-4 w-4 mt-1 text-primary flex-shrink-0" /><p><strong>Consistency:</strong> {planReflection.consistencyObservation}</p></div>
                             <div className="flex items-start gap-3"><Sparkles className="h-4 w-4 mt-1 text-primary flex-shrink-0" /><p><strong>Suggestion:</strong> {planReflection.suggestionForNextPlan}</p></div>
-                            <Button asChild variant="link" className="p-0 h-auto">
+                             <Button asChild variant="link" className="p-0 h-auto">
                                 <Link href="/analytics">View Full Analytics <BarChart3 className="ml-2 h-4 w-4"/></Link>
                             </Button>
                         </div>
                     ) : (
-                        <p className="text-sm text-muted-foreground">Complete a study plan to see your AI reflection here.</p>
+                        <p className="text-sm text-muted-foreground">Complete a study plan to see your AI reflection here. You can view detailed analytics for completed plans on the <Link href="/analytics" className="underline hover:text-primary">Analytics</Link> page.</p>
                     )}
                 </CardContent>
               </Card>
@@ -286,10 +290,10 @@ export default function DashboardPage() {
                         <Link href="/planner"><BookOpen className="mr-2 h-4 w-4"/> AI Planner</Link>
                     </Button>
                     <Button asChild variant="outline" className="justify-center text-center">
-                        <Link href="/calendar"><Calendar className="mr-3 h-4 w-4"/> Calendar View</Link>
+                        <Link href="/calendar"><Calendar className="mr-3 h-4 w-4"/> Calendar</Link>
                     </Button>
                     <Button asChild variant="outline" className="justify-center text-center">
-                        <Link href="/analytics"><AreaChart className="mr-2 h-4 w-4"/> View Analytics</Link>
+                        <Link href="/analytics"><AreaChart className="mr-2 h-4 w-4"/> Analytics</Link>
                     </Button>
                     <Button asChild variant="outline" className="justify-center text-center">
                         <Link href="/achievements"><Award className="mr-2 h-4 w-4"/> Progress Hub</Link>
@@ -303,3 +307,5 @@ export default function DashboardPage() {
     </AppLayout>
   );
 }
+
+    
