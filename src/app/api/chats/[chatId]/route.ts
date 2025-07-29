@@ -6,6 +6,23 @@ import type { ChatMessage } from '@/types';
 
 const db = await getDb();
 
+// Reusable HTML snippet for the action buttons
+const actionButtonsHTML = `
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px;">
+        <a href="/planner" style="display: block; text-decoration: none; color: inherit; padding: 12px; border-radius: 8px; text-align: center; font-weight: 500; background: hsl(var(--card)); border: 1px solid hsl(var(--border)); transition: all 0.2s ease; box-shadow: 0 2px 8px -1px hsla(var(--primary) / 0.1); will-change: transform;">AI Planner</a>
+        <a href="/calendar" style="display: block; text-decoration: none; color: inherit; padding: 12px; border-radius: 8px; text-align: center; font-weight: 500; background: hsl(var(--card)); border: 1px solid hsl(var(--border)); transition: all 0.2s ease; box-shadow: 0 2px 8px -1px hsla(var(--primary) / 0.1); will-change: transform;">Calendar</a>
+        <a href="/analytics" style="display: block; text-decoration: none; color: inherit; padding: 12px; border-radius: 8px; text-align: center; font-weight: 500; background: hsl(var(--card)); border: 1px solid hsl(var(--border)); transition: all 0.2s ease; box-shadow: 0 2px 8px -1px hsla(var(--primary) / 0.1); will-change: transform;">Analytics</a>
+        <a href="/achievements" style="display: block; text-decoration: none; color: inherit; padding: 12px; border-radius: 8px; text-align: center; font-weight: 500; background: hsl(var(--card)); border: 1px solid hsl(var(--border)); transition: all 0.2s ease; box-shadow: 0 2px 8px -1px hsla(var(--primary) / 0.1); will-change: transform;">Progress Hub</a>
+    </div>
+    <style>
+      a:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px -2px hsla(var(--primary) / 0.2);
+        background: hsl(var(--accent));
+      }
+    </style>
+`;
+
 // Get all messages for a specific chat
 export async function GET(
   req: Request,
@@ -62,7 +79,9 @@ export async function POST(
 
         // Call AI for a response
         const aiResponse = await askStudyAssistant({ query: message, history, userId });
-        const botResponseContent = aiResponse.response;
+        
+        // Append the action buttons to the AI's response
+        const botResponseContent = aiResponse.response + actionButtonsHTML;
 
         // Save bot message
         await db.run(
