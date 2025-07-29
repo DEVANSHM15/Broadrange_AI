@@ -86,7 +86,7 @@ export default function DashboardPage() {
         if (activePlans.length > 0) {
             currentPlanToDisplay = activePlans[0];
         } else {
-            const completedPlans = processedPlans.filter(p => p.status === 'completed').sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+            const completedPlans = processedPlans.filter(p => p.status === 'completed').sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.completionDate!).getTime());
             currentPlanToDisplay = completedPlans.length > 0 ? completedPlans[0] : null;
         }
       }
@@ -112,7 +112,7 @@ export default function DashboardPage() {
 
  const fetchPlanReflection = useCallback(async () => {
       const lastCompletedPlan = allUserPlans
-        .filter(p => p.status === 'completed' && p.tasks.length > 0)
+        .filter(p => p.status === 'completed' && p.tasks.length > 0 && p.completionDate && isValid(parseISO(p.completionDate)))
         .sort((a,b) => new Date(b.completionDate!).getTime() - new Date(a.completionDate!).getTime())[0];
       
       if (!lastCompletedPlan) return;
@@ -312,19 +312,19 @@ export default function DashboardPage() {
                   <CardTitle className="flex items-center gap-2"><FolderKanban className="text-primary"/> Quick Actions</CardTitle>
                   <CardDescription>Navigate to key features of the app.</CardDescription>
                 </CardHeader>
-                <CardContent className="grid grid-cols-2 gap-2">
-                  <Button asChild variant="outline" className="justify-start">
-                    <Link href="/planner"><BookOpen className="mr-2 h-4 w-4"/> AI Planner</Link>
-                  </Button>
-                  <Button asChild variant="outline" className="justify-start">
-                    <Link href="/calendar"><Calendar className="mr-2 h-4 w-4"/> Calendar View</Link>
-                  </Button>
-                  <Button asChild variant="outline" className="justify-start">
-                    <Link href="/analytics"><AreaChart className="mr-2 h-4 w-4"/> View Analytics</Link>
-                  </Button>
-                   <Button asChild variant="outline" className="justify-start">
-                    <Link href="/achievements"><Award className="mr-2 h-4 w-4"/> Progress Hub</Link>
-                  </Button>
+                <CardContent className="grid grid-cols-2 gap-4">
+                    <Button asChild variant="outline" className="justify-center text-center">
+                        <Link href="/planner"><BookOpen className="mr-2 h-4 w-4"/> AI Planner</Link>
+                    </Button>
+                    <Button asChild variant="outline" className="justify-center text-center">
+                        <Link href="/calendar"><Calendar className="mr-2 h-4 w-4"/> Calendar View</Link>
+                    </Button>
+                    <Button asChild variant="outline" className="justify-center text-center">
+                        <Link href="/analytics"><AreaChart className="mr-2 h-4 w-4"/> View Analytics</Link>
+                    </Button>
+                    <Button asChild variant="outline" className="justify-center text-center">
+                        <Link href="/achievements"><Award className="mr-2 h-4 w-4"/> Progress Hub</Link>
+                    </Button>
                 </CardContent>
               </Card>
 
