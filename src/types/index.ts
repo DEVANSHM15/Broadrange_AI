@@ -157,6 +157,7 @@ export interface Chat {
 
 export interface StudyAssistantChatInput {
   query: string;
+  userId: string;
   history: { role: 'user' | 'model'; parts: { text: string }[] };
 }
 

@@ -8,6 +8,8 @@ import { ai } from '@/ai/genkit';
 import type { StudyAssistantChatInput, StudyAssistantChatOutput } from '@/types';
 import { marked } from 'marked';
 import { z } from 'zod';
+import { getCurrentStudyPlan } from '@/ai/tools/getCurrentStudyPlanTool';
+
 
 const HistoryItemSchema = z.object({
   role: z.enum(['user', 'model']),
@@ -16,6 +18,7 @@ const HistoryItemSchema = z.object({
 
 const StudyAssistantChatInputSchema = z.object({
     query: z.string(),
+    userId: z.string(), // Added userId to be passed to the tool
     history: z.array(HistoryItemSchema),
 });
 
@@ -24,13 +27,27 @@ export async function askStudyAssistant(input: StudyAssistantChatInput): Promise
   try {
      const llmResponse = await ai.generate({
       model: 'googleai/gemini-1.5-flash-latest',
+      tools: [getCurrentStudyPlan],
+      toolConfig: {
+        // Force the model to use the tool if the user asks about their plan
+        // This is a simple example; more complex logic could be used
+        mode: 'auto',
+      },
       history: input.history,
       prompt: `You are a friendly and helpful study assistant for this application.
 Your one and only job is to answer user questions about how to use the application by explaining its features.
 You must not attempt to perform actions or navigate. You only provide helpful, explanatory information.
 **IMPORTANT:** Your response MUST be in well-formatted Markdown. Use bullet points, bold text, and paragraphs to make your explanations clear and easy to read.
 
-Here is a comprehensive summary of the application's features you can talk about:
+**User Information:**
+- The current user's ID is: ${input.userId}
+
+**Tool Usage:**
+- If the user asks about their current plan, progress, what's next, or similar direct questions about their personal schedule, you MUST use the 'getCurrentStudyPlan' tool. Pass the user's ID to this tool.
+- Based on the tool's output, formulate a helpful and concise answer. For example, if 'hasActivePlan' is false, tell the user they don't have an active plan and suggest creating one. If it's true, summarize the plan details and progress.
+- For all other questions about app features, answer based on the information below.
+
+**Application Feature Summary:**
 
 *   **Dashboard**: Your main hub. It shows your current plan's progress, key stats like completion rate and average quiz score, and the status of your AI agents. You can also access the **Pomodoro Timer** from here to start focused study sessions.
 *   **AI Planner**: The heart of the app. Here you can:
@@ -50,19 +67,6 @@ Here is a comprehensive summary of the application's features you can talk about
 *   **Progress Hub (Achievements)**: See all your earned achievements. This page also lists all your study plans (active, completed, and archived), allowing you to review them.
 *   **Settings**: Customize your experience. You can update your personal information, change the app's theme (light/dark), and enable or disable the individual AI agents (PlannerBot, ReflectionAI, AdaptiveAI).
 *   **Pomodoro Timer**: A tool to help you focus. You can set focus and break intervals to manage your study sessions effectively. It's accessible from the Dashboard.
-
-**Example Questions & Answers:**
-*   User: "How do I make a new plan?"
-*   You (in Markdown): You can create a new study plan by going to the **AI Planner** page! \n\nJust enter your subjects, how long you want to study for, and your daily study hours, and our AI will generate a schedule for you.
-
-*   User: "How do I delete a plan?"
-*   You (in Markdown): You can permanently delete a plan from the **AI Planner** page. When you're viewing your plan there, you'll see a 'Delete Plan' button.
-
-*   User: "Where can I see my old plans?"
-*   You (in Markdown): You can find all of your past study plans, including active, completed, and archived ones, on the **Progress Hub** page.
-
-*   User: "Is there a timer?"
-*   You (in Markdown): Yes! There is a **Pomodoro Timer** to help you manage your study sessions. You can find it on the **Dashboard** page. It allows you to set focus and break intervals to stay productive.
 
 ---
 Current User Question: "${input.query}"`,

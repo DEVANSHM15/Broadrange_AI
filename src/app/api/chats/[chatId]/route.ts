@@ -61,7 +61,7 @@ export async function POST(
         );
 
         // Call AI for a response
-        const aiResponse = await askStudyAssistant({ query: message, history });
+        const aiResponse = await askStudyAssistant({ query: message, history, userId });
         const botResponseContent = aiResponse.response;
 
         // Save bot message
