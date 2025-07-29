@@ -1,4 +1,7 @@
 
+import type { GeneratePlanReflectionOutput } from './ai-schemas';
+export type { GeneratePlanReflectionOutput } from './ai-schemas';
+
 export interface PlanInput {
   subjects: string; // Comma-separated subject names, optionally with priority e.g., "Math (1), Physics (2)"
   dailyStudyHours: number;
@@ -43,6 +46,7 @@ export interface ScheduleData {
   planDetails: PlanInput;
   status: 'active' | 'completed' | 'archived'; // More refined status
   completionDate?: string; // ISO string
+  reflection?: GeneratePlanReflectionOutput; // Stored reflection
   // Optional: add fields for plan overview stats if needed from your HTML
   daysToGoal?: number;
   successProbability?: number;

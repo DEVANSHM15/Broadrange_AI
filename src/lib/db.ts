@@ -60,6 +60,7 @@ export async function getDb(): Promise<Database> {
       status TEXT NOT NULL DEFAULT 'active', -- 'active', 'completed', 'archived'
       completionDate TEXT,
       lastReminderSent TEXT, -- Date 'YYYY-MM-DD' of the last reminder sent
+      reflection_json TEXT, -- To store the cached AI reflection
       FOREIGN KEY (userId) REFERENCES users (id) ON DELETE CASCADE
     );
 
@@ -121,6 +122,13 @@ export async function getDb(): Promise<Database> {
         console.log("Attempting to add 'lastReminderSent' column to 'study_plans' table.");
         await db.exec("ALTER TABLE study_plans ADD COLUMN lastReminderSent TEXT;");
         console.log("'lastReminderSent' column added successfully.");
+    }
+    
+    const reflectionColumnExists = studyPlansInfo.some(col => col.name === 'reflection_json');
+    if (!reflectionColumnExists) {
+      console.log("Attempting to add 'reflection_json' column to 'study_plans' table.");
+      await db.exec("ALTER TABLE study_plans ADD COLUMN reflection_json TEXT;");
+      console.log("'reflection_json' column added successfully.");
     }
 
   } catch (migrationError) {

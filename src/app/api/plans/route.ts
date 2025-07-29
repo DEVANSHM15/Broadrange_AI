@@ -1,7 +1,7 @@
 
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
-import type { ScheduleData, ScheduleTask, PlanInput } from '@/types';
+import type { ScheduleData, ScheduleTask, PlanInput, GeneratePlanReflectionOutput } from '@/types';
 
 // Helper function to validate plan data (basic validation)
 const validatePlanInput = (plan: Partial<ScheduleData>, userId?: number | string): string | null => {
@@ -38,11 +38,13 @@ export async function POST(req: Request) {
     }
 
     await db.run('BEGIN TRANSACTION');
+    
+    const reflection_json = typedPlanData.reflection ? JSON.stringify(typedPlanData.reflection) : null;
 
     // Insert into study_plans table
     await db.run(
-      `INSERT INTO study_plans (id, userId, createdAt, updatedAt, scheduleString, subjects, dailyStudyHours, studyDurationDays, subjectDetails, startDate, status, completionDate)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO study_plans (id, userId, createdAt, updatedAt, scheduleString, subjects, dailyStudyHours, studyDurationDays, subjectDetails, startDate, status, completionDate, reflection_json)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       typedPlanData.id,
       userId,
       typedPlanData.createdAt,
@@ -54,7 +56,8 @@ export async function POST(req: Request) {
       typedPlanData.planDetails.subjectDetails,
       typedPlanData.planDetails.startDate,
       typedPlanData.status,
-      typedPlanData.completionDate
+      typedPlanData.completionDate,
+      reflection_json
     );
 
     // Insert tasks into schedule_tasks table
@@ -122,7 +125,7 @@ export async function GET(req: Request) {
 
   try {
     const plansFromDb = await db.all(
-      `SELECT id, createdAt, updatedAt, scheduleString, subjects, dailyStudyHours, studyDurationDays, subjectDetails, startDate, status, completionDate 
+      `SELECT id, createdAt, updatedAt, scheduleString, subjects, dailyStudyHours, studyDurationDays, subjectDetails, startDate, status, completionDate, reflection_json 
        FROM study_plans 
        WHERE userId = ? 
        ORDER BY updatedAt DESC`, 
@@ -190,6 +193,7 @@ export async function GET(req: Request) {
         tasks: processedTasks,
         status: planRow.status as ScheduleData['status'],
         completionDate: planRow.completionDate,
+        reflection: planRow.reflection_json ? JSON.parse(planRow.reflection_json) : undefined,
       };
       plans.push(plan);
     }

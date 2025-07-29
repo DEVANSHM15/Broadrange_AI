@@ -1,7 +1,7 @@
 
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
-import type { ScheduleData, ScheduleTask, PlanInput } from '@/types'; // Added PlanInput
+import type { ScheduleData, ScheduleTask, PlanInput, GeneratePlanReflectionOutput } from '@/types'; // Added PlanInput
 
 // Helper to validate plan data (basic validation)
 const validatePlanInputForUpdate = (plan: Partial<ScheduleData>): string | null => {
@@ -34,7 +34,7 @@ export async function GET(
 
   try {
     const planRow = await db.get(
-      `SELECT id, userId, createdAt, updatedAt, scheduleString, subjects, dailyStudyHours, studyDurationDays, subjectDetails, startDate, status, completionDate
+      `SELECT id, userId, createdAt, updatedAt, scheduleString, subjects, dailyStudyHours, studyDurationDays, subjectDetails, startDate, status, completionDate, reflection_json
        FROM study_plans
        WHERE id = ? AND userId = ?`, // Ensure userId is part of the query for security
       planId, userId 
@@ -82,6 +82,7 @@ export async function GET(
       tasks: processedTasks,
       status: planRow.status as ScheduleData['status'],
       completionDate: planRow.completionDate,
+      reflection: planRow.reflection_json ? JSON.parse(planRow.reflection_json) : undefined,
     };
 
     return NextResponse.json(plan, { status: 200 });
@@ -127,10 +128,12 @@ export async function PUT(
     await db.run('BEGIN TRANSACTION');
 
     const newUpdatedAt = new Date().toISOString();
+    const reflection_json = typedPlanData.reflection ? JSON.stringify(typedPlanData.reflection) : null;
+
     await db.run(
       `UPDATE study_plans SET
          updatedAt = ?, scheduleString = ?, subjects = ?, dailyStudyHours = ?, studyDurationDays = ?,
-         subjectDetails = ?, startDate = ?, status = ?, completionDate = ?
+         subjectDetails = ?, startDate = ?, status = ?, completionDate = ?, reflection_json = ?
        WHERE id = ? AND userId = ?`,
       newUpdatedAt,
       typedPlanData.scheduleString,
@@ -141,6 +144,7 @@ export async function PUT(
       typedPlanData.planDetails.startDate,
       typedPlanData.status,
       typedPlanData.completionDate,
+      reflection_json,
       planId,
       userId
     );
@@ -189,7 +193,7 @@ export async function PUT(
     
     // Fetch the fully updated plan to return it to the client
     const updatedPlanRow = await db.get(
-      `SELECT id, userId, createdAt, updatedAt, scheduleString, subjects, dailyStudyHours, studyDurationDays, subjectDetails, startDate, status, completionDate
+      `SELECT id, userId, createdAt, updatedAt, scheduleString, subjects, dailyStudyHours, studyDurationDays, subjectDetails, startDate, status, completionDate, reflection_json
        FROM study_plans WHERE id = ? AND userId = ?`, planId, userId
     );
      if (!updatedPlanRow) { 
@@ -231,6 +235,7 @@ export async function PUT(
         tasks: processedUpdatedTasks,
         status: updatedPlanRow.status as ScheduleData['status'],
         completionDate: updatedPlanRow.completionDate,
+        reflection: updatedPlanRow.reflection_json ? JSON.parse(updatedPlanRow.reflection_json) : undefined,
     };
 
     return NextResponse.json(returnPlan, { status: 200 });

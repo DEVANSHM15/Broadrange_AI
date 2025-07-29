@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { generateStudySchedule, type GenerateStudyScheduleInput, type GenerateStudyScheduleOutput } from "@/ai/flows/generate-study-schedule";
 import type { PlanInput, ScheduleData, ScheduleTask, ParsedRawScheduleItem, SubTask } from "@/types";
 import { type AdaptiveRePlanningOutput } from "@/ai/flows/adaptive-re-planning";
+import { generatePlanReflection, type GeneratePlanReflectionInput, type GeneratePlanReflectionOutput } from "@/ai/flows/generate-plan-reflection";
 import { useAuth } from '@/contexts/auth-context';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -542,32 +543,50 @@ export default function PlannerPage() {
   };
 
   const handleMarkPlanAsCompleted = async () => {
-    if (activePlan && currentUser?.id && currentUser.email && currentUser.name) {
-      const now = new Date().toISOString();
-      const completedPlan: ScheduleData = {
-        ...activePlan,
-        status: 'completed',
-        completionDate: now,
-        updatedAt: now,
+    if (!activePlan || !currentUser?.id || !currentUser.email || !currentUser.name) return;
+    
+    setIsAnalyzing(true);
+    let generatedReflection: GeneratePlanReflectionOutput | undefined;
+    try {
+      // Step 1: Generate reflection
+      const reflectionInput: GeneratePlanReflectionInput = {
+        planDetails: activePlan.planDetails,
+        tasks: activePlan.tasks,
+        completionDate: new Date().toISOString(),
       };
-      setActivePlan(completedPlan); 
-      const success = await saveActivePlanChanges(completedPlan);
-      if (success) {
-        toast({ title: "Plan Marked as Completed!", description: "Congratulations!", variant: "default" });
-        // Send completion email
-        fetch('/api/send-plan-completion', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                email: currentUser.email,
-                name: currentUser.name,
-                planDetails: completedPlan.planDetails
-            }),
-        }).catch(err => console.warn("Plan completion email failed to send:", err));
-      } else {
-        fetchUserPlans(); 
-      }
+      generatedReflection = await generatePlanReflection(reflectionInput);
+    } catch (error) {
+      console.error("Failed to generate plan reflection:", error);
+      toast({ title: "Reflection Failed", description: "Could not generate AI reflection, but marking plan as complete anyway.", variant: "destructive" });
     }
+
+    // Step 2: Update plan status and save reflection
+    const now = new Date().toISOString();
+    const completedPlan: ScheduleData = {
+      ...activePlan,
+      status: 'completed',
+      completionDate: now,
+      updatedAt: now,
+      reflection: generatedReflection,
+    };
+    
+    const success = await saveActivePlanChanges(completedPlan);
+
+    if (success) {
+      toast({ title: "Plan Marked as Completed!", description: "Congratulations!", variant: "default" });
+      fetch('/api/send-plan-completion', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+              email: currentUser.email,
+              name: currentUser.name,
+              planDetails: completedPlan.planDetails
+          }),
+      }).catch(err => console.warn("Plan completion email failed to send:", err));
+    } else {
+      fetchUserPlans(); // Re-fetch to revert UI state on failure
+    }
+    setIsAnalyzing(false);
   };
   
   const getTasksForDate = (date: Date | undefined): ScheduleTask[] => {
@@ -877,8 +896,9 @@ export default function PlannerPage() {
                         onReplanSuccess={handleReplanSuccess}
                     />)}
                  {canFinishPlan && (
-                    <Button onClick={handleMarkPlanAsCompleted} variant="default" className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white">
-                    <CheckCircle className="mr-2 h-4 w-4" /> Mark Completed
+                    <Button onClick={handleMarkPlanAsCompleted} variant="default" className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white" disabled={isAnalyzing}>
+                      {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <CheckCircle className="mr-2 h-4 w-4" />}
+                      Mark Completed
                     </Button>)}
                 <AlertDialog>
                   <AlertDialogTrigger asChild>

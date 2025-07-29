@@ -9,10 +9,9 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import { PomodoroTimerModal } from "@/components/pomodoro-timer";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import type { AgentDisplayData, ScheduleData, ScheduleTask, ParsedRawScheduleItem, PlanInput } from "@/types";
+import type { AgentDisplayData, ScheduleData, ScheduleTask, ParsedRawScheduleItem, PlanInput, GeneratePlanReflectionOutput } from "@/types";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { generatePlanReflection, type GeneratePlanReflectionInput, type GeneratePlanReflectionOutput } from "@/ai/flows/generate-plan-reflection";
 import { Badge } from "@/components/ui/badge";
 import { parseISO, isValid, differenceInDays, format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -41,8 +40,6 @@ export default function DashboardPage() {
   const [allUserPlans, setAllUserPlans] = useState<ScheduleData[]>([]);
   
   const [planReflection, setPlanReflection] = useState<GeneratePlanReflectionOutput | null>(null);
-  const [isGeneratingReflection, setIsGeneratingReflection] = useState(false);
-  const [reflectionError, setReflectionError] = useState<string | null>(null);
   
   const [isLoadingPlanData, setIsLoadingPlanData] = useState(true);
 
@@ -86,13 +83,19 @@ export default function DashboardPage() {
         if (activePlans.length > 0) {
             currentPlanToDisplay = activePlans[0];
         } else {
-            const completedPlans = processedPlans.filter(p => p.status === 'completed').sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.completionDate!).getTime());
+            const completedPlans = processedPlans.filter(p => p.status === 'completed' && p.completionDate).sort((a, b) => new Date(b.completionDate!).getTime() - new Date(a.completionDate!).getTime());
             currentPlanToDisplay = completedPlans.length > 0 ? completedPlans[0] : null;
         }
       }
       setActiveStudyPlan(currentPlanToDisplay);
-      setPlanReflection(null);
-      setReflectionError(null);
+      
+      // Find the most recently completed plan and set its reflection
+      const lastCompletedPlan = processedPlans
+          .filter(p => p.status === 'completed' && p.reflection)
+          .sort((a, b) => new Date(b.completionDate!).getTime() - new Date(a.completionDate!).getTime())[0];
+      
+      setPlanReflection(lastCompletedPlan?.reflection || null);
+
 
     } catch (error) {
       console.error("Dashboard: Error fetching plans:", error);
@@ -109,38 +112,6 @@ export default function DashboardPage() {
     window.addEventListener('studyPlanUpdated', handleStudyPlanUpdate);
     return () => window.removeEventListener('studyPlanUpdated', handleStudyPlanUpdate);
   }, [reloadDataFromApi]);
-
- const fetchPlanReflection = useCallback(async () => {
-      const lastCompletedPlan = allUserPlans
-        .filter(p => p.status === 'completed' && p.tasks.length > 0 && p.completionDate && isValid(parseISO(p.completionDate)))
-        .sort((a,b) => new Date(b.completionDate!).getTime() - new Date(a.completionDate!).getTime())[0];
-      
-      if (!lastCompletedPlan) return;
-      
-      setIsGeneratingReflection(true);
-      setPlanReflection(null);
-      setReflectionError(null);
-      try {
-          const input: GeneratePlanReflectionInput = {
-              planDetails: lastCompletedPlan.planDetails,
-              tasks: lastCompletedPlan.tasks,
-              completionDate: lastCompletedPlan.completionDate
-          };
-          const reflectionResult = await generatePlanReflection(input);
-          setPlanReflection(reflectionResult);
-      } catch (error) {
-          setReflectionError(error instanceof Error ? error.message : "An unknown error occurred.");
-      } finally {
-          setIsGeneratingReflection(false);
-      }
-  }, [allUserPlans]);
-
-
-  useEffect(() => {
-    if (allUserPlans.length > 0) {
-        fetchPlanReflection();
-    }
-  }, [allUserPlans, fetchPlanReflection]);
 
 
   const { completedTasksCount, totalTasksCount, progressPercentage, averageQuizScore } = useMemo(() => {
@@ -248,10 +219,8 @@ export default function DashboardPage() {
                     <CardDescription>Insights from your most recently completed plan.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    {isGeneratingReflection ? (
+                    {isLoadingPlanData ? (
                         <div className="flex items-center justify-center p-6"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-                    ) : reflectionError ? (
-                        <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{reflectionError}</AlertDescription></Alert>
                     ) : planReflection ? (
                         <div className="space-y-3 text-sm">
                             <div className="flex items-start gap-3"><Target className="h-4 w-4 mt-1 text-primary flex-shrink-0" /><p><strong>Completion:</strong> {(planReflection.overallCompletionRate * 100).toFixed(0)}% - {planReflection.mainReflection}</p></div>
@@ -317,7 +286,7 @@ export default function DashboardPage() {
                         <Link href="/planner"><BookOpen className="mr-2 h-4 w-4"/> AI Planner</Link>
                     </Button>
                     <Button asChild variant="outline" className="justify-center text-center">
-                        <Link href="/calendar"><Calendar className="mr-2 h-4 w-4"/> Calendar View</Link>
+                        <Link href="/calendar"><Calendar className="mr-3 h-4 w-4"/> Calendar View</Link>
                     </Button>
                     <Button asChild variant="outline" className="justify-center text-center">
                         <Link href="/analytics"><AreaChart className="mr-2 h-4 w-4"/> View Analytics</Link>
