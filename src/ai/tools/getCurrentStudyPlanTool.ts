@@ -21,6 +21,7 @@ const PlanOutputSchema = z.object({
     completedTasks: z.number(),
     totalTasks: z.number(),
     percentage: z.number(),
+    averageQuizScore: z.number().describe("The user's average score across all attempted quizzes for this plan."),
   }).optional(),
   firstUncompletedTask: z.string().optional(),
 });
@@ -28,7 +29,7 @@ const PlanOutputSchema = z.object({
 export const getCurrentStudyPlan = ai.defineTool(
   {
     name: 'getCurrentStudyPlan',
-    description: "Retrieves the user's current active study plan details, including subjects, duration, and progress. Use this if the user asks 'what is my current plan?', 'how am I doing?', or similar questions about their ongoing schedule.",
+    description: "Retrieves the user's current active study plan details, including subjects, duration, progress, and average quiz score. Use this if the user asks 'what is my current plan?', 'how am I doing?', 'what's my quiz score?', or similar questions about their ongoing schedule.",
     inputSchema: z.object({ userId: z.string().describe("The ID of the user whose plan is being requested.") }),
     outputSchema: PlanOutputSchema,
   },
@@ -48,13 +49,18 @@ export const getCurrentStudyPlan = ai.defineTool(
     }
 
     const tasks = await db.all<ScheduleTask[]>(
-      `SELECT task, completed, date FROM schedule_tasks WHERE planId = ? ORDER BY date ASC`,
+      `SELECT task, completed, date, quizScore, quizAttempted FROM schedule_tasks WHERE planId = ? ORDER BY date ASC`,
       planRow.id
     );
     
     const completedTasks = tasks.filter(t => t.completed).length;
     const totalTasks = tasks.length;
     const percentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+    const quizedTasks = tasks.filter(t => t.quizAttempted && typeof t.quizScore === 'number');
+    const avgScore = quizedTasks.length > 0 
+      ? Math.round(quizedTasks.reduce((sum, task) => sum + (task.quizScore || 0), 0) / quizedTasks.length) 
+      : 0;
 
     const firstUncompleted = tasks.find(t => !t.completed);
 
@@ -70,6 +76,7 @@ export const getCurrentStudyPlan = ai.defineTool(
         completedTasks,
         totalTasks,
         percentage,
+        averageQuizScore: avgScore,
       },
       firstUncompletedTask: firstUncompleted ? `Next up is "${firstUncompleted.task}" on ${firstUncompleted.date}.` : "All tasks are completed!",
     };
