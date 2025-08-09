@@ -123,7 +123,7 @@ function PlannerPageContent() {
       setSelectedCalendarDate(new Date());
       setCurrentStep(1.5); // Move to verification step
        // Clean the URL
-      router.replace('/planner');
+      router.replace('/planner', { scroll: false });
       return true;
     }
     return false;
@@ -709,9 +709,9 @@ function PlannerPageContent() {
               </Popover>
             </div>
             <div className="space-y-1">
-              <Label htmlFor="subjectDetails">Subject Details (Optional)</Label>
+              <Label htmlFor="subjectDetails">Subject Details & Syllabus (Optional)</Label>
               <Textarea id="subjectDetails" placeholder="e.g., Math: Algebra Ch 1-3. Physics: Kinematics." value={plannerFormInput.subjectDetails || ""} onChange={handleInputChange} rows={3} />
-               <p className="text-xs text-muted-foreground">Specific topics for detailed planning.</p>
+               <p className="text-xs text-muted-foreground">Specific topics for detailed planning. AI can also generate this for you via chat.</p>
             </div>
             <div className="space-y-1">
               <Label htmlFor="studyDurationDays">Study Duration (Days)</Label>
@@ -748,27 +748,27 @@ function PlannerPageContent() {
         );
       case 1.5: // Verification step
         return (
-          <div className="space-y-4 text-center">
-            <Info className="h-12 w-12 text-primary mx-auto mb-4" />
-            <h3 className="text-xl font-semibold">Verify Your Plan Details</h3>
-            <p className="text-muted-foreground">
-              The Master Agent has prepared these details from your chat. Please review them before generating the plan.
+          <div className="space-y-4">
+            <h3 className="text-xl font-semibold text-center">Verify AI-Generated Plan Details</h3>
+            <p className="text-muted-foreground text-center">
+              The Master Agent has prepared these details from your chat. Please review them before generating the final plan.
             </p>
-            <Card className="text-left bg-muted/50">
-              <CardContent className="pt-6 space-y-2">
+            <Card className="text-left bg-muted/50 max-h-80 overflow-y-auto">
+              <CardContent className="pt-6 space-y-3">
                 <p><strong>Subjects:</strong> {plannerFormInput.subjects}</p>
                 <p><strong>Duration:</strong> {plannerFormInput.studyDurationDays} days</p>
                 <p><strong>Daily Hours:</strong> {plannerFormInput.dailyStudyHours} hours</p>
-                {plannerFormInput.subjectDetails && <p><strong>Details:</strong> {plannerFormInput.subjectDetails}</p>}
+                {plannerFormInput.subjectDetails && (
+                  <div>
+                    <p className="font-semibold">Generated Syllabus:</p>
+                    <p className="text-sm whitespace-pre-wrap">{plannerFormInput.subjectDetails}</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
-              <Button onClick={() => setCurrentStep(1)} variant="outline" className="w-full">
-                <Edit3 className="mr-2 h-4 w-4" /> Edit Details
-              </Button>
-              <Button onClick={startAnalysisAndGeneratePlan} className="w-full" disabled={isAnalyzing}>
-                {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <ArrowRight className="mr-2 h-4 w-4" />}
-                Continue to Generate
+              <Button onClick={() => setCurrentStep(1)} className="w-full">
+                <ArrowRight className="mr-2 h-4 w-4" /> Continue & Finalize
               </Button>
             </div>
           </div>
@@ -909,10 +909,10 @@ function PlannerPageContent() {
     }
   };
 
-  const stepTitles = ["Define Your Plan", "Verify Plan", "AI Analyzing", "Your Study Plan & Calendar"];
+  const stepTitles = ["Define Your Plan", "Verify Plan Details", "AI Analyzing", "Your Study Plan & Calendar"];
   const stepDescriptions = [
     "Tell us what you want to study, your timeline, and commitment.",
-    "Confirm the details extracted by the AI.",
+    "The AI has generated a draft syllabus. Confirm the details before creating the plan.",
     "Our AI is crafting your optimal schedule.",
     activePlan?.status === 'completed' ? "This plan is completed. Review it or create a new one." : activePlan?.status === 'archived' ? "This plan is archived. Review it or create a new one." : "Review and manage your AI-generated study plan."
   ];

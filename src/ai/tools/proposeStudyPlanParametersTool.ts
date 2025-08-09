@@ -17,13 +17,13 @@ const ProposeStudyPlanOutputSchema = z.object({
     subjects: z.string().optional().describe("The comma-separated list of subjects extracted from the query. Include priority in parenthesis if mentioned, e.g., 'Math (1), Physics (2)'."),
     dailyStudyHours: z.number().optional().describe("The number of daily study hours mentioned."),
     studyDurationDays: z.number().int().optional().describe("The total duration of the study plan in days. Calculate this if the user provides a target date."),
-    subjectDetails: z.string().optional().describe("Any specific topics, chapters, or details the user mentioned about the subjects."),
+    subjectDetails: z.string().optional().describe("A generated, brief, high-level list of important topics or chapters for the extracted subjects. This should be formatted as a simple string, e.g., 'DBMS: Normalization, SQL. DSA: Arrays, Trees.'."),
 });
 
 export const proposeStudyPlanParameters = ai.defineTool(
   {
     name: 'proposeStudyPlanParameters',
-    description: "Analyzes a user's query to determine if they want to create a study plan and extracts the necessary parameters (subjects, hours, duration). Use this tool when a user asks to create, make, or generate a study plan.",
+    description: "Analyzes a user's query to determine if they want a study plan and extracts/generates the necessary parameters (subjects, hours, duration, and a high-level syllabus). Use this tool when a user asks to create, make, or generate a study plan.",
     inputSchema: ProposeStudyPlanInputSchema,
     outputSchema: ProposeStudyPlanOutputSchema,
   },
@@ -34,19 +34,19 @@ export const proposeStudyPlanParameters = ai.defineTool(
         input: { schema: ProposeStudyPlanInputSchema },
         output: { schema: ProposeStudyPlanOutputSchema },
         model: 'googleai/gemini-1.5-flash-latest',
-        prompt: `Analyze the following user query to determine if they want a study plan. If they do, extract the parameters.
+        prompt: `You are an expert curriculum planner. Analyze the user query to determine if they want a study plan. If so, extract parameters and generate a basic syllabus.
 
         Current Date: {{{currentDate}}}
 
         User Query: "{{{userQuery}}}"
 
         Your tasks:
-        1.  Read the query and determine if the user's intent is to create a study plan. If it's a clear "yes", set 'shouldCreatePlan' to true. For ambiguous queries or general questions, set it to false.
-        2.  Extract the subjects. If the user implies an order or priority (e.g., "my first exam is X"), assign priorities with lower numbers being higher priority, like "(1)".
-        3.  Extract the daily study hours.
-        4.  If the user gives a target date or a duration, calculate the 'studyDurationDays' from the 'currentDate'. If they say "until August 28th" and today is July 28th, the duration is 31 days. If they just say "for 30 days," use that.
-        5.  Extract any specific details about the subjects (chapters, topics, prior knowledge level).
-        6.  Return the results in the specified JSON format.
+        1.  **Intent**: Determine if the user's intent is to create a study plan. If it's a clear "yes", set 'shouldCreatePlan' to true. For ambiguous queries or general questions, set it to false.
+        2.  **Subjects**: Extract the subjects. If the user implies an order or priority (e.g., "my first exam is X"), assign priorities with lower numbers being higher priority, like "(1)".
+        3.  **Daily Hours**: Extract the daily study hours.
+        4.  **Duration**: If the user gives a target date, calculate the 'studyDurationDays' from the 'currentDate'. If they just say "for 30 days," use that.
+        5.  **Generate Syllabus**: For the 'subjectDetails' field, generate a brief, high-level list of essential topics or chapters for the extracted subjects, assuming the user has little prior knowledge. Format it as a simple string. For example: "DBMS: Intro to Databases, SQL Basics, Normalization (1NF, 2NF, 3NF). Computer Networks: OSI Model, TCP/IP, DNS. DSA: Big O Notation, Arrays, Linked Lists, Trees."
+        6.  **Output**: Return the results in the specified JSON format.
         `,
     });
 
@@ -67,3 +67,4 @@ export async function getProposedPlanParameters(userQuery: string): Promise<z.in
 
     return result;
 }
+
