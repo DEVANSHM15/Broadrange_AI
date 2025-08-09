@@ -106,34 +106,27 @@ function PlannerPageContent() {
   const [showReplanSuggestion, setShowReplanSuggestion] = useState(false);
   const [daysBehind, setDaysBehind] = useState(0);
 
-  const processUrlParams = useCallback(() => {
-    const subjects = searchParams.get('subjects');
-    const duration = searchParams.get('duration');
-    const hours = searchParams.get('hours');
-    const details = searchParams.get('details');
+  const fetchUserPlans = useCallback(async (isInitialLoad: boolean) => {
+    if (isInitialLoad) {
+        const subjects = searchParams.get('subjects');
+        const duration = searchParams.get('duration');
+        const hours = searchParams.get('hours');
+        const details = searchParams.get('details');
 
-    if (subjects && duration && hours) {
-      setPlannerFormInput({
-        subjects,
-        studyDurationDays: parseInt(duration, 10) || 30,
-        dailyStudyHours: parseFloat(hours) || 3,
-        subjectDetails: details || '',
-        startDate: format(new Date(), 'yyyy-MM-dd'),
-      });
-      setSelectedCalendarDate(new Date());
-      setCurrentStep(1.5); // Move to verification step
-       // Clean the URL
-      router.replace('/planner', { scroll: false });
-      return true;
-    }
-    return false;
-  }, [searchParams, router]);
-
-
-  const fetchUserPlans = useCallback(async () => {
-    if (processUrlParams()) {
-      setIsLoadingPlans(false);
-      return;
+        if (subjects && duration && hours) {
+            setPlannerFormInput({
+                subjects,
+                studyDurationDays: parseInt(duration, 10) || 30,
+                dailyStudyHours: parseFloat(hours) || 3,
+                subjectDetails: details || '',
+                startDate: format(new Date(), 'yyyy-MM-dd'),
+            });
+            setSelectedCalendarDate(new Date());
+            setCurrentStep(1.5); // Move to verification step
+            router.replace('/planner', { scroll: false }); // Clean URL
+            setIsLoadingPlans(false);
+            return;
+        }
     }
 
     if (!currentUser?.id) {
@@ -266,10 +259,10 @@ function PlannerPageContent() {
         setIsLoadingPlans(false);
       }
     }
-  }, [currentUser, toast, planIdFromQuery, processUrlParams]); 
+  }, [currentUser, toast, planIdFromQuery, router, searchParams]); 
 
   useEffect(() => {
-    fetchUserPlans();
+    fetchUserPlans(true); // Pass true for initial load
   }, [fetchUserPlans]);
 
   // useEffect to detect if user is behind schedule
@@ -430,7 +423,7 @@ function PlannerPageContent() {
           }),
         }).catch(err => console.warn("Plan creation email failed to send:", err));
 
-        await fetchUserPlans(); 
+        await fetchUserPlans(false); 
 
       } else {
         throw new Error("AI did not return a schedule.");
@@ -453,7 +446,7 @@ function PlannerPageContent() {
     setActivePlan(updatedPlan); 
     saveActivePlanChanges(updatedPlan).then(success => {
         if(success) toast({ title: "Sub-tasks updated", description: `Changes saved for task "${updatedTaskFromModal.task.substring(0,30)}...".`});
-        else fetchUserPlans(); 
+        else fetchUserPlans(false); 
     });
     setIsBreakdownModalOpen(false);
     setSelectedTaskForBreakdown(null);
@@ -467,7 +460,7 @@ function PlannerPageContent() {
       const updatedPlan = {...activePlan, tasks: updatedTasks, updatedAt: new Date().toISOString()};
       setActivePlan(updatedPlan); 
       saveActivePlanChanges(updatedPlan).then(success => {
-         if (!success) fetchUserPlans(); 
+         if (!success) fetchUserPlans(false); 
       });
   };
 
@@ -562,7 +555,7 @@ function PlannerPageContent() {
             throw new Error(errorData.error || "Failed to delete plan.");
         }
         toast({ title: "Plan Deleted", description: "The study plan has been removed.", variant: "default" });
-        await fetchUserPlans(); 
+        await fetchUserPlans(false); 
     } catch (error) {
         console.error("Error deleting plan:", error);
         toast({ title: "Error Deleting Plan", description: (error as Error).message, variant: "destructive" });
@@ -613,7 +606,7 @@ function PlannerPageContent() {
           }),
       }).catch(err => console.warn("Plan completion email failed to send:", err));
     } else {
-      fetchUserPlans(); // Re-fetch to revert UI state on failure
+      fetchUserPlans(false); // Re-fetch to revert UI state on failure
     }
     setIsAnalyzing(false);
   };
@@ -645,7 +638,7 @@ function PlannerPageContent() {
             const changedTask = updatedTasks.find(t => t.id === taskId);
             toast({ title: `Task ${changedTask?.completed ? 'Completed' : 'Marked Incomplete'}`, description: `"${changedTask?.task.substring(0,30)}..." status updated.`, variant: "default" });
         } else {
-            fetchUserPlans(); 
+            fetchUserPlans(false); 
         }
     });
   };
@@ -667,7 +660,7 @@ function PlannerPageContent() {
     setActivePlan(updatedPlan);
     saveActivePlanChanges(updatedPlan).then(success => {
       if (success) toast({ title: "Note Saved" });
-      else fetchUserPlans(); 
+      else fetchUserPlans(false); 
     });
     setEditingNoteTask(null); 
     setCurrentNoteText("");
@@ -748,27 +741,31 @@ function PlannerPageContent() {
         );
       case 1.5: // Verification step
         return (
-          <div className="space-y-4">
-            <h3 className="text-xl font-semibold text-center">Verify AI-Generated Plan Details</h3>
-            <p className="text-muted-foreground text-center">
-              The Master Agent has prepared these details from your chat. Please review them before generating the final plan.
+          <div className="space-y-4 text-left">
+            <h3 className="text-xl font-semibold text-center">Verify Your Plan Details</h3>
+            <p className="text-muted-foreground text-center text-sm">
+                The AI assistant has prepared these details from your chat. Please review them before creating the plan.
             </p>
-            <Card className="text-left bg-muted/50 max-h-80 overflow-y-auto">
-              <CardContent className="pt-6 space-y-3">
-                <p><strong>Subjects:</strong> {plannerFormInput.subjects}</p>
-                <p><strong>Duration:</strong> {plannerFormInput.studyDurationDays} days</p>
-                <p><strong>Daily Hours:</strong> {plannerFormInput.dailyStudyHours} hours</p>
+            <div className="p-4 border rounded-lg bg-muted/30 space-y-2">
+                <p><strong>Subjects & Priority:</strong> {plannerFormInput.subjects}</p>
+                <p><strong>Start Date:</strong> {plannerFormInput.startDate ? format(parseISO(plannerFormInput.startDate), 'PPP') : 'N/A'}</p>
+                <p><strong>Study Duration:</strong> {plannerFormInput.studyDurationDays} days</p>
+                <p><strong>Daily Study Hours:</strong> {plannerFormInput.dailyStudyHours}</p>
                 {plannerFormInput.subjectDetails && (
                   <div>
-                    <p className="font-semibold">Generated Syllabus:</p>
-                    <p className="text-sm whitespace-pre-wrap">{plannerFormInput.subjectDetails}</p>
+                    <p><strong>Subject Details & Syllabus:</strong></p>
+                    <div className="mt-1 p-2 border rounded-md bg-background/50 text-sm max-h-48 overflow-y-auto">
+                        <pre className="whitespace-pre-wrap font-sans">{plannerFormInput.subjectDetails}</pre>
+                    </div>
                   </div>
                 )}
-              </CardContent>
-            </Card>
-            <div className="flex flex-col sm:flex-row gap-4 pt-4">
-              <Button onClick={() => setCurrentStep(1)} className="w-full">
-                <ArrowRight className="mr-2 h-4 w-4" /> Continue & Finalize
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2 pt-2">
+              <Button onClick={() => { setPlannerFormInput({...initialPlannerData}); setCurrentStep(1); }} className="w-full sm:w-auto" variant="outline">
+                Cancel
+              </Button>
+              <Button onClick={() => setCurrentStep(1)} className="w-full sm:flex-grow">
+                Continue & Finalize
               </Button>
             </div>
           </div>

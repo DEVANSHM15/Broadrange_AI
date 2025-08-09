@@ -17,7 +17,7 @@ const ProposeStudyPlanOutputSchema = z.object({
     subjects: z.string().optional().describe("The comma-separated list of subjects extracted from the query. Include priority in parenthesis if mentioned, e.g., 'Math (1), Physics (2)'."),
     dailyStudyHours: z.number().optional().describe("The number of daily study hours mentioned."),
     studyDurationDays: z.number().int().optional().describe("The total duration of the study plan in days. Calculate this if the user provides a target date."),
-    subjectDetails: z.string().optional().describe("A generated, brief, high-level list of important topics or chapters for the extracted subjects. This should be formatted as a simple string, e.g., 'DBMS: Normalization, SQL. DSA: Arrays, Trees.'."),
+    subjectDetails: z.string().optional().describe("A generated, brief, high-level list of important topics or chapters for the extracted subjects. This should be formatted as a simple string, including the original user query for context followed by a 'Syllabus:' section. Example: 'User wants a plan for DBMS, CN, DSA... First exam on Aug 28. Syllabus: DBMS: Normalization, SQL. CN: OSI Model, TCP/IP. DSA: Arrays, Trees.'."),
 });
 
 export const proposeStudyPlanParameters = ai.defineTool(
@@ -43,9 +43,9 @@ export const proposeStudyPlanParameters = ai.defineTool(
         Your tasks:
         1.  **Intent**: Determine if the user's intent is to create a study plan. If it's a clear "yes", set 'shouldCreatePlan' to true. For ambiguous queries or general questions, set it to false.
         2.  **Subjects**: Extract the subjects. If the user implies an order or priority (e.g., "my first exam is X"), assign priorities with lower numbers being higher priority, like "(1)".
-        3.  **Daily Hours**: Extract the daily study hours.
-        4.  **Duration**: If the user gives a target date, calculate the 'studyDurationDays' from the 'currentDate'. If they just say "for 30 days," use that.
-        5.  **Generate Syllabus**: For the 'subjectDetails' field, generate a brief, high-level list of essential topics or chapters for the extracted subjects, assuming the user has little prior knowledge. Format it as a simple string. For example: "DBMS: Intro to Databases, SQL Basics, Normalization (1NF, 2NF, 3NF). Computer Networks: OSI Model, TCP/IP, DNS. DSA: Big O Notation, Arrays, Linked Lists, Trees."
+        3.  **Daily Hours**: Extract the daily study hours. If not mentioned, default to 3.
+        4.  **Duration**: If the user gives a target date, calculate the 'studyDurationDays' from the 'currentDate'. If they just say "for 30 days," use that. If no duration is mentioned, default to 30.
+        5.  **Generate Syllabus**: For the 'subjectDetails' field, first summarize the user's request in one or two sentences. Then, on a new line, write "Syllabus:". Then, generate a brief, high-level list of essential topics or chapters for the extracted subjects, assuming the user has little prior knowledge. Format it as a simple string with newlines. For example: 'User wants a plan for DBMS, CN, DSA... First exam on Aug 28.\\nSyllabus:\\nDBMS: Intro to Databases, SQL Basics, Normalization (1NF, 2NF, 3NF).\\nComputer Networks: OSI Model, TCP/IP, DNS.\\nDSA: Big O Notation, Arrays, Linked Lists, Trees.'
         6.  **Output**: Return the results in the specified JSON format.
         `,
     });
