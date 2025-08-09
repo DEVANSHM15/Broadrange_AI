@@ -123,7 +123,7 @@ function PlannerPageContent() {
       setSelectedCalendarDate(new Date());
       setCurrentStep(1.5); // Move to verification step
        // Clean the URL
-      router.replace('/planner', undefined);
+      router.replace('/planner');
       return true;
     }
     return false;
