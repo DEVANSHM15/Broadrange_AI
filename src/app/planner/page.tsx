@@ -30,7 +30,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as ShadCalendar } from "@/components/ui/calendar";
 import { Checkbox } from "@/components/ui/checkbox";
-import { format, parseISO, addDays, subDays, startOfWeek, endOfWeek, isSameMonth, addMonths, subMonths, isValid, differenceInDays } from 'date-fns';
+import { format, parseISO, addDays, subDays, startOfWeek, endOfWeek, isSameMonth, addMonths, subMonths, isValid, differenceInDays, startOfDay } from 'date-fns';
 import { cn } from "@/lib/utils";
 import { TaskBreakdownModal } from '@/components/task-breakdown-modal';
 import { AdaptiveReplanModal } from '@/components/adaptive-replan-modal';
@@ -791,7 +791,7 @@ export default function PlannerPage() {
                         const tasksOnDay = getTasksForDate(date);
                         const isSel = activeModifiers.selected; const isToday = activeModifiers.today;
                         const isCurrMonth = isValid(date) && isValid(calendarDisplayMonth) && isSameMonth(date, calendarDisplayMonth);
-                        return (<div className={`relative h-full w-full flex flex-col items-center justify-center ${!isCurrMonth ? 'text-muted-foreground/50' : ''}`}>
+                        return (<div className={cn('relative h-full w-full flex flex-col items-center justify-center', !isCurrMonth ? 'text-muted-foreground/50' : '')}>
                             <span>{isValid(date) ? format(date, "d") : "X"}</span>
                             {tasksOnDay.length > 0 && (<div className={`absolute bottom-1 left-1/2 -translate-x-1/2 h-1.5 w-1.5 rounded-full ${isSel || isToday ? 'bg-primary-foreground dark:bg-primary' : 'bg-primary dark:bg-primary-foreground'}`}></div>)}
                           </div>);
@@ -801,8 +801,12 @@ export default function PlannerPage() {
                 <div className="flex-grow bg-card p-4 rounded-lg shadow min-h-[400px]">
                   {calendarSelectedDateForDisplay && isValid(calendarSelectedDateForDisplay) ? (<>
                           <h3 className="text-xl font-semibold mb-1">{format(calendarSelectedDateForDisplay, 'EEEE, MMMM d, yyyy')}</h3>
-                          <p className="text-sm text-muted-foreground mb-4">Day {activePlan.tasks.findIndex(t => { try { return format(parseISO(t.date), 'yyyy-MM-dd') === format(calendarSelectedDateForDisplay, 'yyyy-MM-dd'); } catch { return false; } }) + 1} of {activePlan.planDetails.studyDurationDays}
-                              {activePlan.status === 'completed' ? <span className="ml-2 text-green-600 font-semibold">(Completed)</span> : activePlan.status === 'archived' ? <span className="ml-2 text-gray-500 font-semibold">(Archived)</span> : ''}</p>
+                           <p className="text-sm text-muted-foreground mb-4">
+                                {activePlan.planDetails.startDate && isValid(parseISO(activePlan.planDetails.startDate))
+                                    ? `Day ${differenceInDays(startOfDay(calendarSelectedDateForDisplay), startOfDay(parseISO(activePlan.planDetails.startDate))) + 1} of ${activePlan.planDetails.studyDurationDays}`
+                                    : 'Review your plan'}
+                                {activePlan.status === 'completed' ? <span className="ml-2 text-green-600 font-semibold">(Completed)</span> : activePlan.status === 'archived' ? <span className="ml-2 text-gray-500 font-semibold">(Archived)</span> : ''}
+                            </p>
                           {tasksForSelectedDate.length > 0 ? (<ScrollArea className="h-[calc(100%-100px)] pr-3">{/* Adjust height as needed */}
                               <ul className="space-y-3">{tasksForSelectedDate.map(task => (<li key={`cal-task-${task.id}`} className={`flex items-start gap-3 text-sm p-3 rounded-md transition-all shadow-sm ${task.completed ? 'bg-green-500/10 line-through text-muted-foreground' : 'bg-background hover:bg-accent/30'}`}>
                                   <Checkbox id={`task-cal-${task.id}`} checked={task.completed} onCheckedChange={() => handleCalendarTaskToggle(task.id)} aria-labelledby={`task-cal-label-${task.id}`} disabled={activePlan?.status === 'completed' || activePlan?.status === 'archived'} className="mt-1"/>
