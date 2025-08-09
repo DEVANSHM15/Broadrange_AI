@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from "@/components/ui/label";
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, CheckCircle, Trash2, Edit3, CalendarIcon as CalendarDaysIcon, Search, ChevronLeft, ChevronRight, ListTree, FileQuestion, PlusCircle, Info, FileText, AlertCircle } from 'lucide-react';
+import { Loader2, CheckCircle, Trash2, Edit3, CalendarIcon as CalendarDaysIcon, Search, ChevronLeft, ChevronRight, ListTree, FileQuestion, PlusCircle, Info, FileText, AlertCircle, ArrowRight } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { generateStudySchedule, type GenerateStudyScheduleInput, type GenerateStudyScheduleOutput } from "@/ai/flows/generate-study-schedule";
 import type { PlanInput, ScheduleData, ScheduleTask, ParsedRawScheduleItem, SubTask } from "@/types";
@@ -37,7 +37,7 @@ import { AdaptiveReplanModal } from '@/components/adaptive-replan-modal';
 import { LogScorePopover } from '@/components/log-score-popover';
 import { QuizModal } from '@/components/quiz-modal';
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { useSearchParams } from 'next/navigation'; 
+import { useSearchParams, useRouter } from 'next/navigation'; 
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 function parseTasksFromString(scheduleString: string, planId: string): ScheduleTask[] {
@@ -76,10 +76,11 @@ const initialPlannerData: PlanInput = {
   startDate: format(new Date(), 'yyyy-MM-dd'), 
 };
 
-export default function PlannerPage() {
+function PlannerPageContent() {
   const { currentUser } = useAuth();
   const { toast } = useToast();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const planIdFromQuery = searchParams.get('planId');
   
   const [currentStep, setCurrentStep] = useState(1); 
@@ -105,8 +106,36 @@ export default function PlannerPage() {
   const [showReplanSuggestion, setShowReplanSuggestion] = useState(false);
   const [daysBehind, setDaysBehind] = useState(0);
 
+  const processUrlParams = useCallback(() => {
+    const subjects = searchParams.get('subjects');
+    const duration = searchParams.get('duration');
+    const hours = searchParams.get('hours');
+    const details = searchParams.get('details');
+
+    if (subjects && duration && hours) {
+      setPlannerFormInput({
+        subjects,
+        studyDurationDays: parseInt(duration, 10) || 30,
+        dailyStudyHours: parseFloat(hours) || 3,
+        subjectDetails: details || '',
+        startDate: format(new Date(), 'yyyy-MM-dd'),
+      });
+      setSelectedCalendarDate(new Date());
+      setCurrentStep(1.5); // Move to verification step
+       // Clean the URL
+      router.replace('/planner', undefined);
+      return true;
+    }
+    return false;
+  }, [searchParams, router]);
+
 
   const fetchUserPlans = useCallback(async () => {
+    if (processUrlParams()) {
+      setIsLoadingPlans(false);
+      return;
+    }
+
     if (!currentUser?.id) {
       setAllUserPlans([]);
       setActivePlan(null);
@@ -237,7 +266,7 @@ export default function PlannerPage() {
         setIsLoadingPlans(false);
       }
     }
-  }, [currentUser, toast, planIdFromQuery]); 
+  }, [currentUser, toast, planIdFromQuery, processUrlParams]); 
 
   useEffect(() => {
     fetchUserPlans();
@@ -717,6 +746,33 @@ export default function PlannerPage() {
             )}
           </>
         );
+      case 1.5: // Verification step
+        return (
+          <div className="space-y-4 text-center">
+            <Info className="h-12 w-12 text-primary mx-auto mb-4" />
+            <h3 className="text-xl font-semibold">Verify Your Plan Details</h3>
+            <p className="text-muted-foreground">
+              The Master Agent has prepared these details from your chat. Please review them before generating the plan.
+            </p>
+            <Card className="text-left bg-muted/50">
+              <CardContent className="pt-6 space-y-2">
+                <p><strong>Subjects:</strong> {plannerFormInput.subjects}</p>
+                <p><strong>Duration:</strong> {plannerFormInput.studyDurationDays} days</p>
+                <p><strong>Daily Hours:</strong> {plannerFormInput.dailyStudyHours} hours</p>
+                {plannerFormInput.subjectDetails && <p><strong>Details:</strong> {plannerFormInput.subjectDetails}</p>}
+              </CardContent>
+            </Card>
+            <div className="flex flex-col sm:flex-row gap-4 pt-4">
+              <Button onClick={() => setCurrentStep(1)} variant="outline" className="w-full">
+                <Edit3 className="mr-2 h-4 w-4" /> Edit Details
+              </Button>
+              <Button onClick={startAnalysisAndGeneratePlan} className="w-full" disabled={isAnalyzing}>
+                {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <ArrowRight className="mr-2 h-4 w-4" />}
+                Continue to Generate
+              </Button>
+            </div>
+          </div>
+        );
       case 2:
         return (
           <div className="text-center py-10">
@@ -853,12 +909,17 @@ export default function PlannerPage() {
     }
   };
 
-  const stepTitles = ["Define Your Plan", "AI Analyzing", "Your Study Plan & Calendar"];
+  const stepTitles = ["Define Your Plan", "Verify Plan", "AI Analyzing", "Your Study Plan & Calendar"];
   const stepDescriptions = [
     "Tell us what you want to study, your timeline, and commitment.",
+    "Confirm the details extracted by the AI.",
     "Our AI is crafting your optimal schedule.",
     activePlan?.status === 'completed' ? "This plan is completed. Review it or create a new one." : activePlan?.status === 'archived' ? "This plan is archived. Review it or create a new one." : "Review and manage your AI-generated study plan."
   ];
+  
+  const currentTitle = currentStep === 1.5 ? stepTitles[1] : stepTitles[Math.ceil(currentStep) - 1];
+  const currentDescription = currentStep === 1.5 ? stepDescriptions[1] : stepDescriptions[Math.ceil(currentStep) - 1];
+
 
   const completedTasksCount = activePlan?.tasks.filter(task => task.completed).length || 0;
   const totalTasksCount = activePlan?.tasks.length || 0;
@@ -870,8 +931,8 @@ export default function PlannerPage() {
       <div className="container mx-auto py-6 px-4 md:px-6">
         <Card className="w-full max-w-5xl mx-auto">
           <CardHeader>
-            <CardTitle className="text-2xl text-center">{stepTitles[currentStep - 1]}</CardTitle>
-            <CardDescription className="text-center">{stepDescriptions[currentStep - 1]}</CardDescription>
+            <CardTitle className="text-2xl text-center">{currentTitle}</CardTitle>
+            <CardDescription className="text-center">{currentDescription}</CardDescription>
              {(currentStep === 1 || currentStep === 3) && (
                 <div className="flex justify-center gap-2 pt-3">
                 {[1,3].map(stepIndicator => (
@@ -923,4 +984,19 @@ export default function PlannerPage() {
       <QuizModal task={selectedTaskForQuiz} subjectContext={activePlan?.planDetails?.subjects} isOpen={isQuizModalOpen} onClose={() => { setIsQuizModalOpen(false); setSelectedTaskForQuiz(null);}} onQuizComplete={handleSaveQuizScore} />
     </AppLayout>
   );
+}
+
+
+export default function PlannerPage() {
+    return (
+        <React.Suspense fallback={
+            <AppLayout>
+                <div className="flex items-center justify-center min-h-[calc(100vh-100px)]">
+                    <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                </div>
+            </AppLayout>
+        }>
+            <PlannerPageContent />
+        </React.Suspense>
+    );
 }

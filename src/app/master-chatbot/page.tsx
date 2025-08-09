@@ -24,6 +24,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { marked } from 'marked';
+import { useRouter } from 'next/navigation';
 
 
 const getInitials = (name?: string | null) => {
@@ -63,6 +65,7 @@ const initialMessageHTML = `
 export default function MasterChatbotPage() {
   const { currentUser } = useAuth();
   const { toast } = useToast();
+  const router = useRouter();
 
   const [chats, setChats] = useState<Chat[]>([]);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
@@ -215,6 +218,18 @@ export default function MasterChatbotPage() {
     }
   };
 
+  const handleMessageClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'A') {
+      const anchor = target as HTMLAnchorElement;
+      const href = anchor.getAttribute('href');
+      if (href && !href.startsWith('http')) {
+        e.preventDefault();
+        router.push(href);
+      }
+    }
+  };
+
   return (
     <AppLayout>
       <div className="flex h-[calc(100vh-57px)]">
@@ -264,7 +279,7 @@ export default function MasterChatbotPage() {
           </div>
 
           <div className="flex-grow p-4 md:p-6 overflow-y-auto" ref={scrollRef}>
-              <div className="max-w-3xl mx-auto space-y-6">
+              <div className="max-w-3xl mx-auto space-y-6" onClick={handleMessageClick}>
               {messages.map((message, index) => (
                   <div key={index} className={cn("flex items-start gap-3 text-sm", message.role === 'user' ? "justify-end" : "justify-start")}>
                   {message.role === 'bot' && <BotAvatar />}
