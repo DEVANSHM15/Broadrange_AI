@@ -106,29 +106,7 @@ function PlannerPageContent() {
   const [showReplanSuggestion, setShowReplanSuggestion] = useState(false);
   const [daysBehind, setDaysBehind] = useState(0);
 
-  const fetchUserPlans = useCallback(async (isInitialLoad: boolean) => {
-    if (isInitialLoad) {
-        const subjects = searchParams.get('subjects');
-        const duration = searchParams.get('duration');
-        const hours = searchParams.get('hours');
-        const details = searchParams.get('details');
-
-        if (subjects && duration && hours) {
-            setPlannerFormInput({
-                subjects,
-                studyDurationDays: parseInt(duration, 10) || 30,
-                dailyStudyHours: parseFloat(hours) || 3,
-                subjectDetails: details || '',
-                startDate: format(new Date(), 'yyyy-MM-dd'),
-            });
-            setSelectedCalendarDate(new Date());
-            setCurrentStep(1.5); // Move to verification step
-            router.replace('/planner', { scroll: false }); // Clean URL
-            setIsLoadingPlans(false);
-            return;
-        }
-    }
-
+  const fetchUserPlans = useCallback(async () => {
     if (!currentUser?.id) {
       setAllUserPlans([]);
       setActivePlan(null);
@@ -259,11 +237,34 @@ function PlannerPageContent() {
         setIsLoadingPlans(false);
       }
     }
-  }, [currentUser, toast, planIdFromQuery, router, searchParams]); 
+  }, [currentUser?.id, toast, planIdFromQuery]); 
 
+  // Effect to process URL parameters on initial load
   useEffect(() => {
-    fetchUserPlans(true); // Pass true for initial load
-  }, [fetchUserPlans]);
+    const subjects = searchParams.get('subjects');
+    const duration = searchParams.get('duration');
+    const hours = searchParams.get('hours');
+    const details = searchParams.get('details');
+
+    if (subjects && duration && hours) {
+      setPlannerFormInput({
+        subjects,
+        studyDurationDays: parseInt(duration, 10) || 30,
+        dailyStudyHours: parseFloat(hours) || 3,
+        subjectDetails: details || '',
+        startDate: format(new Date(), 'yyyy-MM-dd'),
+      });
+      setSelectedCalendarDate(new Date());
+      setCurrentStep(1.5); // Move to verification step
+      // Clean URL after processing params
+      router.replace('/planner', { scroll: false }); 
+    } else {
+      fetchUserPlans();
+    }
+    // This effect should only run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
 
   // useEffect to detect if user is behind schedule
   useEffect(() => {
@@ -423,7 +424,7 @@ function PlannerPageContent() {
           }),
         }).catch(err => console.warn("Plan creation email failed to send:", err));
 
-        await fetchUserPlans(false); 
+        await fetchUserPlans(); 
 
       } else {
         throw new Error("AI did not return a schedule.");
@@ -446,7 +447,7 @@ function PlannerPageContent() {
     setActivePlan(updatedPlan); 
     saveActivePlanChanges(updatedPlan).then(success => {
         if(success) toast({ title: "Sub-tasks updated", description: `Changes saved for task "${updatedTaskFromModal.task.substring(0,30)}...".`});
-        else fetchUserPlans(false); 
+        else fetchUserPlans(); 
     });
     setIsBreakdownModalOpen(false);
     setSelectedTaskForBreakdown(null);
@@ -460,7 +461,7 @@ function PlannerPageContent() {
       const updatedPlan = {...activePlan, tasks: updatedTasks, updatedAt: new Date().toISOString()};
       setActivePlan(updatedPlan); 
       saveActivePlanChanges(updatedPlan).then(success => {
-         if (!success) fetchUserPlans(false); 
+         if (!success) fetchUserPlans(); 
       });
   };
 
@@ -555,7 +556,7 @@ function PlannerPageContent() {
             throw new Error(errorData.error || "Failed to delete plan.");
         }
         toast({ title: "Plan Deleted", description: "The study plan has been removed.", variant: "default" });
-        await fetchUserPlans(false); 
+        await fetchUserPlans(); 
     } catch (error) {
         console.error("Error deleting plan:", error);
         toast({ title: "Error Deleting Plan", description: (error as Error).message, variant: "destructive" });
@@ -606,7 +607,7 @@ function PlannerPageContent() {
           }),
       }).catch(err => console.warn("Plan completion email failed to send:", err));
     } else {
-      fetchUserPlans(false); // Re-fetch to revert UI state on failure
+      fetchUserPlans(); // Re-fetch to revert UI state on failure
     }
     setIsAnalyzing(false);
   };
@@ -638,7 +639,7 @@ function PlannerPageContent() {
             const changedTask = updatedTasks.find(t => t.id === taskId);
             toast({ title: `Task ${changedTask?.completed ? 'Completed' : 'Marked Incomplete'}`, description: `"${changedTask?.task.substring(0,30)}..." status updated.`, variant: "default" });
         } else {
-            fetchUserPlans(false); 
+            fetchUserPlans(); 
         }
     });
   };
@@ -660,7 +661,7 @@ function PlannerPageContent() {
     setActivePlan(updatedPlan);
     saveActivePlanChanges(updatedPlan).then(success => {
       if (success) toast({ title: "Note Saved" });
-      else fetchUserPlans(false); 
+      else fetchUserPlans(); 
     });
     setEditingNoteTask(null); 
     setCurrentNoteText("");
