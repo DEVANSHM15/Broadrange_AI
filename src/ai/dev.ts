@@ -8,9 +8,5 @@ import '@/ai/flows/generate-plan-reflection.ts';
 import '@/ai/flows/studyAssistantChatFlow.ts';
 import '@/ai/flows/generate-task-quiz-flow.ts';
 import '@/ai/tools/getCurrentStudyPlanTool.ts';
-import '@/ai/tools/proposeStudyPlanParametersTool.ts'; // Added new tool
-
-
-
-
-
+import '@/ai/tools/proposeStudyPlanParametersTool.ts';
+import '@/ai/tools/proposeReplanTool.ts'; // Added the new re-planning tool
