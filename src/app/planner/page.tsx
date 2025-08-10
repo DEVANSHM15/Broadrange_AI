@@ -106,7 +106,7 @@ function PlannerPageContent() {
   const [showReplanSuggestion, setShowReplanSuggestion] = useState(false);
   const [daysBehind, setDaysBehind] = useState(0);
 
-  const fetchUserPlans = useCallback(async () => {
+  const fetchUserPlans = useCallback(async (planIdToLoad?: string | null) => {
     if (!currentUser?.id) {
       setAllUserPlans([]);
       setActivePlan(null);
@@ -116,12 +116,14 @@ function PlannerPageContent() {
     }
     setIsLoadingPlans(true);
 
-    if (planIdFromQuery) { 
+    const idToFetch = planIdToLoad || planIdFromQuery;
+
+    if (idToFetch) { 
       try {
-        const response = await fetch(`/api/plans/${planIdFromQuery}?userId=${currentUser.id}`);
+        const response = await fetch(`/api/plans/${idToFetch}?userId=${currentUser.id}`);
         if (!response.ok) {
           let errorTitle = "Error Loading Plan";
-          let errorDesc = `Failed to fetch plan ${planIdFromQuery}. Server responded with status: ${response.status}.`;
+          let errorDesc = `Failed to fetch plan ${idToFetch}. Server responded with status: ${response.status}.`;
            if (response.status === 404) {
              errorTitle = "Plan Not Found";
              errorDesc = `The requested plan was not found or you're not authorized. Starting new plan creation.`;
@@ -162,7 +164,7 @@ function PlannerPageContent() {
         }
         setCurrentStep(3);
       } catch (error) {
-        console.error(`Failed to fetch plan ${planIdFromQuery}:`, error);
+        console.error(`Failed to fetch plan ${idToFetch}:`, error);
         toast({ title: "Error Loading Plan", description: (error as Error).message, variant: "destructive" });
         setActivePlan(null);
         setPlannerFormInput({...initialPlannerData});
@@ -246,24 +248,24 @@ function PlannerPageContent() {
     const hours = searchParams.get('hours');
     const details = searchParams.get('details');
 
+    // Only process if subjects, duration, and hours are present
     if (subjects && duration && hours) {
-      setPlannerFormInput({
-        subjects,
-        studyDurationDays: parseInt(duration, 10) || 30,
-        dailyStudyHours: parseFloat(hours) || 3,
-        subjectDetails: details || '',
-        startDate: format(new Date(), 'yyyy-MM-dd'),
-      });
-      setSelectedCalendarDate(new Date());
-      setCurrentStep(1.5); // Move to verification step
-      // Clean URL after processing params
-      router.replace('/planner', { scroll: false }); 
+        setPlannerFormInput({
+            subjects,
+            studyDurationDays: parseInt(duration, 10) || 30,
+            dailyStudyHours: parseFloat(hours) || 3,
+            subjectDetails: details || '',
+            startDate: format(new Date(), 'yyyy-MM-dd'),
+        });
+        setSelectedCalendarDate(new Date());
+        setCurrentStep(1.5);
+        router.replace('/planner', { scroll: false });
     } else {
-      fetchUserPlans();
+        // If no params, just fetch existing plans
+        fetchUserPlans();
     }
-    // This effect should only run once on mount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, router]);
 
 
   // useEffect to detect if user is behind schedule
@@ -424,7 +426,7 @@ function PlannerPageContent() {
           }),
         }).catch(err => console.warn("Plan creation email failed to send:", err));
 
-        await fetchUserPlans(); 
+        await fetchUserPlans(planId); 
 
       } else {
         throw new Error("AI did not return a schedule.");
