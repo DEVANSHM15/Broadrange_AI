@@ -44,7 +44,7 @@ export const proposeStudyPlanParameters = ai.defineTool(
         1.  **Intent**: Determine if the user's intent is to create a study plan. If it's a clear "yes", set 'shouldCreatePlan' to true. For ambiguous queries or general questions, set it to false.
         2.  **Subjects**: Extract the subjects. If the user implies an order or priority (e.g., "my first exam is X"), assign priorities with lower numbers being higher priority, like "(1)".
         3.  **Daily Hours**: Extract the daily study hours. If not mentioned, default to 3.
-        4.  **Duration**: If the user gives a target date, calculate the 'studyDurationDays' from the 'currentDate'. If they just say "for 30 days," use that. If no duration is mentioned, default to 30.
+        4.  **Duration**: If the user gives a target date (e.g., 'August 28th'), calculate the number of days from the 'currentDate' to that target date and set 'studyDurationDays' to this integer value. If they just say "for 30 days," use that number. If no duration is mentioned at all, default to 30.
         5.  **Generate Syllabus**: For the 'subjectDetails' field, first summarize the user's request in one or two sentences. Then, on a new line, write "Syllabus:". Then, generate a brief, high-level list of essential topics or chapters for the extracted subjects, assuming the user has little prior knowledge. Format it as a simple string with newlines. For example: 'User wants a plan for DBMS, CN, DSA... First exam on Aug 28.\\nSyllabus:\\nDBMS: Intro to Databases, SQL Basics, Normalization (1NF, 2NF, 3NF).\\nComputer Networks: OSI Model, TCP/IP, DNS.\\nDSA: Big O Notation, Arrays, Linked Lists, Trees.'
         6.  **Output**: Return the results in the specified JSON format.
         `,
