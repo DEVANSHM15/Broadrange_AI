@@ -23,13 +23,13 @@ const PlanOutputSchema = z.object({
     percentage: z.number(),
     averageQuizScore: z.number().describe("The user's average score across all attempted quizzes for this plan."),
   }).optional(),
-  firstUncompletedTask: z.string().optional(),
+  firstUncompletedTask: z.string().optional().describe("A descriptive string for the next task on the user's plan."),
 });
 
 export const getCurrentStudyPlan = ai.defineTool(
   {
     name: 'getCurrentStudyPlan',
-    description: "Retrieves the user's current active study plan details, including subjects, duration, progress, and average quiz score. Use this if the user asks 'what is my current plan?', 'how am I doing?', 'what's my quiz score?', or similar questions about their ongoing schedule.",
+    description: "Retrieves the user's current active study plan details, including subjects, duration, progress, average quiz score, and the next upcoming task. Use this if the user asks 'what is my current plan?', 'how am I doing?', 'what's my quiz score?', or similar questions about their ongoing schedule.",
     inputSchema: z.object({ userId: z.string().describe("The ID of the user whose plan is being requested.") }),
     outputSchema: PlanOutputSchema,
   },

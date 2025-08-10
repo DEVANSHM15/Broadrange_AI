@@ -45,7 +45,7 @@ const BotAvatar = () => (
 );
 
 const initialMessageHTML = `
-    <p>Hello! I'm your study assistant. How can I help you use the app today? You can ask me about any feature, or use one of the quick actions to get started.</p>
+    <p>Hello! I'm your study assistant. Ask me "How am I doing?" for a progress update, or ask about any app feature. You can also use the quick actions to get started.</p>
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px;">
         <a href="/planner" style="display: block; text-decoration: none; color: inherit; padding: 12px; border-radius: 8px; text-align: center; font-weight: 500; background: hsl(var(--card)); border: 1px solid hsl(var(--border)); transition: all 0.2s ease; box-shadow: 0 2px 8px -1px hsla(var(--primary) / 0.1); will-change: transform;">AI Planner</a>
         <a href="/calendar" style="display: block; text-decoration: none; color: inherit; padding: 12px; border-radius: 8px; text-align: center; font-weight: 500; background: hsl(var(--card)); border: 1px solid hsl(var(--border)); transition: all 0.2s ease; box-shadow: 0 2px 8px -1px hsla(var(--primary) / 0.1); will-change: transform;">Calendar</a>
@@ -319,7 +319,7 @@ export default function MasterChatbotPage() {
               <Input
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
-                  placeholder="Ask how to use the app..."
+                  placeholder="Ask me 'How am I doing?' or for help with a feature..."
                   autoComplete="off"
                   disabled={isSending}
                   className="flex-grow"
