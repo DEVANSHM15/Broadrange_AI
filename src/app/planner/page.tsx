@@ -81,7 +81,6 @@ function PlannerPageContent() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const planIdFromQuery = searchParams.get('planId');
   
   const [currentStep, setCurrentStep] = useState(1); 
   const [plannerFormInput, setPlannerFormInput] = useState<PlanInput>({...initialPlannerData});
@@ -116,7 +115,7 @@ function PlannerPageContent() {
     }
     setIsLoadingPlans(true);
 
-    const idToFetch = planIdToLoad || planIdFromQuery;
+    const idToFetch = planIdToLoad;
 
     if (idToFetch) { 
       try {
@@ -239,7 +238,7 @@ function PlannerPageContent() {
         setIsLoadingPlans(false);
       }
     }
-  }, [currentUser?.id, toast, planIdFromQuery]); 
+  }, [currentUser?.id, toast]); 
 
   // Effect to process URL parameters on initial load
   useEffect(() => {
@@ -247,8 +246,9 @@ function PlannerPageContent() {
     const duration = searchParams.get('duration');
     const hours = searchParams.get('hours');
     const details = searchParams.get('details');
+    const planIdFromQuery = searchParams.get('planId');
 
-    // Only process if subjects, duration, and hours are present
+    // Only process if subjects, duration, and hours are present from the chatbot
     if (subjects && duration && hours) {
         setPlannerFormInput({
             subjects,
@@ -259,13 +259,15 @@ function PlannerPageContent() {
         });
         setSelectedCalendarDate(new Date());
         setCurrentStep(1.5);
+        setIsLoadingPlans(false);
+        // Clean URL after processing
         router.replace('/planner', { scroll: false });
     } else {
         // If no params, just fetch existing plans
-        fetchUserPlans();
+        fetchUserPlans(planIdFromQuery);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, router]);
+  }, []);
 
 
   // useEffect to detect if user is behind schedule
@@ -670,7 +672,7 @@ function PlannerPageContent() {
   };
 
 
-  if (isLoadingPlans && !activePlan && !planIdFromQuery) { 
+  if (isLoadingPlans) { 
     return (
       <AppLayout>
         <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
