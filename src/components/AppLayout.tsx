@@ -20,51 +20,50 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (isLoading) return; 
+    if (isLoading) return;
 
     if (!currentUser && !PUBLIC_PATHS.includes(pathname)) {
       router.replace('/login');
     }
   }, [currentUser, isLoading, router, pathname]);
 
-  if (isLoading) {
-    if (!PUBLIC_PATHS.includes(pathname)) {
-      return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-background text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-primary" />
-          <p className="mt-3 text-muted-foreground">Verifying your session...</p>
-        </div>
-      );
-    }
+  if (isLoading && !PUBLIC_PATHS.includes(pathname)) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
   }
 
+  // Allow public pages to render without redirecting
+  if (isPublicPage(pathname)) {
+    return (
+      <>
+        <AppHeader />
+        <main>{children}</main>
+      </>
+    );
+  }
+
+  // If loading is done and we are on a private page without a user,
+  // this will show briefly before the useEffect redirects.
   if (!currentUser) {
-    if (PUBLIC_PATHS.includes(pathname)) {
-      return (
-        <div className="flex flex-col flex-grow min-h-0">
-          <main className="flex-grow">{children}</main>
-        </div>
-      );
-    } else {
-      return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-background text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-primary" />
-          <p className="mt-3 text-muted-foreground">Redirecting to login...</p>
-        </div>
-      );
-    }
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
   }
 
-  // User IS Authenticated
-  const showAppHeader = !PUBLIC_PATHS.includes(pathname);
-
+  // User is logged in, show the full app layout
   return (
-    <div className="flex flex-col flex-grow min-h-0">
-      {showAppHeader && <AppHeader />}
-      <main className={`flex-grow ${showAppHeader ? 'pt-4 md:pt-6' : ''}`}>
-        {children}
-      </main>
-      {/* Chatbot UI Removed */}
+    <div className="flex flex-col min-h-screen">
+      <AppHeader />
+      <main className="flex-grow">{children}</main>
     </div>
   );
+}
+
+function isPublicPage(pathname: string): boolean {
+  return PUBLIC_PATHS.includes(pathname);
 }

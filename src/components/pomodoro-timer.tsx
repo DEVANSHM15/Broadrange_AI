@@ -9,7 +9,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -39,60 +38,29 @@ export function PomodoroTimerModal() {
   };
 
   useEffect(() => {
-    // This effect ensures timeLeft is correctly set to the full duration
-    // if the timer is NOT active and the configurations for the current mode 
-    // (activeFocusMinutes, activeBreakMinutes, or mode itself) change.
+    // Only reset the display time if the timer is NOT currently active.
+    // This allows pausing without resetting the time.
     if (!isActive) {
       if (mode === "focus") {
         setTimeLeft(activeFocusMinutes * 60);
-      } else { // mode === "break"
+      } else {
         setTimeLeft(activeBreakMinutes * 60);
       }
     }
-    // Note: This does NOT run when isActive changes from true to false (pausing),
-    // because isActive is not in the dependency array. Pausing preserves timeLeft.
-    // Explicit setTimeLeft calls in toggleTimer/resetTimer/handleNextSession handle other cases.
-  }, [activeFocusMinutes, activeBreakMinutes, mode]); // Intentionally keeping isActive out
-
-  const syncActiveDurationsFromInputs = useCallback(() => {
-    let focusUpdated = false;
-    let breakUpdated = false;
-
-    const newFocus = parseInt(inputFocusMinutes, 10);
-    if (!isNaN(newFocus) && newFocus >= 1 && newFocus <= 120) {
-      if (activeFocusMinutes !== newFocus) {
-        setActiveFocusMinutes(newFocus);
-        focusUpdated = true;
-      }
-    } else {
-      setInputFocusMinutes(String(activeFocusMinutes)); 
-    }
-    
-    const newBreak = parseInt(inputBreakMinutes, 10);
-    if (!isNaN(newBreak) && newBreak >= 1 && newBreak <= 60) {
-       if (activeBreakMinutes !== newBreak) {
-        setActiveBreakMinutes(newBreak);
-        breakUpdated = true;
-      }
-    } else {
-       setInputBreakMinutes(String(activeBreakMinutes)); 
-    }
-    return { focusUpdated, breakUpdated };
-  }, [inputFocusMinutes, inputBreakMinutes, activeFocusMinutes, activeBreakMinutes]);
+    // We intentionally exclude `isActive` from the dependency array to prevent this from running on pause.
+    // The purpose is to update timeLeft only when mode or durations change while paused.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeFocusMinutes, activeBreakMinutes, mode]);
 
 
   const handleNextSession = useCallback(() => {
     setIsActive(false); 
-    syncActiveDurationsFromInputs(); 
-    
     if (mode === "focus") {
       setMode("break");
-      // The useEffect [activeFocusMinutes, activeBreakMinutes, mode] will update timeLeft
     } else { 
       setMode("focus");
-      // The useEffect [activeFocusMinutes, activeBreakMinutes, mode] will update timeLeft
     }
-  }, [mode, syncActiveDurationsFromInputs]);
+  }, [mode]);
 
 
   useEffect(() => {
@@ -111,91 +79,59 @@ export function PomodoroTimerModal() {
 
 
   const toggleTimer = () => {
-    const { focusUpdated, breakUpdated } = syncActiveDurationsFromInputs();
-    
-    if (!isActive) { 
-      // If starting the timer and some input change was just synced
-      if (mode === 'focus' && focusUpdated) {
-        setTimeLeft(activeFocusMinutes * 60);
-      } else if (mode === 'break' && breakUpdated) {
-        setTimeLeft(activeBreakMinutes * 60);
-      } else if (timeLeft === 0) { // Or if starting from a completed session
-         if (mode === 'focus') {
-          setTimeLeft(activeFocusMinutes * 60);
-        } else {
-          setTimeLeft(activeBreakMinutes * 60);
-        }
-      }
-    }
     setIsActive(!isActive);
   };
 
   const resetTimer = () => {
-    setIsActive(false);
-    syncActiveDurationsFromInputs(); 
-    setMode("focus"); 
-    // The useEffect [activeFocusMinutes, activeBreakMinutes, mode] will set timeLeft
-    // because mode changes and isActive will be false.
+    setIsActive(false); // Stop the timer
+    setMode("focus"); // Always reset to focus mode
+
+    const newFocusMins = parseInt(inputFocusMinutes, 10);
+    const resetMinutes = (!isNaN(newFocusMins) && newFocusMins >= 1 && newFocusMins <= 120) 
+      ? newFocusMins 
+      : DEFAULT_WORK_MINUTES;
+
+    if (activeFocusMinutes !== resetMinutes) {
+      setActiveFocusMinutes(resetMinutes);
+    }
+    
+    // Directly set the timeLeft state to ensure the display updates correctly.
+    setTimeLeft(resetMinutes * 60);
   };
   
   const handleInputBlur = (inputType: 'focus' | 'break') => {
     if (inputType === 'focus') {
       const newFocusMins = parseInt(inputFocusMinutes, 10);
       if (!isNaN(newFocusMins) && newFocusMins >= 1 && newFocusMins <= 120) {
-        if (activeFocusMinutes !== newFocusMins) { // Only update if value actually changed
-          setActiveFocusMinutes(newFocusMins);
-          // If timer is not active and we are in focus mode, directly update timeLeft
-          if (!isActive && mode === 'focus') {
-            setTimeLeft(newFocusMins * 60);
-          }
-        }
+        setActiveFocusMinutes(newFocusMins);
       } else {
-        // Revert input to current active value if invalid
-        setInputFocusMinutes(String(activeFocusMinutes));
+        setInputFocusMinutes(String(activeFocusMinutes)); // Revert if invalid
       }
-    } else { // break
+    } else {
       const newBreakMins = parseInt(inputBreakMinutes, 10);
       if (!isNaN(newBreakMins) && newBreakMins >= 1 && newBreakMins <= 60) {
-        if (activeBreakMinutes !== newBreakMins) { // Only update if value actually changed
-          setActiveBreakMinutes(newBreakMins);
-          // If timer is not active and we are in break mode, directly update timeLeft
-          if (!isActive && mode === 'break') {
-            setTimeLeft(newBreakMins * 60);
-          }
-        }
+        setActiveBreakMinutes(newBreakMins);
       } else {
-        // Revert input to current active value if invalid
-        setInputBreakMinutes(String(activeBreakMinutes));
+        setInputBreakMinutes(String(activeBreakMinutes)); // Revert if invalid
       }
     }
   };
   
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
-    if (open) { 
-        setInputFocusMinutes(String(activeFocusMinutes));
-        setInputBreakMinutes(String(activeBreakMinutes));
-        if (!isActive) {
-            if (mode === 'focus') {
-                setTimeLeft(activeFocusMinutes * 60);
-            } else {
-                setTimeLeft(activeBreakMinutes * 60);
-            }
-        }
-    } else {
-      // Optionally pause timer when dialog closes, if it was active
-      // if (isActive) setIsActive(false);
+    if (!open) {
+      setIsActive(false); // Stop timer when closing modal
     }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button variant="outline">
+        <Button variant="default">
           <Timer className="mr-2 h-4 w-4"/> Pomodoro Timer
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-sm">
+      <DialogContent className="sm:max-w-sm bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-card to-card border-primary/20">
         <DialogHeader>
           <DialogTitle className="text-center text-xl">Pomodoro Timer</DialogTitle>
           <DialogDescription className="text-center">
@@ -253,4 +189,3 @@ export function PomodoroTimerModal() {
     </Dialog>
   );
 }
-

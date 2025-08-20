@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -8,13 +7,14 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAuth, type RegisterData } from "@/contexts/auth-context";
-import { Loader2, CheckCircle } from "lucide-react";
+import { Loader2, CheckCircle, BookOpen } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormField, FormItem, FormControl, FormMessage } from "@/components/ui/form"; 
+import { Form, FormField, FormItem, FormControl } from "@/components/ui/form"; 
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import Image from "next/image";
 
 const step3Schema = z.object({
   plannerBotEnabled: z.boolean().default(true),
@@ -93,13 +93,12 @@ export default function RegisterStep3Page() {
       if (result.success) {
         toast({
           title: "Registration Successful!",
-          description: "Welcome to Broadrange AI! Your study assistant is ready.",
+          description: "Welcome to CodeXStudy! Your study assistant is ready.",
           action: <CheckCircle className="text-green-500" />
         });
         sessionStorage.removeItem("registrationStep1Data");
         sessionStorage.removeItem("registrationStep2Data");
         sessionStorage.removeItem("registrationStep3Data");
-        // Router push to dashboard is handled by useEffect watching currentUser
       } else {
         toast({
           variant: "destructive",
@@ -138,81 +137,76 @@ export default function RegisterStep3Page() {
 
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
-      <div className="flex items-center gap-2 mb-8 text-2xl font-semibold text-primary">
-        <span className="flex items-center justify-center h-8 w-8 bg-primary text-primary-foreground rounded-full font-bold text-xl">B</span>
-        <span>Broadrange AI</span>
-      </div>
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="text-2xl text-center">AI Agent Setup</CardTitle>
-          <CardDescription className="text-center">
-            Step 3 of 3: Configure your Broadrange AI assistants.
-          </CardDescription>
-          <div className="flex justify-center gap-2 pt-2">
-            {[1,2,3].map(step => (
-              <div key={step} className={`h-2 w-8 rounded-full ${step === 3 ? 'bg-primary' : 'bg-primary/50'}`}></div>
-            ))}
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}> 
-            <form onSubmit={form.handleSubmit(onFinalSubmit)} className="space-y-6"> 
-              <div className="space-y-4">
-                {agentSettingsFields.map((agent) => (
-                  <FormField
-                    key={agent.name}
-                    control={form.control} 
-                    name={agent.name}
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                        <div className="space-y-0.5">
-                          <Label htmlFor={agent.name} className="text-base flex items-center gap-2">
-                             <span className="text-xl">{agent.emoji}</span> {agent.title}
-                          </Label>
-                          <p className="text-sm text-muted-foreground pl-7">{agent.desc}</p>
-                        </div>
-                        <FormControl>
-                          <Switch
-                            id={agent.name}
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                ))}
-              </div>
-              <div className="flex gap-4 pt-4">
-                 <Button 
-                  type="button" 
-                  variant="outline"
-                  className="w-full" 
-                  onClick={() => router.push('/register/step2')}
-                >
-                  Back
-                </Button>
-                <Button type="submit" className="w-full" disabled={isSubmittingForm || authLoading}>
-                  {isSubmittingForm || authLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" /> 
-                      Completing Setup...
-                    </>
-                  ) : (
-                    "Complete Setup"
-                  )}
-                </Button>
-              </div>
-            </form>
-          </Form>
-        </CardContent>
-         <CardFooter className="flex flex-col items-center text-sm">
-           <Link href="/" className="mt-4 text-primary hover:underline">
-            &larr; Back to Home
-          </Link>
-        </CardFooter>
-      </Card>
+    <div className="w-full min-h-screen flex items-center justify-center p-4 bg-muted/30">
+        <Card className="mx-auto max-w-md w-full">
+            <CardHeader className="text-center">
+                <Link href="/" className="flex justify-center items-center gap-2 text-2xl font-bold text-primary mb-2">
+                    <Image src="https://www.broadrange.ai/images/broadrange-logo.jpg" alt="Broadrange AI Logo" width={93} height={24} className="h-8 w-auto rounded-lg" />
+                    <span className="font-bold sm:inline-block">CodeXStudy</span>
+                </Link>
+                <CardTitle className="text-2xl">AI Agent Setup</CardTitle>
+                <CardDescription>
+                    Step 3 of 3: Configure your CodeXStudy assistants.
+                </CardDescription>
+                <div className="flex justify-center gap-2 pt-2">
+                    {[1,2,3].map(step => (
+                        <div key={step} className={`h-2 w-8 rounded-full ${step === 3 ? 'bg-primary' : 'bg-primary/50'}`}></div>
+                    ))}
+                </div>
+            </CardHeader>
+            <CardContent>
+                <Form {...form}> 
+                <form onSubmit={form.handleSubmit(onFinalSubmit)} className="space-y-6"> 
+                    <div className="space-y-4">
+                    {agentSettingsFields.map((agent) => (
+                        <FormField
+                        key={agent.name}
+                        control={form.control} 
+                        name={agent.name}
+                        render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                            <div className="space-y-0.5">
+                                <Label htmlFor={agent.name} className="text-base flex items-center gap-2">
+                                <span className="text-xl">{agent.emoji}</span> {agent.title}
+                                </Label>
+                                <p className="text-sm text-muted-foreground pl-7">{agent.desc}</p>
+                            </div>
+                            <FormControl>
+                                <Switch
+                                id={agent.name}
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                                />
+                            </FormControl>
+                            </FormItem>
+                        )}
+                        />
+                    ))}
+                    </div>
+                    <div className="flex gap-4 pt-4">
+                    <Button 
+                        type="button" 
+                        variant="outline"
+                        className="w-full" 
+                        onClick={() => router.push('/register/step2')}
+                    >
+                        Back
+                    </Button>
+                    <Button type="submit" className="w-full" disabled={isSubmittingForm || authLoading}>
+                        {isSubmittingForm || authLoading ? (
+                        <>
+                            <Loader2 className="mr-2 h-5 w-5 animate-spin" /> 
+                            Completing Setup...
+                        </>
+                        ) : (
+                        "Complete Setup"
+                        )}
+                    </Button>
+                    </div>
+                </form>
+                </Form>
+            </CardContent>
+        </Card>
     </div>
   );
 }

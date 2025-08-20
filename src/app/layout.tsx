@@ -9,8 +9,8 @@ import { Inter } from 'next/font/google';
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
 export const metadata: Metadata = {
-  title: 'Broadrange AI Study Planner', 
-  description: 'AI-Powered Study Planning Assistant by Broadrange AI',
+  title: 'CodeXStudy', 
+  description: 'AI-Powered Study Planning Assistant',
 };
 
 export default function RootLayout({
@@ -21,8 +21,8 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className={inter.variable}>
       <head>
-        {/* Updated favicon to 'B' for Broadrange */}
-        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>B</text></svg>" />
+        {/* Updated favicon to 'C' for CodeXStudy */}
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>C</text></svg>" />
       </head>
       <body className="antialiased flex flex-col min-h-screen bg-background font-sans" suppressHydrationWarning>
         <AppProviders>

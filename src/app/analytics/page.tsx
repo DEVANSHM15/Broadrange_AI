@@ -65,6 +65,7 @@ function AnalyticsPageContent() {
   const [isLoadingPlan, setIsLoadingPlan] = useState(true);
   const [planReflection, setPlanReflection] = useState<GeneratePlanReflectionOutput | null>(null);
   const [isGeneratingReflection, setIsGeneratingReflection] = useState(false);
+  const [reflectionError, setReflectionError] = useState<string | null>(null);
   const [heatmapDisplayMonth, setHeatmapDisplayMonth] = useState<Date>(startOfMonth(new Date()));
 
   const reloadDataForAnalytics = useCallback(async (targetPlanId?: string) => {
@@ -143,6 +144,8 @@ function AnalyticsPageContent() {
       }
       
       setCurrentStudyPlanForAnalytics(planToAnalyze);
+      setPlanReflection(null);
+      setReflectionError(null);
 
     } catch (error) {
       console.error("Analytics: Failed to fetch or process plans:", error);
@@ -190,16 +193,14 @@ function AnalyticsPageContent() {
     return () => window.removeEventListener('studyPlanUpdated', handleStudyPlanUpdate);
   }, [reloadDataForAnalytics]);
 
- const fetchPlanReflection = useCallback(async (planToReflect: ScheduleData, forceRefetch: boolean = false) => {
-    if (!planToReflect.planDetails || !planToReflect.tasks || planToReflect.tasks.length === 0) {
+ const fetchPlanReflection = useCallback(async (planToReflect: ScheduleData) => {
+    if (!planToReflect.planDetails || !planToReflect.tasks || planToReflect.tasks.length === 0 || !currentUser?.id) {
         return;
     }
-    // Guard against re-entry is now primarily handled by the calling useEffect.
     
     setIsGeneratingReflection(true);
-    if (forceRefetch) {
-        setPlanReflection(null);
-    }
+    setPlanReflection(null);
+    setReflectionError(null);
     
     try {
       const input: GeneratePlanReflectionInput = {
@@ -208,46 +209,53 @@ function AnalyticsPageContent() {
         completionDate: planToReflect.completionDate,
       };
       const reflection = await generatePlanReflection(input);
-      setPlanReflection(reflection);
-    } catch (error) {
-      console.error("Failed to generate plan reflection for analytics:", error);
-      let detailMessage = "An AI processing error occurred. Please try again later.";
-      if (error instanceof Error) {
-        const errorMessageLower = error.message.toLowerCase();
-        if (errorMessageLower.includes("429") || errorMessageLower.includes("quota") || errorMessageLower.includes("rate limit")) {
-          detailMessage = "AI Reflection Error: API rate limit or quota exceeded. Please check your API plan or try again later.";
-        } else if (error.message.includes("AI failed to generate a reflection") || error.message.includes("Output was null")) {
-          detailMessage = "The AI couldn't structure its response for reflection. This can sometimes happen. You might try again or check the plan data.";
-        } else if (error.message.includes("Plan details and tasks are required")) {
-          detailMessage = "Missing necessary plan data to generate the reflection.";
-        } else if (errorMessageLower.includes("schema validation failed") || errorMessageLower.includes("parse errors")) {
-           detailMessage = `Data sent to AI for reflection was not in the expected format. Details: ${error.message.substring(0,200)}`;
-        } else if (error.message.length < 150) {
-          detailMessage = error.message;
-        }
-      }
-      toast({
-          title: "Reflection Generation Error",
-          description: detailMessage,
-          variant: "destructive"
+      
+      // Save the generated reflection back to the DB
+      const updatedPlan = { ...planToReflect, reflection: reflection };
+      const saveResponse = await fetch(`/api/plans/${planToReflect.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: currentUser.id, planData: updatedPlan }),
       });
+
+      if (!saveResponse.ok) {
+          throw new Error("Failed to save the generated reflection to the database.");
+      }
+
+      setPlanReflection(reflection);
+      setCurrentStudyPlanForAnalytics(updatedPlan); // Update local state with the reflection
+      window.dispatchEvent(new CustomEvent('studyPlanUpdated')); // Notify other components
+
+    } catch (error) {
+      console.error("Failed to generate or save plan reflection for analytics:", error);
+      const detailMessage = error instanceof Error ? error.message : "An unknown error occurred during reflection generation.";
+      setReflectionError(detailMessage);
       setPlanReflection(null); // Clear reflection on error
     } finally {
       setIsGeneratingReflection(false);
     }
-  }, [toast]); // Removed isGeneratingReflection from dependencies
+  }, [currentUser?.id]);
 
   useEffect(() => {
     if (currentStudyPlanForAnalytics && currentStudyPlanForAnalytics.status === 'completed') {
-      // Only fetch if not already generating AND reflection is not already loaded
-      if (!isGeneratingReflection && planReflection === null) {
-        fetchPlanReflection(currentStudyPlanForAnalytics, false);
+      if (currentStudyPlanForAnalytics.reflection) {
+        // If reflection already exists in the loaded plan, just display it.
+        setPlanReflection(currentStudyPlanForAnalytics.reflection);
+      } else {
+        // If it doesn't exist, generate it (backfill for older plans).
+        if (!isGeneratingReflection && !reflectionError) {
+          fetchPlanReflection(currentStudyPlanForAnalytics);
+        }
       }
-    } else if (planReflection !== null) {
-      // If the current plan is not 'completed' but we have a reflection, clear it.
-      setPlanReflection(null);
+    } else {
+      // Clear reflection if the plan is not completed
+      if (planReflection !== null || reflectionError !== null) {
+        setPlanReflection(null);
+        setReflectionError(null);
+      }
     }
-  }, [currentStudyPlanForAnalytics, fetchPlanReflection, isGeneratingReflection, planReflection]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentStudyPlanForAnalytics]);
 
 
   const performanceData = useMemo(() => {
@@ -628,7 +636,14 @@ function AnalyticsPageContent() {
                     <div className="flex flex-col items-center justify-center p-8 min-h-[200px] bg-muted/30 rounded-lg">
                       <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
                       <p className="text-muted-foreground text-lg">ReflectionAI is thinking...</p>
+                      <p className="text-xs text-muted-foreground">(Generating reflection for the first time)</p>
                     </div>
+                  ) : reflectionError ? (
+                    <Alert variant="destructive" className="min-h-[200px] flex flex-col justify-center items-center text-center bg-destructive/10">
+                      <AlertCircleIcon className="h-8 w-8 mb-3" />
+                      <AlertTitle className="text-lg">Reflection Error</AlertTitle>
+                      <AlertDescription className="mt-1">{reflectionError}</AlertDescription>
+                    </Alert>
                   ) : planReflection ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <Card className="bg-background/50 shadow-sm hover:shadow-md transition-shadow">
@@ -661,11 +676,11 @@ function AnalyticsPageContent() {
                       </Card>
                     </div>
                   ) : (
-                    <Alert variant="destructive" className="min-h-[200px] flex flex-col justify-center items-center text-center bg-destructive/10">
+                    <Alert variant="default" className="min-h-[200px] flex flex-col justify-center items-center text-center bg-muted/20">
                       <AlertCircleIcon className="h-8 w-8 mb-3" />
                       <AlertTitle className="text-lg">Reflection Not Available</AlertTitle>
                       <AlertDescription className="mt-1">
-                          We couldn't generate a reflection for this completed plan. This might be due to insufficient task data or an AI processing error.
+                          We couldn't generate a reflection for this completed plan. This might be due to a temporary AI processing error.
                       </AlertDescription>
                     </Alert>
                   )
@@ -710,3 +725,4 @@ export default function AnalyticsPage() {
   );
 }
 
+    

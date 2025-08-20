@@ -4,79 +4,79 @@
 
 @layer base {
   :root {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    --background: 8 8% 10%; /* Very dark, almost black with a hint of warmth */
+    --foreground: 240 5% 96%; /* Off-white */
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 240 4% 14%; /* Slightly lighter dark for cards */
+    --card-foreground: 240 5% 96%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 8 8% 8%;
+    --popover-foreground: 240 5% 96%;
 
-    --primary: 217.2 91.2% 59.8%; /* Blue primary */
-    --primary-foreground: 210 40% 98%;
+    --primary: 262 88% 66%; /* Vibrant Purple */
+    --primary-foreground: 240 5% 98%; /* White text on purple buttons */
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 240 4% 18%;
+    --secondary-foreground: 240 5% 98%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 240 4% 18%;
+    --muted-foreground: 240 4% 65%;
 
-    --accent: 217.2 91.2% 59.8%; /* Blue accent */
-    --accent-foreground: 210 40% 98%;
+    --accent: 240 4% 22%;
+    --accent-foreground: 240 5% 98%;
 
     --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%; /* Adjusted for blue primary */
+    --border: 240 4% 22%; /* Subtle border */
+    --input: 240 4% 16%;
+    --ring: 262 88% 70%; /* Ring color is a lighter purple */
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
     /* Chart colors */
-    --chart-1: 217.2 91.2% 59.8%; /* Primary blue */
-    --chart-2: 172.8 80% 40%;    /* Teal/Green */
-    --chart-3: 48 90% 50%;       /* Yellow/Orange */
-    --chart-4: 0 70% 60%;        /* Red */
-    --chart-5: 280 70% 60%;      /* Purple */
+    --chart-1: 262 88% 66%;
+    --chart-2: 172.8 80% 40%;
+    --chart-3: 0 70% 60%;
+    --chart-4: 210 90% 55%;
+    --chart-5: 280 80% 65%;
   }
 
   .light {
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --foreground: 240 10% 3.9%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 240 10% 3.9%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 240 10% 3.9%;
 
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 262 80% 55%; /* Vibrant Purple */
+    --primary-foreground: 240 10% 99%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
 
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 217.2 91.2% 59.8%; /* Adjusted for blue primary */
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 262 80% 55%;
     
     /* Chart colors for light theme */
-    --chart-1: 217.2 91.2% 59.8%;
+    --chart-1: 262 80% 55%;
     --chart-2: 172.8 80% 40%;
-    --chart-3: 48 90% 50%;
-    --chart-4: 0 70% 60%;
-    --chart-5: 280 70% 60%;
+    --chart-3: 0 70% 60%;
+    --chart-4: 210 90% 55%;
+    --chart-5: 280 80% 65%;
   }
 }
 
@@ -87,5 +87,14 @@
   body {
     @apply bg-background text-foreground;
     min-height: 100vh;
+  }
+}
+
+@layer utilities {
+  .glowing-btn {
+    @apply shadow-lg shadow-primary/20 transition-all duration-300;
+  }
+  .glowing-btn:hover {
+    @apply shadow-2xl shadow-primary/30;
   }
 }

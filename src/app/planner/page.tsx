@@ -8,11 +8,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from "@/components/ui/label";
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, CheckCircle, Trash2, Edit3, CalendarIcon as CalendarDaysIcon, Search, ChevronLeft, ChevronRight, ListTree, FileQuestion, PlusCircle, Info, FileText, AlertCircle } from 'lucide-react';
+import { Loader2, CheckCircle, Trash2, Edit3, CalendarIcon as CalendarDaysIcon, Search, ChevronLeft, ChevronRight, ListTree, FileQuestion, PlusCircle, Info, FileText, AlertCircle, ArrowRight } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { generateStudySchedule, type GenerateStudyScheduleInput, type GenerateStudyScheduleOutput } from "@/ai/flows/generate-study-schedule";
 import type { PlanInput, ScheduleData, ScheduleTask, ParsedRawScheduleItem, SubTask } from "@/types";
 import { type AdaptiveRePlanningOutput } from "@/ai/flows/adaptive-re-planning";
+import { generatePlanReflection, type GeneratePlanReflectionInput, type GeneratePlanReflectionOutput } from "@/ai/flows/generate-plan-reflection";
 import { useAuth } from '@/contexts/auth-context';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -29,14 +30,15 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as ShadCalendar } from "@/components/ui/calendar";
 import { Checkbox } from "@/components/ui/checkbox";
-import { format, parseISO, addDays, subDays, startOfWeek, endOfWeek, isSameMonth, addMonths, subMonths, isValid, differenceInDays } from 'date-fns';
+import { format, parseISO, addDays, subDays, startOfWeek, endOfWeek, isSameMonth, addMonths, subMonths, isValid, differenceInDays, startOfDay } from 'date-fns';
 import { cn } from "@/lib/utils";
 import { TaskBreakdownModal } from '@/components/task-breakdown-modal';
 import { AdaptiveReplanModal } from '@/components/adaptive-replan-modal';
 import { LogScorePopover } from '@/components/log-score-popover';
 import { QuizModal } from '@/components/quiz-modal';
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { useSearchParams } from 'next/navigation'; 
+import { useSearchParams, useRouter } from 'next/navigation'; 
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 function parseTasksFromString(scheduleString: string, planId: string): ScheduleTask[] {
   try {
@@ -74,11 +76,11 @@ const initialPlannerData: PlanInput = {
   startDate: format(new Date(), 'yyyy-MM-dd'), 
 };
 
-export default function PlannerPage() {
+function PlannerPageContent() {
   const { currentUser } = useAuth();
   const { toast } = useToast();
   const searchParams = useSearchParams();
-  const planIdFromQuery = searchParams.get('planId');
+  const router = useRouter();
   
   const [currentStep, setCurrentStep] = useState(1); 
   const [plannerFormInput, setPlannerFormInput] = useState<PlanInput>({...initialPlannerData});
@@ -103,8 +105,7 @@ export default function PlannerPage() {
   const [showReplanSuggestion, setShowReplanSuggestion] = useState(false);
   const [daysBehind, setDaysBehind] = useState(0);
 
-
-  const fetchUserPlans = useCallback(async () => {
+  const fetchUserPlans = useCallback(async (planIdToLoad?: string | null) => {
     if (!currentUser?.id) {
       setAllUserPlans([]);
       setActivePlan(null);
@@ -114,12 +115,14 @@ export default function PlannerPage() {
     }
     setIsLoadingPlans(true);
 
-    if (planIdFromQuery) { 
+    const idToFetch = planIdToLoad;
+
+    if (idToFetch) { 
       try {
-        const response = await fetch(`/api/plans/${planIdFromQuery}?userId=${currentUser.id}`);
+        const response = await fetch(`/api/plans/${idToFetch}?userId=${currentUser.id}`);
         if (!response.ok) {
           let errorTitle = "Error Loading Plan";
-          let errorDesc = `Failed to fetch plan ${planIdFromQuery}. Server responded with status: ${response.status}.`;
+          let errorDesc = `Failed to fetch plan ${idToFetch}. Server responded with status: ${response.status}.`;
            if (response.status === 404) {
              errorTitle = "Plan Not Found";
              errorDesc = `The requested plan was not found or you're not authorized. Starting new plan creation.`;
@@ -160,7 +163,7 @@ export default function PlannerPage() {
         }
         setCurrentStep(3);
       } catch (error) {
-        console.error(`Failed to fetch plan ${planIdFromQuery}:`, error);
+        console.error(`Failed to fetch plan ${idToFetch}:`, error);
         toast({ title: "Error Loading Plan", description: (error as Error).message, variant: "destructive" });
         setActivePlan(null);
         setPlannerFormInput({...initialPlannerData});
@@ -235,11 +238,37 @@ export default function PlannerPage() {
         setIsLoadingPlans(false);
       }
     }
-  }, [currentUser, toast, planIdFromQuery]); 
+  }, [currentUser?.id, toast]); 
 
+  // Effect to process URL parameters on initial load
   useEffect(() => {
-    fetchUserPlans();
-  }, [fetchUserPlans]);
+    const subjects = searchParams.get('subjects');
+    const duration = searchParams.get('duration');
+    const hours = searchParams.get('hours');
+    const details = searchParams.get('details');
+    const planIdFromQuery = searchParams.get('planId');
+
+    // Only process if subjects, duration, and hours are present from the chatbot
+    if (subjects && duration && hours) {
+        setPlannerFormInput({
+            subjects,
+            studyDurationDays: parseInt(duration, 10) || 30,
+            dailyStudyHours: parseFloat(hours) || 3,
+            subjectDetails: details || '',
+            startDate: format(new Date(), 'yyyy-MM-dd'),
+        });
+        setSelectedCalendarDate(new Date());
+        setCurrentStep(1.5);
+        setIsLoadingPlans(false);
+        // Clean URL after processing
+        router.replace('/planner', { scroll: false });
+    } else {
+        // If no params, just fetch existing plans
+        fetchUserPlans(planIdFromQuery);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
 
   // useEffect to detect if user is behind schedule
   useEffect(() => {
@@ -344,8 +373,8 @@ export default function PlannerPage() {
   };
 
   const startAnalysisAndGeneratePlan = async () => {
-    if (!currentUser?.id) {
-      toast({ title: "User not authenticated", variant: "destructive" });
+    if (!currentUser?.id || !currentUser.name || !currentUser.email) {
+      toast({ title: "User not authenticated or missing details", variant: "destructive" });
       return;
     }
     const validationResult = validateInputs();
@@ -387,7 +416,19 @@ export default function PlannerPage() {
         }
         
         toast({ title: "Study Plan Generated!", description: "Your new study plan is ready.", variant: "default", action: <CheckCircle className="text-green-500"/> });
-        await fetchUserPlans(); 
+        
+        // Send email notification
+        fetch('/api/send-plan-creation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: currentUser.email,
+            name: currentUser.name,
+            planDetails: newPlanData.planDetails
+          }),
+        }).catch(err => console.warn("Plan creation email failed to send:", err));
+
+        await fetchUserPlans(planId); 
 
       } else {
         throw new Error("AI did not return a schedule.");
@@ -529,22 +570,50 @@ export default function PlannerPage() {
   };
 
   const handleMarkPlanAsCompleted = async () => {
-    if (activePlan && currentUser?.id) {
-      const now = new Date().toISOString();
-      const completedPlan: ScheduleData = {
-        ...activePlan,
-        status: 'completed',
-        completionDate: now,
-        updatedAt: now,
+    if (!activePlan || !currentUser?.id || !currentUser.email || !currentUser.name) return;
+    
+    setIsAnalyzing(true);
+    let generatedReflection: GeneratePlanReflectionOutput | undefined;
+    try {
+      // Step 1: Generate reflection
+      const reflectionInput: GeneratePlanReflectionInput = {
+        planDetails: activePlan.planDetails,
+        tasks: activePlan.tasks,
+        completionDate: new Date().toISOString(),
       };
-      setActivePlan(completedPlan); 
-      const success = await saveActivePlanChanges(completedPlan);
-      if (success) {
-        toast({ title: "Plan Marked as Completed!", description: "Congratulations!", variant: "default" });
-      } else {
-        fetchUserPlans(); 
-      }
+      generatedReflection = await generatePlanReflection(reflectionInput);
+    } catch (error) {
+      console.error("Failed to generate plan reflection:", error);
+      toast({ title: "Reflection Failed", description: "Could not generate AI reflection, but marking plan as complete anyway.", variant: "destructive" });
     }
+
+    // Step 2: Update plan status and save reflection
+    const now = new Date().toISOString();
+    const completedPlan: ScheduleData = {
+      ...activePlan,
+      status: 'completed',
+      completionDate: now,
+      updatedAt: now,
+      reflection: generatedReflection,
+    };
+    
+    const success = await saveActivePlanChanges(completedPlan);
+
+    if (success) {
+      toast({ title: "Plan Marked as Completed!", description: "Congratulations!", variant: "default" });
+      fetch('/api/send-plan-completion', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+              email: currentUser.email,
+              name: currentUser.name,
+              planDetails: completedPlan.planDetails
+          }),
+      }).catch(err => console.warn("Plan completion email failed to send:", err));
+    } else {
+      fetchUserPlans(); // Re-fetch to revert UI state on failure
+    }
+    setIsAnalyzing(false);
   };
   
   const getTasksForDate = (date: Date | undefined): ScheduleTask[] => {
@@ -603,7 +672,7 @@ export default function PlannerPage() {
   };
 
 
-  if (isLoadingPlans && !activePlan && !planIdFromQuery) { 
+  if (isLoadingPlans) { 
     return (
       <AppLayout>
         <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
@@ -638,9 +707,9 @@ export default function PlannerPage() {
               </Popover>
             </div>
             <div className="space-y-1">
-              <Label htmlFor="subjectDetails">Subject Details (Optional)</Label>
+              <Label htmlFor="subjectDetails">Subject Details & Syllabus (Optional)</Label>
               <Textarea id="subjectDetails" placeholder="e.g., Math: Algebra Ch 1-3. Physics: Kinematics." value={plannerFormInput.subjectDetails || ""} onChange={handleInputChange} rows={3} />
-               <p className="text-xs text-muted-foreground">Specific topics for detailed planning.</p>
+               <p className="text-xs text-muted-foreground">Specific topics for detailed planning. AI can also generate this for you via chat.</p>
             </div>
             <div className="space-y-1">
               <Label htmlFor="studyDurationDays">Study Duration (Days)</Label>
@@ -674,6 +743,37 @@ export default function PlannerPage() {
                 </Button>
             )}
           </>
+        );
+      case 1.5: // Verification step
+        return (
+          <div className="space-y-4 text-left">
+            <h3 className="text-xl font-semibold text-center">Verify Your Plan Details</h3>
+            <p className="text-muted-foreground text-center text-sm">
+                The AI assistant has prepared these details from your chat. Please review them before creating the plan.
+            </p>
+            <div className="p-4 border rounded-lg bg-muted/30 space-y-2">
+                <p><strong>Subjects & Priority:</strong> {plannerFormInput.subjects}</p>
+                <p><strong>Start Date:</strong> {plannerFormInput.startDate ? format(parseISO(plannerFormInput.startDate), 'PPP') : 'N/A'}</p>
+                <p><strong>Study Duration:</strong> {plannerFormInput.studyDurationDays} days</p>
+                <p><strong>Daily Study Hours:</strong> {plannerFormInput.dailyStudyHours}</p>
+                {plannerFormInput.subjectDetails && (
+                  <div>
+                    <p><strong>Subject Details & Syllabus:</strong></p>
+                    <div className="mt-1 p-2 border rounded-md bg-background/50 text-sm max-h-48 overflow-y-auto">
+                        <pre className="whitespace-pre-wrap font-sans">{plannerFormInput.subjectDetails}</pre>
+                    </div>
+                  </div>
+                )}
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2 pt-2">
+              <Button onClick={() => { setPlannerFormInput({...initialPlannerData}); setCurrentStep(1); }} className="w-full sm:w-auto" variant="outline">
+                Cancel
+              </Button>
+              <Button onClick={() => setCurrentStep(1)} className="w-full sm:flex-grow">
+                Continue & Finalize
+              </Button>
+            </div>
+          </div>
         );
       case 2:
         return (
@@ -749,7 +849,7 @@ export default function PlannerPage() {
                         const tasksOnDay = getTasksForDate(date);
                         const isSel = activeModifiers.selected; const isToday = activeModifiers.today;
                         const isCurrMonth = isValid(date) && isValid(calendarDisplayMonth) && isSameMonth(date, calendarDisplayMonth);
-                        return (<div className={`relative h-full w-full flex flex-col items-center justify-center ${!isCurrMonth ? 'text-muted-foreground/50' : ''}`}>
+                        return (<div className={cn('relative h-full w-full flex flex-col items-center justify-center', !isCurrMonth ? 'text-muted-foreground/50' : '')}>
                             <span>{isValid(date) ? format(date, "d") : "X"}</span>
                             {tasksOnDay.length > 0 && (<div className={`absolute bottom-1 left-1/2 -translate-x-1/2 h-1.5 w-1.5 rounded-full ${isSel || isToday ? 'bg-primary-foreground dark:bg-primary' : 'bg-primary dark:bg-primary-foreground'}`}></div>)}
                           </div>);
@@ -759,8 +859,12 @@ export default function PlannerPage() {
                 <div className="flex-grow bg-card p-4 rounded-lg shadow min-h-[400px]">
                   {calendarSelectedDateForDisplay && isValid(calendarSelectedDateForDisplay) ? (<>
                           <h3 className="text-xl font-semibold mb-1">{format(calendarSelectedDateForDisplay, 'EEEE, MMMM d, yyyy')}</h3>
-                          <p className="text-sm text-muted-foreground mb-4">Day {activePlan.tasks.findIndex(t => { try { return format(parseISO(t.date), 'yyyy-MM-dd') === format(calendarSelectedDateForDisplay, 'yyyy-MM-dd'); } catch { return false; } }) + 1} of {activePlan.planDetails.studyDurationDays}
-                              {activePlan.status === 'completed' ? <span className="ml-2 text-green-600 font-semibold">(Completed)</span> : activePlan.status === 'archived' ? <span className="ml-2 text-gray-500 font-semibold">(Archived)</span> : ''}</p>
+                           <p className="text-sm text-muted-foreground mb-4">
+                                {activePlan.planDetails.startDate && isValid(parseISO(activePlan.planDetails.startDate))
+                                    ? `Day ${differenceInDays(startOfDay(calendarSelectedDateForDisplay), startOfDay(parseISO(activePlan.planDetails.startDate))) + 1} of ${activePlan.planDetails.studyDurationDays}`
+                                    : 'Review your plan'}
+                                {activePlan.status === 'completed' ? <span className="ml-2 text-green-600 font-semibold">(Completed)</span> : activePlan.status === 'archived' ? <span className="ml-2 text-gray-500 font-semibold">(Archived)</span> : ''}
+                            </p>
                           {tasksForSelectedDate.length > 0 ? (<ScrollArea className="h-[calc(100%-100px)] pr-3">{/* Adjust height as needed */}
                               <ul className="space-y-3">{tasksForSelectedDate.map(task => (<li key={`cal-task-${task.id}`} className={`flex items-start gap-3 text-sm p-3 rounded-md transition-all shadow-sm ${task.completed ? 'bg-green-500/10 line-through text-muted-foreground' : 'bg-background hover:bg-accent/30'}`}>
                                   <Checkbox id={`task-cal-${task.id}`} checked={task.completed} onCheckedChange={() => handleCalendarTaskToggle(task.id)} aria-labelledby={`task-cal-label-${task.id}`} disabled={activePlan?.status === 'completed' || activePlan?.status === 'archived'} className="mt-1"/>
@@ -807,12 +911,17 @@ export default function PlannerPage() {
     }
   };
 
-  const stepTitles = ["Define Your Plan", "AI Analyzing", "Your Study Plan & Calendar"];
+  const stepTitles = ["Define Your Plan", "Verify Plan Details", "AI Analyzing", "Your Study Plan & Calendar"];
   const stepDescriptions = [
     "Tell us what you want to study, your timeline, and commitment.",
+    "The AI has generated a draft syllabus. Confirm the details before creating the plan.",
     "Our AI is crafting your optimal schedule.",
     activePlan?.status === 'completed' ? "This plan is completed. Review it or create a new one." : activePlan?.status === 'archived' ? "This plan is archived. Review it or create a new one." : "Review and manage your AI-generated study plan."
   ];
+  
+  const currentTitle = currentStep === 1.5 ? stepTitles[1] : stepTitles[Math.ceil(currentStep) - 1];
+  const currentDescription = currentStep === 1.5 ? stepDescriptions[1] : stepDescriptions[Math.ceil(currentStep) - 1];
+
 
   const completedTasksCount = activePlan?.tasks.filter(task => task.completed).length || 0;
   const totalTasksCount = activePlan?.tasks.length || 0;
@@ -824,8 +933,8 @@ export default function PlannerPage() {
       <div className="container mx-auto py-6 px-4 md:px-6">
         <Card className="w-full max-w-5xl mx-auto">
           <CardHeader>
-            <CardTitle className="text-2xl text-center">{stepTitles[currentStep - 1]}</CardTitle>
-            <CardDescription className="text-center">{stepDescriptions[currentStep - 1]}</CardDescription>
+            <CardTitle className="text-2xl text-center">{currentTitle}</CardTitle>
+            <CardDescription className="text-center">{currentDescription}</CardDescription>
              {(currentStep === 1 || currentStep === 3) && (
                 <div className="flex justify-center gap-2 pt-3">
                 {[1,3].map(stepIndicator => (
@@ -854,8 +963,9 @@ export default function PlannerPage() {
                         onReplanSuccess={handleReplanSuccess}
                     />)}
                  {canFinishPlan && (
-                    <Button onClick={handleMarkPlanAsCompleted} variant="default" className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white">
-                    <CheckCircle className="mr-2 h-4 w-4" /> Mark Completed
+                    <Button onClick={handleMarkPlanAsCompleted} variant="default" className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white" disabled={isAnalyzing}>
+                      {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <CheckCircle className="mr-2 h-4 w-4" />}
+                      Mark Completed
                     </Button>)}
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
@@ -878,6 +988,17 @@ export default function PlannerPage() {
   );
 }
 
-const ScrollArea = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className, children, ...props }, ref) => (
-  <div ref={ref} className={cn("relative overflow-y-auto", className)} {...props}>{children}</div>));
-ScrollArea.displayName = "ScrollArea";
+
+export default function PlannerPage() {
+    return (
+        <React.Suspense fallback={
+            <AppLayout>
+                <div className="flex items-center justify-center min-h-[calc(100vh-100px)]">
+                    <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                </div>
+            </AppLayout>
+        }>
+            <PlannerPageContent />
+        </React.Suspense>
+    );
+}

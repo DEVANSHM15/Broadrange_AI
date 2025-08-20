@@ -1,9 +1,12 @@
 import {genkit} from 'genkit';
 import {googleAI} from '@genkit-ai/googleai';
+import {config} from 'dotenv';
+config();
 
 export const ai = genkit({
   plugins: [
-    googleAI(), // Use GoogleAI plugin exclusively
+    googleAI({apiKey: process.env.GEMINI_API_KEY}), // Use the specific GEMINI_API_KEY
   ],
-  model: 'googleai/gemini-2.0-flash', // Set default model to gemini-2.0-flash
+  // The 'model' option is not valid here in Genkit 1.x and has been removed.
+  // Models should be specified directly in the 'ai.generate' or 'prompt' calls.
 });

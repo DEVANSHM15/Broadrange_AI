@@ -59,6 +59,8 @@ export async function getDb(): Promise<Database> {
       startDate TEXT,
       status TEXT NOT NULL DEFAULT 'active', -- 'active', 'completed', 'archived'
       completionDate TEXT,
+      lastReminderSent TEXT, -- Date 'YYYY-MM-DD' of the last reminder sent
+      reflection_json TEXT, -- To store the cached AI reflection
       FOREIGN KEY (userId) REFERENCES users (id) ON DELETE CASCADE
     );
 
@@ -72,7 +74,7 @@ export async function getDb(): Promise<Database> {
       referenceSearchQuery TEXT,
       quizScore INTEGER,
       quizAttempted BOOLEAN DEFAULT FALSE,
-      -- 'notes' column might be missing if table was created before this field was added to the CREATE statement
+      notes TEXT,
       FOREIGN KEY (planId) REFERENCES study_plans (id) ON DELETE CASCADE
     );
 
@@ -83,25 +85,56 @@ export async function getDb(): Promise<Database> {
         completed BOOLEAN NOT NULL DEFAULT FALSE,
         FOREIGN KEY (taskId) REFERENCES schedule_tasks (id) ON DELETE CASCADE
     );
+
+    CREATE TABLE IF NOT EXISTS chats (
+        id TEXT PRIMARY KEY,
+        userId INTEGER NOT NULL,
+        title TEXT NOT NULL,
+        createdAt TEXT NOT NULL,
+        updatedAt TEXT NOT NULL,
+        FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS chat_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        chatId TEXT NOT NULL,
+        role TEXT NOT NULL, -- 'user' or 'bot'
+        content TEXT NOT NULL,
+        isHtml BOOLEAN DEFAULT FALSE,
+        createdAt TEXT NOT NULL,
+        FOREIGN KEY (chatId) REFERENCES chats(id) ON DELETE CASCADE
+    );
   `);
   
-  // Schema migration check for 'notes' column in 'schedule_tasks'
+  // Schema migration checks
   try {
     const scheduleTasksInfo = await db.all("PRAGMA table_info(schedule_tasks);");
     const notesColumnExists = scheduleTasksInfo.some(col => col.name === 'notes');
-
     if (!notesColumnExists) {
       console.log("Attempting to add 'notes' column to 'schedule_tasks' table.");
       await db.exec("ALTER TABLE schedule_tasks ADD COLUMN notes TEXT;");
       console.log("'notes' column added successfully to 'schedule_tasks'.");
     }
+
+    const studyPlansInfo = await db.all("PRAGMA table_info(study_plans);");
+    const reminderColumnExists = studyPlansInfo.some(col => col.name === 'lastReminderSent');
+    if (!reminderColumnExists) {
+        console.log("Attempting to add 'lastReminderSent' column to 'study_plans' table.");
+        await db.exec("ALTER TABLE study_plans ADD COLUMN lastReminderSent TEXT;");
+        console.log("'lastReminderSent' column added successfully.");
+    }
+    
+    const reflectionColumnExists = studyPlansInfo.some(col => col.name === 'reflection_json');
+    if (!reflectionColumnExists) {
+      console.log("Attempting to add 'reflection_json' column to 'study_plans' table.");
+      await db.exec("ALTER TABLE study_plans ADD COLUMN reflection_json TEXT;");
+      console.log("'reflection_json' column added successfully.");
+    }
+
   } catch (migrationError) {
-    console.error("Error during 'notes' column migration for 'schedule_tasks':", migrationError);
-    // Depending on the severity, you might want to throw this error or handle it.
-    // For now, we'll log it and proceed. The app might still face issues if the column is critical.
+    console.error("Error during database schema migration check:", migrationError);
   }
   
   dbInstance = db;
   return db;
 }
-

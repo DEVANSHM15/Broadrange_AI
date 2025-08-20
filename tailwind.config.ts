@@ -1,3 +1,4 @@
+
 import type {Config} from 'tailwindcss';
 
 export default {
@@ -65,8 +66,6 @@ export default {
       },
       fontFamily: {
         sans: ['var(--font-sans, Inter)', 'system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', '"Helvetica Neue"', 'Arial', '"Noto Sans"', 'sans-serif', '"Apple Color Emoji"', '"Segoe UI Emoji"', '"Segoe UI Symbol"', '"Noto Color Emoji"'],
-        // Add FKGroteskNeue if it's primary and Inter is fallback
-        // fk: ['"FKGroteskNeue"', 'Inter', 'sans-serif'],
       },
       keyframes: {
         'accordion-down': {
@@ -77,12 +76,17 @@ export default {
           from: {height: 'var(--radix-accordion-content-height)'},
           to: {height: '0'},
         },
+        'show': {
+            '0%, 49.99%': { opacity: '0', zIndex: '10' },
+            '50%, 100%': { opacity: '1', zIndex: '20' },
+        }
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
+        'show': 'show 0.7s',
       },
     },
   },
-  plugins: [require('tailwindcss-animate')],
+  plugins: [require('tailwindcss-animate'), require('@tailwindcss/typography')],
 } satisfies Config;

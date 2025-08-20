@@ -9,40 +9,108 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
-import { Loader2 } from "lucide-react";
+import { Loader2, Mail, Lock, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import { GoogleLogin, type CredentialResponse } from '@react-oauth/google';
+import { cn } from "@/lib/utils";
+import Image from "next/image";
 
+// Schemas
 const loginSchema = z.object({
   email: z.string().email("Invalid email address."),
   password: z.string().min(1, "Password is required."),
-  rememberMe: z.boolean().optional(),
 });
-
 type LoginFormData = z.infer<typeof loginSchema>;
 
-export default function LoginPage() {
+const registerSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters."),
+  email: z.string().email("Invalid email address."),
+  password: z.string().min(6, "Password must be at least 6 characters."),
+});
+type RegisterFormData = z.infer<typeof registerSchema>;
+
+// Sign-in Form Component
+const SignInForm = ({ onSignIn, isLoading }: { onSignIn: (data: LoginFormData) => void, isLoading: boolean }) => {
+  const { register, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema)
+  });
+
+  return (
+    <div className="flex flex-col items-center justify-center h-full px-10 text-center">
+      <Link href="/" className="flex justify-center items-center gap-2 text-foreground hover:opacity-80 transition-opacity mb-4">
+        <Image src="https://www.broadrange.ai/images/broadrange-logo.jpg" alt="Broadrange AI Logo" width={93} height={24} className="h-8 w-auto rounded-lg" />
+        <span className="text-xl font-bold sm:inline-block">CodeXStudy</span>
+      </Link>
+      <h1 className="text-3xl font-bold mb-4">Sign In</h1>
+      <form onSubmit={handleSubmit(onSignIn)} className="grid gap-4 w-full">
+        <div className="grid gap-2 text-left">
+            <Label htmlFor="login-email">Email</Label>
+            <Input type="email" id="login-email" {...register("email")} placeholder="you@example.com" />
+            {errors.email && <p className="text-xs text-destructive mt-1">{errors.email.message}</p>}
+        </div>
+        <div className="grid gap-2 text-left">
+            <Label htmlFor="login-password">Password</Label>
+            <Input type="password" id="login-password" {...register("password")} placeholder="••••••••" />
+             {errors.password && <p className="text-xs text-destructive mt-1">{errors.password.message}</p>}
+        </div>
+        <div className="text-sm text-center">
+            <Link href="/forgot-password" className="underline text-muted-foreground hover:text-primary">
+                Forgot your password?
+            </Link>
+        </div>
+        <Button type="submit" className="w-full text-base font-semibold mt-2" disabled={isLoading}>
+            {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "Sign In"}
+        </Button>
+      </form>
+    </div>
+  );
+};
+
+// Sign-up Form Component
+const SignUpForm = ({ onSignUp, isLoading }: { onSignUp: (data: RegisterFormData) => void, isLoading: boolean }) => {
+  const { register, handleSubmit, formState: { errors } } = useForm<RegisterFormData>({
+    resolver: zodResolver(registerSchema)
+  });
+
+  return (
+    <div className="flex flex-col items-center justify-center h-full px-10 text-center">
+        <Link href="/" className="flex justify-center items-center gap-2 text-foreground hover:opacity-80 transition-opacity mb-4">
+            <Image src="https://www.broadrange.ai/images/broadrange-logo.jpg" alt="Broadrange AI Logo" width={93} height={24} className="h-8 w-auto rounded-lg" />
+            <span className="text-xl font-bold sm:inline-block">CodeXStudy</span>
+        </Link>
+        <h1 className="text-3xl font-bold mb-4">Create Account</h1>
+        <form onSubmit={handleSubmit(onSignUp)} className="grid gap-4 w-full">
+            <div className="grid gap-2 text-left">
+                <Label htmlFor="register-name">Full Name</Label>
+                <Input id="register-name" {...register("name")} placeholder="John Doe" />
+                {errors.name && <p className="text-xs text-destructive mt-1">{errors.name.message}</p>}
+            </div>
+            <div className="grid gap-2 text-left">
+                <Label htmlFor="register-email">Email Address</Label>
+                <Input type="email" id="register-email" {...register("email")} placeholder="you@example.com" />
+                 {errors.email && <p className="text-xs text-destructive mt-1">{errors.email.message}</p>}
+            </div>
+            <div className="grid gap-2 text-left">
+                <Label htmlFor="register-password">Password</Label>
+                <Input type="password" id="register-password" {...register("password")} placeholder="••••••••" />
+                 {errors.password && <p className="text-xs text-destructive mt-1">{errors.password.message}</p>}
+            </div>
+            <Button type="submit" className="w-full text-base font-semibold mt-2" disabled={isLoading}>
+                {isLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "Sign Up"}
+            </Button>
+        </form>
+    </div>
+  );
+};
+
+export default function UnifiedAuthPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { login, isLoading: authLoading, currentUser } = useAuth();
-  const [isSubmittingForm, setIsSubmittingForm] = useState(false);
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<LoginFormData>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-      rememberMe: false,
-    }
-  });
+  
+  const [isSignUpActive, setIsSignUpActive] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (currentUser) {
@@ -50,161 +118,126 @@ export default function LoginPage() {
     }
   }, [currentUser, router]);
 
-  const onSubmit = async (data: LoginFormData) => {
-    setIsSubmittingForm(true);
-    try {
-      const result = await login(data.email, data.password);
-      
-      if (result.success) {
-        toast({
-          title: "Login Successful",
-          description: "Welcome back!",
-        });
-        setIsSubmittingForm(false);
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Login Failed",
-          description: result.message || "Invalid email or password. Please try again.",
-        });
-        setIsSubmittingForm(false);
-      }
-    } catch (error) {
-      console.error("Login error:", error);
-      toast({
-        variant: "destructive",
-        title: "Login Error",
-        description: "An unexpected error occurred. Please try again later.",
-      });
-      setIsSubmittingForm(false);
+  const handleSignInSubmit = async (data: LoginFormData) => {
+    setIsSubmitting(true);
+    const result = await login(data.email, data.password);
+    if (result.success) {
+        toast({ title: "Login Successful", description: "Welcome back!" });
+    } else {
+        toast({ variant: "destructive", title: "Login Failed", description: result.message || "Invalid credentials." });
     }
+    setIsSubmitting(false);
   };
   
-  const handleGoogleLoginSuccess = (credentialResponse: CredentialResponse) => {
-    console.log("Google Login Success:", credentialResponse);
-    // In a real app, you would send the credential to your backend
-    // to verify the token, then create a session or issue a JWT.
-    toast({
-      title: "Google Login Initiated",
-      description: "This is a placeholder. Backend logic is needed to complete login.",
-    });
+  const handleSignUpSubmit = async (data: RegisterFormData) => {
+    sessionStorage.setItem("registrationStep1Data", JSON.stringify(data));
+    router.push("/register/step2");
   };
 
-  const handleForgotPassword = () => {
-    router.push('/forgot-password');
-  };
-
-  if (authLoading && !currentUser) {
+  if (authLoading || currentUser) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
+      <div className="flex items-center justify-center min-h-screen bg-muted/30">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
     );
   }
 
-  if (currentUser && !authLoading) return null;
-
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4">
-      <div className="flex items-center gap-2 mb-8 text-2xl font-semibold text-primary">
-        <span className="flex items-center justify-center h-8 w-8 bg-primary text-primary-foreground rounded-full font-bold text-xl">B</span>
-        <span>Broadrange AI</span>
-      </div>
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="text-2xl text-center">Welcome Back</CardTitle>
-          <CardDescription className="text-center">
-            Sign in to access your Broadrange AI study plans.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="space-y-1">
-              <Label htmlFor="email">Email Address</Label>
-              <Input
-                type="email"
-                id="email"
-                className={`${errors.email ? "border-destructive" : ""}`}
-                {...register("email")}
-                required
-                placeholder="you@example.com"
-              />
-              {errors.email && <p className="text-xs text-destructive mt-1">{errors.email.message}</p>}
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                type="password"
-                id="password"
-                className={`${errors.password ? "border-destructive" : ""}`}
-                {...register("password")}
-                required
-                placeholder="••••••••"
-              />
-              {errors.password && <p className="text-xs text-destructive mt-1">{errors.password.message}</p>}
-            </div>
-            <div className="flex justify-between items-center">
-              <div className="flex items-center space-x-2">
-                <Checkbox id="rememberMe" {...register("rememberMe")} />
-                <Label htmlFor="rememberMe" className="text-sm font-normal">Remember me</Label>
-              </div>
+    <div className="relative w-full min-h-screen flex items-center justify-center p-4 bg-muted/30 overflow-hidden">
+        {/* Background Glows */}
+        <div className="absolute top-0 left-0 w-72 h-72 bg-primary/20 rounded-full blur-3xl animate-pulse -z-10"></div>
+        <div className="absolute top-0 right-0 w-72 h-72 bg-blue-500/20 rounded-full blur-3xl animate-pulse -z-10 delay-1000"></div>
+        <div className="absolute bottom-0 left-0 w-72 h-72 bg-blue-500/20 rounded-full blur-3xl animate-pulse -z-10 delay-500"></div>
+        <div className="absolute bottom-0 right-0 w-72 h-72 bg-primary/20 rounded-full blur-3xl animate-pulse -z-10 delay-1500"></div>
+
+      <div className={cn(
+        "relative w-full max-w-4xl min-h-[600px] bg-card rounded-2xl overflow-hidden",
+        "transition-all duration-700 ease-in-out shadow-[0_0_15px_rgba(0,0,0,0.2)] hover:shadow-[0_0_25px_5px_hsl(var(--primary)/0.2)]",
+        {"right-panel-active": isSignUpActive}
+      )} id="container">
+        
+        {/* Sign Up Form Panel */}
+        <div className="absolute top-0 h-full w-1/2 left-0 opacity-0 z-10 transition-all ease-in-out duration-500 form-container sign-up-container">
+            <SignUpForm onSignUp={handleSignUpSubmit} isLoading={isSubmitting} />
+        </div>
+
+        {/* Sign In Form Panel */}
+        <div className="absolute top-0 h-full w-1/2 left-0 opacity-100 z-20 transition-all ease-in-out duration-500 form-container sign-in-container">
+            <SignInForm onSignIn={handleSignInSubmit} isLoading={isSubmitting} />
+        </div>
+
+        {/* Overlay Container */}
+        <div className="absolute top-0 left-1/2 w-1/2 h-full overflow-hidden z-30 transition-transform duration-600 ease-in-out overlay-container">
+          <div className="relative -left-full h-full w-[200%] bg-primary text-primary-foreground transition-transform duration-600 ease-in-out overlay">
+            
+            {/* Sign In Overlay */}
+            <div className="absolute top-0 h-full w-1/2 flex items-center justify-center flex-col px-10 text-center transition-transform duration-600 ease-in-out overlay-panel overlay-left">
+              <h1 className="text-3xl font-bold">Welcome Back!</h1>
+              <p className="text-sm mt-4 mb-6">To keep connected with us please login with your personal info</p>
               <Button
-                type="button"
-                variant="link"
-                className="text-sm h-auto p-0 font-normal"
-                onClick={handleForgotPassword}
+                variant="outline"
+                onClick={() => setIsSignUpActive(false)}
+                className="bg-transparent border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary w-full max-w-xs"
+                id="signIn"
               >
-                Forgot password?
+                Sign In
               </Button>
             </div>
-            <Button type="submit" className="w-full" disabled={isSubmittingForm}>
-              {isSubmittingForm ? (
-                <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Signing In...
-                </>
-              ) : (
-                "Sign In"
-              )}
-            </Button>
-          </form>
-          <div className="relative my-4">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
-                Or continue with
-              </span>
+
+            {/* Sign Up Overlay */}
+            <div className="absolute top-0 h-full w-1/2 right-0 flex items-center justify-center flex-col px-10 text-center transition-transform duration-600 ease-in-out overlay-panel overlay-right">
+              <h1 className="text-3xl font-bold">Hello, Friend!</h1>
+              <p className="text-sm mt-4 mb-6">Enter your personal details and start your journey with us</p>
+              <Button
+                variant="outline"
+                onClick={() => setIsSignUpActive(true)}
+                className="bg-transparent border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary w-full max-w-xs"
+                id="signUp"
+              >
+                Sign Up
+              </Button>
             </div>
           </div>
-          <div className="flex justify-center">
-             <GoogleLogin
-                onSuccess={handleGoogleLoginSuccess}
-                onError={() => {
-                  console.error('Google Login Failed');
-                  toast({
-                    variant: "destructive",
-                    title: "Google Login Failed",
-                    description: "An error occurred during Google authentication.",
-                  });
-                }}
-                width="364px"
-              />
-          </div>
-        </CardContent>
-        <CardFooter className="flex flex-col items-center text-sm pt-6">
-          <p className="text-muted-foreground">
-            Don't have an account?{" "}
-            <Link href="/register" className="font-medium text-primary hover:underline">
-              Create Account
-            </Link>
-          </p>
-          <Link href="/" className="mt-4 text-primary hover:underline">
-            &larr; Back to Home
-          </Link>
-        </CardFooter>
-      </Card>
+        </div>
+
+        <style jsx>{`
+            #container.right-panel-active .sign-in-container {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            #container.right-panel-active .sign-up-container {
+                transform: translateX(100%);
+                opacity: 1;
+                z-index: 5;
+                animation: show 0.6s;
+            }
+            #container.right-panel-active .overlay-container {
+                transform: translateX(-100%);
+            }
+            #container.right-panel-active .overlay {
+                transform: translateX(50%);
+            }
+            #container.right-panel-active .overlay-left {
+                transform: translateX(0);
+            }
+            #container.right-panel-active .overlay-right {
+                transform: translateX(20%);
+            }
+            @keyframes show {
+                0%, 49.99% {
+                    opacity: 0;
+                    z-index: 1;
+                }
+                50%, 100% {
+                    opacity: 1;
+                    z-index: 5;
+                }
+            }
+            .overlay-left {
+                transform: translateX(-20%);
+            }
+        `}</style>
+      </div>
     </div>
   );
 }

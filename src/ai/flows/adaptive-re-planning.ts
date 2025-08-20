@@ -58,6 +58,7 @@ const prompt = ai.definePrompt({
   name: 'adaptiveRePlanningPrompt',
   input: {schema: AdaptiveRePlanningInputSchema},
   output: {schema: AdaptiveRePlanningOutputSchema},
+  model: 'googleai/gemini-1.5-flash-latest',
   prompt: `You are an expert study plan optimizer. A user has fallen behind on their study schedule and needs a revised plan. Your goal is to create a new, realistic schedule that helps them catch up by only rescheduling uncompleted tasks.
 
 **User's Situation:**

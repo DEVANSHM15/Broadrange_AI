@@ -42,6 +42,7 @@ const prompt = ai.definePrompt({
   name: 'generateTaskQuizPrompt',
   input: {schema: GenerateTaskQuizInputSchema},
   output: {schema: GenerateTaskQuizOutputSchema},
+  model: 'googleai/gemini-1.5-flash-latest',
   prompt: `You are an AI Quiz Generator for students. Your task is to create a short, relevant multiple-choice quiz based on the provided study task and subject context.
 
 Study Task: {{{taskText}}}

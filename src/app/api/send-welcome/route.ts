@@ -11,11 +11,14 @@ export async function POST(req: Request) {
   const msg = {
     to: email,
     from: 'devanshm.btech23@rvu.edu.in ', // Must match your SendGrid sender
-    subject: `🎉 Welcome to Broadrange AI, ${name}!`,
+    subject: `🎉 Welcome to CodeXStudy, ${name}!`,
     html: `
       <h2>Hi ${name},</h2>
-      <p>Welcome to <strong>Broadrange AI</strong> – your productivity companion.</p>
+      <p>Welcome to <strong>CodeXStudy</strong> – your new productivity companion.</p>
       <p>You're now ready to take control of your study goals 🚀</p>
+      <br />
+      <p>Happy studying!</p>
+      <p><strong>The CodeXStudy Team</strong></p>
     `,
   };
 
